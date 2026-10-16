@@ -33,11 +33,10 @@ func (s *Service) PointsWithLimit(ctx context.Context, p PortfolioContext, from,
 	})
 }
 
-func sample(points []sqlcgen.ListValuationPointHeadersBetweenRow, granularity string, loc *time.Location) []sqlcgen.ListValuationPointHeadersBetweenRow {
+func appendSample(out, points []sqlcgen.ListValuationPointHeadersBetweenRow, granularity string, loc *time.Location) []sqlcgen.ListValuationPointHeadersBetweenRow {
 	if granularity == "" || granularity == "raw" || len(points) == 0 {
-		return points
+		return append(out, points...)
 	}
-	out := make([]sqlcgen.ListValuationPointHeadersBetweenRow, 0, len(points))
 	var lastBucket time.Time
 	for i := range points {
 		local := points[i].EvaluatedAt.In(loc)
@@ -47,7 +46,7 @@ func sample(points []sqlcgen.ListValuationPointHeadersBetweenRow, granularity st
 		} else {
 			bucket = time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, loc)
 		}
-		if len(out) > 0 && bucket.Equal(lastBucket) {
+		if i > 0 && bucket.Equal(lastBucket) {
 			out[len(out)-1] = points[i]
 			continue
 		}
@@ -67,14 +66,7 @@ func (s *Service) Detail(ctx context.Context, p PortfolioContext, cycleID uuid.U
 		if !available {
 			return PointDetail{}, valuation.ErrNotFound
 		}
-		point, err := s.valuation.Get(ctx, p.ID, cycleID)
-		if err != nil {
-			return PointDetail{}, err
-		}
-		if point.DetailState == "expired" {
-			return PointDetail{Point: point, Accounts: []valuation.AccountValuation{}}, nil
-		}
-		accounts, err := s.valuation.Accounts(ctx, p.ID, point.CycleID)
+		point, accounts, err := s.valuation.PointByCycleWithAccounts(ctx, p.ID, cycleID)
 		if err != nil {
 			return PointDetail{}, err
 		}
@@ -131,10 +123,10 @@ func (s *Service) Snapshot(ctx context.Context, p PortfolioContext, day string) 
 		if err != nil {
 			return PointDetail{}, err
 		}
-		cycle, err := uuid.FromBytes(row.CycleID)
+		points, accounts, err := s.valuation.PointsWithAccounts(ctx, []sqlcgen.ValuationPoint{row}, nil)
 		if err != nil {
 			return PointDetail{}, err
 		}
-		return s.Detail(ctx, p, cycle)
+		return PointDetail{Point: points[0], Accounts: accounts[points[0].CycleID]}, nil
 	})
 }

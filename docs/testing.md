@@ -57,6 +57,44 @@ URL without requesting collection. Record device/browser versions and outcomes;
 leave coverage outstanding until observed. Embedded and home-screen modes are
 outside acceptance scope.
 
+## Read-query benchmarks
+
+The financial package has opt-in benchmarks for a ten-year timeline and large
+manual/exclusion version histories. They use the ordinary temporary MySQL
+harness, count application reads and consumed rows, report allocations, and
+inspect scan plans with `EXPLAIN ANALYZE`:
+
+```sh
+go test ./internal/application/financial -run '^$' \
+  -bench 'Benchmark(History|Revision|ReadScope|PolicyVersion|ComparisonEvent)Queries' \
+  -benchtime=3x -v
+```
+
+Fixture setup is outside timed sub-benchmarks. Benchmarks are opt-in; the
+read-scope regression also uses its shared fixture during `make test`. Keep
+output under `/tmp/plutus`; do not substitute a live or pre-created database.
+Measurements and their limits are recorded in
+[query performance](./query-performance.md).
+
+History benchmarks cover UTC, Asia/Shanghai, and America/New_York, with daily
+and hourly curves. The ten-year hourly case expects the point-limit error and
+measures early termination. Regression tests cover the 10,000-header cursor,
+equal-time successors, DST buckets, raw page totals, and 256-asset policy
+batches.
+
+Read-scope benchmarks use 2,000 assets, 10,000 rule versions, and 100 manual
+accounts to distinguish output row counts from lookup work. Policy-version
+benchmarks compare recent and early windows over 10,000 versions of one asset.
+The scoped overlay regression logs opening-rule, page, and count scan plans.
+HTTP regressions also count successful SQL writes, verifying one session touch
+per create or replay while retaining authentication, CSRF, and ownership checks.
+Concurrent creation regressions hold the user lock while revoking, disabling,
+expiring, or resetting the authenticated user. Comparison regressions cover
+sparse predecessor seeks, equal-time ordering, retained-history anchors, and
+both sides of the 1,000-point event-path threshold. Execution plans are checked
+before and after refreshing statistics. Event benchmarks contrast short and
+year-long windows over sparse and dense evidence histories.
+
 ## Documentation verification
 
 After dependencies are installed with `make deps`, use the root Prettier

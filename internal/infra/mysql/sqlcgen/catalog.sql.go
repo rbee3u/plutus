@@ -13,21 +13,12 @@ import (
 )
 
 const countAssets = `-- name: CountAssets :one
-SELECT COUNT(*)
-FROM assets
-WHERE assets.portfolio_id = ? AND (? = 0 OR platform = ?)
-  AND (? = 0 OR symbol LIKE ? OR canonical_asset_symbol LIKE ?)
-  AND (
-      ? = 0
-      OR (? = 'excluded' AND EXISTS (
-          SELECT 1 FROM asset_exclusion_versions e
-          WHERE e.portfolio_id = ? AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
-      ))
-      OR (? = 'active' AND NOT EXISTS (
-          SELECT 1 FROM asset_exclusion_versions e
-          WHERE e.portfolio_id = ? AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
-      ))
-  )
+SELECT COUNT(*) FROM assets a
+LEFT JOIN asset_exclusion_versions e ON e.portfolio_id = a.portfolio_id AND e.asset_id = a.id
+    AND e.version = (SELECT v.version FROM asset_exclusion_versions v WHERE v.portfolio_id = a.portfolio_id AND v.asset_id = a.id ORDER BY v.portfolio_id DESC, v.asset_id DESC, v.version DESC LIMIT 1)
+WHERE a.portfolio_id = ? AND (? = 0 OR a.platform = ?)
+  AND (? = 0 OR a.symbol LIKE ? OR a.canonical_asset_symbol LIKE ?)
+  AND (? = 0 OR COALESCE(e.excluded, FALSE) = (? = 'excluded'))
 `
 
 type CountAssetsParams struct {
@@ -50,9 +41,34 @@ func (q *Queries) CountAssets(ctx context.Context, arg CountAssetsParams) (int64
 		arg.Query,
 		arg.FilterStatus,
 		arg.Status,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countAssetsWithoutStatus = `-- name: CountAssetsWithoutStatus :one
+SELECT COUNT(*) FROM assets
+WHERE portfolio_id = ? AND (? = 0 OR platform = ?)
+  AND (? = 0 OR symbol LIKE ? OR canonical_asset_symbol LIKE ?)
+`
+
+type CountAssetsWithoutStatusParams struct {
+	PortfolioID    []byte
+	FilterPlatform interface{}
+	Platform       string
+	FilterQuery    interface{}
+	Query          string
+}
+
+func (q *Queries) CountAssetsWithoutStatus(ctx context.Context, arg CountAssetsWithoutStatusParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countAssetsWithoutStatus,
 		arg.PortfolioID,
-		arg.Status,
-		arg.PortfolioID,
+		arg.FilterPlatform,
+		arg.Platform,
+		arg.FilterQuery,
+		arg.Query,
+		arg.Query,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -184,23 +200,15 @@ func (q *Queries) GetFuturesContractByTerms(ctx context.Context, arg GetFuturesC
 }
 
 const listAssets = `-- name: ListAssets :many
-SELECT portfolio_id, id, platform, symbol, canonical_asset_symbol, mapping_version, first_observed_at, last_observed_at
-FROM assets
-WHERE assets.portfolio_id = ? AND (? = 0 OR platform = ?)
-  AND (? = 0 OR symbol LIKE ? OR canonical_asset_symbol LIKE ?)
-  AND (
-      ? = 0
-      OR (? = 'excluded' AND EXISTS (
-          SELECT 1 FROM asset_exclusion_versions e
-          WHERE e.portfolio_id = ? AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
-      ))
-      OR (? = 'active' AND NOT EXISTS (
-          SELECT 1 FROM asset_exclusion_versions e
-          WHERE e.portfolio_id = ? AND e.asset_id = assets.id AND e.excluded = TRUE AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
-      ))
-  )
-ORDER BY FIND_IN_SET(platform, ?) = 0,
-         FIND_IN_SET(platform, ?), platform, symbol, canonical_asset_symbol, id
+SELECT a.portfolio_id, a.id, a.platform, a.symbol, a.canonical_asset_symbol, a.mapping_version, a.first_observed_at, a.last_observed_at, e.excluded, e.reason AS exclusion_reason, e.version AS exclusion_version, e.effective_at AS excluded_at
+FROM assets a
+LEFT JOIN asset_exclusion_versions e ON e.portfolio_id = a.portfolio_id AND e.asset_id = a.id
+    AND e.version = (SELECT v.version FROM asset_exclusion_versions v WHERE v.portfolio_id = a.portfolio_id AND v.asset_id = a.id ORDER BY v.portfolio_id DESC, v.asset_id DESC, v.version DESC LIMIT 1)
+WHERE a.portfolio_id = ? AND (? = 0 OR a.platform = ?)
+  AND (? = 0 OR a.symbol LIKE ? OR a.canonical_asset_symbol LIKE ?)
+  AND (? = 0 OR COALESCE(e.excluded, FALSE) = (? = 'excluded'))
+ORDER BY FIND_IN_SET(a.platform, ?) = 0,
+         FIND_IN_SET(a.platform, ?), a.platform, a.symbol, a.canonical_asset_symbol, a.id
 LIMIT ? OFFSET ?
 `
 
@@ -217,7 +225,15 @@ type ListAssetsParams struct {
 	Offset         int32
 }
 
-func (q *Queries) ListAssets(ctx context.Context, arg ListAssetsParams) ([]Asset, error) {
+type ListAssetsRow struct {
+	Asset            Asset
+	Excluded         sql.NullBool
+	ExclusionReason  sql.NullString
+	ExclusionVersion sql.NullInt64
+	ExcludedAt       sql.NullTime
+}
+
+func (q *Queries) ListAssets(ctx context.Context, arg ListAssetsParams) ([]ListAssetsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAssets,
 		arg.PortfolioID,
 		arg.FilterPlatform,
@@ -227,9 +243,6 @@ func (q *Queries) ListAssets(ctx context.Context, arg ListAssetsParams) ([]Asset
 		arg.Query,
 		arg.FilterStatus,
 		arg.Status,
-		arg.PortfolioID,
-		arg.Status,
-		arg.PortfolioID,
 		arg.PlatformOrder,
 		arg.PlatformOrder,
 		arg.Limit,
@@ -239,18 +252,109 @@ func (q *Queries) ListAssets(ctx context.Context, arg ListAssetsParams) ([]Asset
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Asset{}
+	items := []ListAssetsRow{}
 	for rows.Next() {
-		var i Asset
+		var i ListAssetsRow
 		if err := rows.Scan(
-			&i.PortfolioID,
-			&i.ID,
-			&i.Platform,
-			&i.Symbol,
-			&i.CanonicalAssetSymbol,
-			&i.MappingVersion,
-			&i.FirstObservedAt,
-			&i.LastObservedAt,
+			&i.Asset.PortfolioID,
+			&i.Asset.ID,
+			&i.Asset.Platform,
+			&i.Asset.Symbol,
+			&i.Asset.CanonicalAssetSymbol,
+			&i.Asset.MappingVersion,
+			&i.Asset.FirstObservedAt,
+			&i.Asset.LastObservedAt,
+			&i.Excluded,
+			&i.ExclusionReason,
+			&i.ExclusionVersion,
+			&i.ExcludedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAssetsWithoutStatus = `-- name: ListAssetsWithoutStatus :many
+SELECT a.portfolio_id, a.id, a.platform, a.symbol, a.canonical_asset_symbol, a.mapping_version, a.first_observed_at, a.last_observed_at, e.excluded, e.reason AS exclusion_reason, e.version AS exclusion_version, e.effective_at AS excluded_at
+FROM (
+    SELECT candidate.id FROM assets candidate
+    WHERE candidate.portfolio_id = ? AND (? = 0 OR candidate.platform = ?)
+      AND (? = 0 OR candidate.symbol LIKE ? OR candidate.canonical_asset_symbol LIKE ?)
+    ORDER BY FIND_IN_SET(candidate.platform, ?) = 0,
+             FIND_IN_SET(candidate.platform, ?), candidate.platform, candidate.symbol, candidate.canonical_asset_symbol, candidate.id
+    LIMIT ? OFFSET ?
+) page
+JOIN assets a ON a.portfolio_id = ? AND a.id = page.id
+LEFT JOIN asset_exclusion_versions e ON e.portfolio_id = a.portfolio_id AND e.asset_id = a.id
+    AND e.version = (SELECT v.version FROM asset_exclusion_versions v WHERE v.portfolio_id = a.portfolio_id AND v.asset_id = a.id ORDER BY v.portfolio_id DESC, v.asset_id DESC, v.version DESC LIMIT 1)
+ORDER BY FIND_IN_SET(a.platform, ?) = 0,
+         FIND_IN_SET(a.platform, ?), a.platform, a.symbol, a.canonical_asset_symbol, a.id
+`
+
+type ListAssetsWithoutStatusParams struct {
+	PortfolioID    []byte
+	FilterPlatform interface{}
+	Platform       string
+	FilterQuery    interface{}
+	Query          string
+	PlatformOrder  string
+	Limit          int32
+	Offset         int32
+}
+
+type ListAssetsWithoutStatusRow struct {
+	Asset            Asset
+	Excluded         sql.NullBool
+	ExclusionReason  sql.NullString
+	ExclusionVersion sql.NullInt64
+	ExcludedAt       sql.NullTime
+}
+
+// Without a state filter, LIMIT bounds rule lookups rather than just output.
+func (q *Queries) ListAssetsWithoutStatus(ctx context.Context, arg ListAssetsWithoutStatusParams) ([]ListAssetsWithoutStatusRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAssetsWithoutStatus,
+		arg.PortfolioID,
+		arg.FilterPlatform,
+		arg.Platform,
+		arg.FilterQuery,
+		arg.Query,
+		arg.Query,
+		arg.PlatformOrder,
+		arg.PlatformOrder,
+		arg.Limit,
+		arg.Offset,
+		arg.PortfolioID,
+		arg.PlatformOrder,
+		arg.PlatformOrder,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAssetsWithoutStatusRow{}
+	for rows.Next() {
+		var i ListAssetsWithoutStatusRow
+		if err := rows.Scan(
+			&i.Asset.PortfolioID,
+			&i.Asset.ID,
+			&i.Asset.Platform,
+			&i.Asset.Symbol,
+			&i.Asset.CanonicalAssetSymbol,
+			&i.Asset.MappingVersion,
+			&i.Asset.FirstObservedAt,
+			&i.Asset.LastObservedAt,
+			&i.Excluded,
+			&i.ExclusionReason,
+			&i.ExclusionVersion,
+			&i.ExcludedAt,
 		); err != nil {
 			return nil, err
 		}

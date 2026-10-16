@@ -53,12 +53,12 @@ func (a *API) CreateCollectionCycle(ctx context.Context, request api.CreateColle
 	if a.Cycles == nil {
 		return nil, ErrNotImplemented
 	}
-	body, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), struct{}{}, http.StatusAccepted, func(ctx context.Context, _ auth.User) (api.CollectionCycle, error) {
-		sc, err := a.scoped(ctx, request.PortfolioId)
+	body, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), struct{}{}, http.StatusAccepted, func(ctx context.Context, user auth.User) (api.CollectionCycle, error) {
+		owned, err := a.ownedPortfolio(ctx, user, request.PortfolioId)
 		if err != nil {
 			return api.CollectionCycle{}, err
 		}
-		cycle, _, err := a.Cycles.Enqueue(ctx, sc.portfolio.ID, cycles.TriggerUser)
+		cycle, _, err := a.Cycles.Enqueue(ctx, owned.ID, cycles.TriggerUser)
 		if err != nil {
 			return api.CollectionCycle{}, err
 		}
@@ -85,18 +85,12 @@ func (a *API) GetCollectionCycle(ctx context.Context, request api.GetCollectionC
 		}
 		detail := api.CollectionCycleDetail{Accounts: []api.AccountValuation{}, Issues: []api.Issue{}}
 		var point *api.ValuationPointSummary
-		stored, err := a.Valuation.PointByCycle(ctx, sc.portfolio.ID, cycle.ID)
+		stored, accounts, err := a.Valuation.PointByCycleWithAccounts(ctx, sc.portfolio.ID, cycle.ID)
 		switch {
 		case err == nil:
 			point = toAPIPointPtr(&stored)
 			detail.Issues = toAPIIssues(stored.Issues)
-			accounts, err := a.Valuation.Accounts(ctx, sc.portfolio.ID, cycle.ID)
-			switch {
-			case err == nil:
-				detail.Accounts = toAPIAccountValuations(accounts)
-			case !errors.Is(err, valuation.ErrDetailExpired):
-				return nil, err
-			}
+			detail.Accounts = toAPIAccountValuations(accounts)
 		case errors.Is(err, valuation.ErrNotFound), errors.Is(err, valuation.ErrNoPoint):
 		default:
 			return nil, err

@@ -1,6 +1,7 @@
 package financial
 
 import (
+	"bytes"
 	"context"
 	"slices"
 
@@ -22,25 +23,39 @@ func (s *Service) currentManualBalances(ctx context.Context, p PortfolioContext)
 }
 
 func (s *Service) manualOverlayBalances(ctx context.Context, p PortfolioContext, selected map[uuid.UUID]bool) (map[uuid.UUID][]BalanceRow, *ManualOverlay, error) {
-	records, err := mysql.Queries(ctx, s.db).ListPortfolioManualRevisions(ctx, p.ID[:])
-	if err != nil {
-		return nil, nil, err
-	}
-	rules, err := mysql.Queries(ctx, s.db).ListCurrentAssetExclusions(ctx, p.ID[:])
-	if err != nil {
-		return nil, nil, err
-	}
-	excluded := map[uuid.UUID]bool{}
-	for _, rule := range rules {
-		id, err := uuid.FromBytes(rule.AssetID)
+	q := mysql.Queries(ctx, s.db)
+	var records []sqlcgen.ListPortfolioManualRevisionsRow
+	if selected == nil {
+		var err error
+		records, err = q.ListPortfolioManualRevisions(ctx, p.ID[:])
 		if err != nil {
 			return nil, nil, err
 		}
-		excluded[id] = rule.Excluded
+	} else {
+		ids := make([][]byte, 0, len(selected))
+		for id, include := range selected {
+			if include {
+				ids = append(ids, id[:])
+			}
+		}
+		for start := 0; start < len(ids); start += 500 {
+			rows, err := q.ListManualRevisionsByAccounts(ctx, sqlcgen.ListManualRevisionsByAccountsParams{PortfolioID: p.ID[:], AccountIds: ids[start:min(start+500, len(ids))]})
+			if err != nil {
+				return nil, nil, err
+			}
+			for _, row := range rows {
+				records = append(records, sqlcgen.ListPortfolioManualRevisionsRow(row))
+			}
+		}
+		// Batches follow map iteration order; overlay versions retain account order.
+		slices.SortFunc(records, func(a, b sqlcgen.ListPortfolioManualRevisionsRow) int {
+			return bytes.Compare(a.AccountID, b.AccountID)
+		})
 	}
 	out := map[uuid.UUID][]BalanceRow{}
 	overlay := &ManualOverlay{Versions: []ManualLedgerVersion{}}
 	ids := [][]byte{}
+	assets := map[uuid.UUID]bool{}
 	for _, record := range records {
 		accountID, err := uuid.FromBytes(record.AccountID)
 		if err != nil {
@@ -66,9 +81,33 @@ func (s *Service) manualOverlayBalances(ctx context.Context, p PortfolioContext,
 			if err != nil {
 				return nil, nil, err
 			}
+			assets[assetID] = true
 			quantity := decimal.Compact(item.Quantity)
 			modified := item.ChangedAt
-			out[accountID] = append(out[accountID], BalanceRow{AccountID: accountID, AssetID: assetID, AssetSymbol: item.AssetSymbol, CanonicalAssetSymbol: item.CanonicalAssetSymbol, Equity: quantity, ManualQuantity: &quantity, ManualModifiedAt: &modified, ManualChange: "added", Excluded: excluded[assetID]})
+			out[accountID] = append(out[accountID], BalanceRow{AccountID: accountID, AssetID: assetID, AssetSymbol: item.AssetSymbol, CanonicalAssetSymbol: item.CanonicalAssetSymbol, Equity: quantity, ManualQuantity: &quantity, ManualModifiedAt: &modified, ManualChange: "added"})
+		}
+	}
+	assetIDs := make([][]byte, 0, len(assets))
+	for id := range assets {
+		assetIDs = append(assetIDs, id[:])
+	}
+	excluded := map[uuid.UUID]bool{}
+	for start := 0; start < len(assetIDs); start += 500 {
+		rules, err := q.ListCurrentAssetExclusionsByAssets(ctx, sqlcgen.ListCurrentAssetExclusionsByAssetsParams{PortfolioID: p.ID[:], AssetIds: assetIDs[start:min(start+500, len(assetIDs))]})
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, rule := range rules {
+			id, err := uuid.FromBytes(rule.AssetID)
+			if err != nil {
+				return nil, nil, err
+			}
+			excluded[id] = rule.Excluded
+		}
+	}
+	for _, rows := range out {
+		for i := range rows {
+			rows[i].Excluded = excluded[rows[i].AssetID]
 		}
 	}
 	return out, overlay, nil

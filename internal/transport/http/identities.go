@@ -36,7 +36,7 @@ func (a *API) CreateIdentity(ctx context.Context, request api.CreateIdentityRequ
 		return nil, ErrNotImplemented
 	}
 	body, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), request.Body, http.StatusCreated, func(ctx context.Context, user auth.User) (api.Identity, error) {
-		sc, err := a.scoped(ctx, request.PortfolioId)
+		owned, err := a.ownedPortfolio(ctx, user, request.PortfolioId)
 		if err != nil {
 			return api.Identity{}, err
 		}
@@ -44,7 +44,7 @@ func (a *API) CreateIdentity(ctx context.Context, request api.CreateIdentityRequ
 		for _, kind := range request.Body.SelectedAccountTypes {
 			types = append(types, adapters.AccountType(kind))
 		}
-		item, err := a.Identities.Create(ctx, sc.portfolio.ID, &identity.CreateInput{ActorUserID: user.ID, RequestID: requestTraceID(ctx), Platform: adapters.Platform(request.Body.Platform), DisplayName: request.Body.DisplayName, AccountStructure: adapters.AccountStructure(request.Body.AccountStructure), SelectedAccountTypes: types})
+		item, err := a.Identities.Create(ctx, owned.ID, &identity.CreateInput{ActorUserID: user.ID, RequestID: requestTraceID(ctx), Platform: adapters.Platform(request.Body.Platform), DisplayName: request.Body.DisplayName, AccountStructure: adapters.AccountStructure(request.Body.AccountStructure), SelectedAccountTypes: types})
 		if err != nil {
 			return api.Identity{}, err
 		}

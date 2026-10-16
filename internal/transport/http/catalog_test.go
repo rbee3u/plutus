@@ -83,6 +83,10 @@ func TestCatalogHTTPStatusFilter(t *testing.T) {
 	}{
 		{"", []string{"BTC", "ETH", "SOL"}, 3},
 		{"?status=all", []string{"BTC", "ETH", "SOL"}, 3},
+		{"?limit=1&offset=1", []string{"ETH"}, 3},
+		{"?limit=1&offset=3", []string{}, 3},
+		{"?platform=binance&q=SOL", []string{"SOL"}, 1},
+		{"?platform=okx", []string{}, 0},
 		{"?status=active", []string{"BTC", "SOL"}, 2},
 		{"?status=excluded", []string{"ETH"}, 1},
 		{"?status=active&limit=1&offset=1", []string{"SOL"}, 2},

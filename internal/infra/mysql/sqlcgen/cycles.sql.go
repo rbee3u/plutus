@@ -8,6 +8,7 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 )
 
@@ -98,6 +99,55 @@ func (q *Queries) InsertCollectionCycle(ctx context.Context, arg InsertCollectio
 		arg.CreatedAt,
 	)
 	return err
+}
+
+const listCollectionCycleTimes = `-- name: ListCollectionCycleTimes :many
+SELECT id, created_at FROM collection_cycles
+WHERE portfolio_id = ? AND id IN (/*SLICE:cycle_ids*/?)
+`
+
+type ListCollectionCycleTimesParams struct {
+	PortfolioID []byte
+	CycleIds    [][]byte
+}
+
+type ListCollectionCycleTimesRow struct {
+	ID        []byte
+	CreatedAt time.Time
+}
+
+func (q *Queries) ListCollectionCycleTimes(ctx context.Context, arg ListCollectionCycleTimesParams) ([]ListCollectionCycleTimesRow, error) {
+	query := listCollectionCycleTimes
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.CycleIds) > 0 {
+		for _, v := range arg.CycleIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:cycle_ids*/?", strings.Repeat(",?", len(arg.CycleIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:cycle_ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCollectionCycleTimesRow{}
+	for rows.Next() {
+		var i ListCollectionCycleTimesRow
+		if err := rows.Scan(&i.ID, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCyclesWithPoints = `-- name: ListCyclesWithPoints :many

@@ -92,13 +92,13 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, from, to time
 	if to.IsZero() {
 		to = time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC)
 	}
-	rows, err := mysql.Queries(ctx, s.db).ListCapitalFlows(ctx, sqlcgen.ListCapitalFlowsParams{PortfolioID: portfolioID[:], FromAt: from.UTC(), ToAt: to.UTC()})
+	rows, err := mysql.Queries(ctx, s.db).ListCapitalFlowsWithAccounts(ctx, sqlcgen.ListCapitalFlowsWithAccountsParams{PortfolioID: portfolioID[:], FromAt: from.UTC(), ToAt: to.UTC()})
 	if err != nil {
 		return nil, err
 	}
 	out := make([]Flow, 0, len(rows))
 	for i := range rows {
-		item, err := s.fromRow(ctx, &rows[i])
+		item, err := flowFromRow(&rows[i].CapitalFlow, rows[i].AccountType, rows[i].IdentityName)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +139,7 @@ func (s *Service) ListPage(ctx context.Context, portfolioID uuid.UUID, from, to 
 		}
 		out := Page{Items: make([]Flow, 0, len(rows)), From: from.UTC(), To: to.UTC(), Offset: offset, Limit: limit, Total: int(total)}
 		for i := range rows {
-			item, err := s.fromRow(ctx, &rows[i])
+			item, err := flowFromRow(&rows[i].CapitalFlow, rows[i].AccountType, rows[i].IdentityName)
 			if err != nil {
 				return Page{}, err
 			}
@@ -158,7 +158,7 @@ func (s *Service) Get(ctx context.Context, portfolioID, id uuid.UUID) (Flow, err
 	if err != nil {
 		return Flow{}, err
 	}
-	return s.fromRow(ctx, &row)
+	return flowFromRow(&row.CapitalFlow, row.AccountType, row.IdentityName)
 }
 
 // Create inserts a flow, valuing it in USD from the nearest platform price when no value is given.
@@ -440,7 +440,7 @@ func optionalID(value *uuid.UUID) []byte {
 	return value[:]
 }
 
-func (s *Service) fromRow(ctx context.Context, row *sqlcgen.CapitalFlow) (Flow, error) {
+func flowFromRow(row *sqlcgen.CapitalFlow, accountType, identityName sql.NullString) (Flow, error) {
 	id, err := uuid.FromBytes(row.ID)
 	if err != nil {
 		return Flow{}, err
@@ -478,8 +478,8 @@ func (s *Service) fromRow(ctx context.Context, row *sqlcgen.CapitalFlow) (Flow, 
 			return Flow{}, err
 		}
 		item.AccountID = &accountID
-		if account, err := mysql.Queries(ctx, s.db).GetAccount(ctx, sqlcgen.GetAccountParams{PortfolioID: row.PortfolioID, ID: row.AccountID}); err == nil {
-			name := account.IdentityName + " / " + adapters.AccountName(adapters.AccountType(account.AccountType))
+		if accountType.Valid && identityName.Valid {
+			name := identityName.String + " / " + adapters.AccountName(adapters.AccountType(accountType.String))
 			item.AccountName = &name
 		}
 	}

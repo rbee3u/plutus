@@ -11,6 +11,24 @@ import (
 	"time"
 )
 
+const countActiveSessionsByUser = `-- name: CountActiveSessionsByUser :one
+SELECT COUNT(*) FROM sessions
+WHERE user_id = ? AND revoked_at IS NULL
+  AND idle_expires_at >= ? AND absolute_expires_at >= ?
+`
+
+type CountActiveSessionsByUserParams struct {
+	UserID []byte
+	Now    time.Time
+}
+
+func (q *Queries) CountActiveSessionsByUser(ctx context.Context, arg CountActiveSessionsByUserParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countActiveSessionsByUser, arg.UserID, arg.Now, arg.Now)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getSessionByID = `-- name: GetSessionByID :one
 SELECT id, user_id, token_hash, csrf_secret, created_at, last_seen_at,
        idle_expires_at, absolute_expires_at, revoked_at, user_agent
@@ -37,26 +55,37 @@ func (q *Queries) GetSessionByID(ctx context.Context, id []byte) (Session, error
 }
 
 const getSessionByTokenHash = `-- name: GetSessionByTokenHash :one
-SELECT id, user_id, token_hash, csrf_secret, created_at, last_seen_at,
-       idle_expires_at, absolute_expires_at, revoked_at, user_agent
-FROM sessions
-WHERE token_hash = ?
+SELECT s.id, s.user_id, s.token_hash, s.csrf_secret, s.created_at, s.last_seen_at, s.idle_expires_at, s.absolute_expires_at, s.revoked_at, s.user_agent, u.id, u.username, u.username_key, u.status, u.password_hash, u.created_at, u.updated_at
+FROM sessions s JOIN users u ON u.id = s.user_id
+WHERE s.token_hash = ?
 `
 
-func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash []byte) (Session, error) {
+type GetSessionByTokenHashRow struct {
+	Session Session
+	User    User
+}
+
+func (q *Queries) GetSessionByTokenHash(ctx context.Context, tokenHash []byte) (GetSessionByTokenHashRow, error) {
 	row := q.db.QueryRowContext(ctx, getSessionByTokenHash, tokenHash)
-	var i Session
+	var i GetSessionByTokenHashRow
 	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.TokenHash,
-		&i.CsrfSecret,
-		&i.CreatedAt,
-		&i.LastSeenAt,
-		&i.IdleExpiresAt,
-		&i.AbsoluteExpiresAt,
-		&i.RevokedAt,
-		&i.UserAgent,
+		&i.Session.ID,
+		&i.Session.UserID,
+		&i.Session.TokenHash,
+		&i.Session.CsrfSecret,
+		&i.Session.CreatedAt,
+		&i.Session.LastSeenAt,
+		&i.Session.IdleExpiresAt,
+		&i.Session.AbsoluteExpiresAt,
+		&i.Session.RevokedAt,
+		&i.Session.UserAgent,
+		&i.User.ID,
+		&i.User.Username,
+		&i.User.UsernameKey,
+		&i.User.Status,
+		&i.User.PasswordHash,
+		&i.User.CreatedAt,
+		&i.User.UpdatedAt,
 	)
 	return i, err
 }
@@ -105,12 +134,18 @@ const listSessionsByUser = `-- name: ListSessionsByUser :many
 SELECT id, user_id, token_hash, csrf_secret, created_at, last_seen_at,
        idle_expires_at, absolute_expires_at, revoked_at, user_agent
 FROM sessions
-WHERE user_id = ?
+WHERE user_id = ? AND revoked_at IS NULL
+  AND idle_expires_at >= ? AND absolute_expires_at >= ?
 ORDER BY created_at DESC, id DESC
 `
 
-func (q *Queries) ListSessionsByUser(ctx context.Context, userID []byte) ([]Session, error) {
-	rows, err := q.db.QueryContext(ctx, listSessionsByUser, userID)
+type ListSessionsByUserParams struct {
+	UserID []byte
+	Now    time.Time
+}
+
+func (q *Queries) ListSessionsByUser(ctx context.Context, arg ListSessionsByUserParams) ([]Session, error) {
+	rows, err := q.db.QueryContext(ctx, listSessionsByUser, arg.UserID, arg.Now, arg.Now)
 	if err != nil {
 		return nil, err
 	}

@@ -48,6 +48,55 @@ func TestNewPortfolioIntervals(t *testing.T) {
 	}
 }
 
+func TestSessionReadQueriesAndExpiryPrecision(t *testing.T) {
+	db, stats := mysqltest.ObserveQueries(t)
+	service := NewService(db, time.Hour, 24*time.Hour)
+	now := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	service.now = func() time.Time { return now }
+	user, err := service.CreateUser(t.Context(), "session-"+uuid.NewString()[:8], "Correct=123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, session, err := service.Login(t.Context(), user.Username, "Correct=123456", "127.0.0.1", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(t.Context(), "UPDATE sessions SET idle_expires_at=?,absolute_expires_at=? WHERE id=?", now, now, session.ID[:]); err != nil {
+		t.Fatal(err)
+	}
+	for _, offset := range []time.Duration{0, time.Nanosecond} {
+		now = now.Add(offset)
+		want := 1
+		if offset > 0 {
+			want = 0
+		}
+		stats.Queries.Store(0)
+		items, err := service.ListSessions(t.Context(), user.ID, session.ID)
+		if err != nil || len(items) != want {
+			t.Fatalf("list at %s: %+v %v", now, items, err)
+		}
+		count, err := service.CountSessions(t.Context(), user.ID)
+		if err != nil || count != want {
+			t.Fatalf("count at %s: %d %v", now, count, err)
+		}
+		if queries := stats.Queries.Load(); queries != 2 {
+			t.Fatalf("list/count should each use one read: %d", queries)
+		}
+	}
+	if _, _, err := service.Authenticate(t.Context(), session.Token); !errors.Is(err, ErrUnauthenticated) {
+		t.Fatalf("expired fraction accepted: %v", err)
+	}
+	now = now.Add(-time.Nanosecond)
+	stats.Queries.Store(0)
+	_, loaded, err := service.Authenticate(t.Context(), session.Token)
+	if err != nil || !loaded.LastSeenAt.Equal(now) || !loaded.IdleExpiresAt.Equal(now.Add(time.Hour)) {
+		t.Fatalf("authentication or touch changed: %+v %v", loaded, err)
+	}
+	if queries := stats.Queries.Load(); queries != 1 {
+		t.Fatalf("authentication should join session and user: %d reads", queries)
+	}
+}
+
 func TestCreateLoginChangePasswordAndDisable(t *testing.T) {
 	db := mysqltest.OpenTestDB(t)
 	svc := NewService(db, time.Hour, 24*time.Hour)

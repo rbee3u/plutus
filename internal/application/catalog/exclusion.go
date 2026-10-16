@@ -21,29 +21,6 @@ type exclusionState struct {
 	UpdatedAt time.Time
 }
 
-func (s *Service) currentExclusions(ctx context.Context, portfolioID uuid.UUID) (map[uuid.UUID]exclusionState, error) {
-	states := map[uuid.UUID]exclusionState{}
-	if portfolioID == uuid.Nil {
-		return states, nil
-	}
-	rows, err := s.q.ListCurrentAssetExclusions(ctx, portfolioID[:])
-	if err != nil {
-		return nil, err
-	}
-	for _, row := range rows {
-		id, err := uuid.FromBytes(row.AssetID)
-		if err != nil {
-			return nil, err
-		}
-		state := exclusionState{Excluded: row.Excluded, Version: row.Version, UpdatedAt: row.EffectiveAt}
-		if row.Reason.Valid {
-			state.Reason = &row.Reason.String
-		}
-		states[id] = state
-	}
-	return states, nil
-}
-
 func applyExclusion(asset *Asset, state exclusionState) {
 	asset.Excluded = state.Excluded
 	asset.ExclusionVersion = state.Version
@@ -55,11 +32,18 @@ func applyExclusion(asset *Asset, state exclusionState) {
 
 // withExclusion adds a portfolio's current rule to one local catalog asset.
 func (s *Service) withExclusion(ctx context.Context, portfolioID uuid.UUID, asset *Asset) error {
-	states, err := s.currentExclusions(ctx, portfolioID)
+	row, err := s.q.GetAssetExclusion(ctx, sqlcgen.GetAssetExclusionParams{PortfolioID: portfolioID[:], AssetID: asset.ID[:]})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
-	applyExclusion(asset, states[asset.ID])
+	state := exclusionState{Excluded: row.Excluded, Version: row.Version, UpdatedAt: row.EffectiveAt}
+	if row.Reason.Valid {
+		state.Reason = &row.Reason.String
+	}
+	applyExclusion(asset, state)
 	return nil
 }
 

@@ -8,6 +8,7 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 )
 
@@ -41,6 +42,17 @@ func (q *Queries) GetAssetExclusion(ctx context.Context, arg GetAssetExclusionPa
 	return i, err
 }
 
+const getPortfolioHistoryBoundary = `-- name: GetPortfolioHistoryBoundary :one
+SELECT history_before FROM portfolios WHERE id = ?
+`
+
+func (q *Queries) GetPortfolioHistoryBoundary(ctx context.Context, portfolioID []byte) (sql.NullTime, error) {
+	row := q.db.QueryRowContext(ctx, getPortfolioHistoryBoundary, portfolioID)
+	var history_before sql.NullTime
+	err := row.Scan(&history_before)
+	return history_before, err
+}
+
 const insertAssetExclusionVersion = `-- name: InsertAssetExclusionVersion :exec
 INSERT INTO asset_exclusion_versions
     (portfolio_id, asset_id, version, excluded, reason, effective_at)
@@ -69,7 +81,7 @@ func (q *Queries) InsertAssetExclusionVersion(ctx context.Context, arg InsertAss
 }
 
 const listAssetExclusionsBefore = `-- name: ListAssetExclusionsBefore :many
-SELECT asset_id, excluded
+SELECT asset_id, excluded, version, effective_at
 FROM asset_exclusion_versions
 WHERE portfolio_id = ? AND effective_at < ?
 ORDER BY asset_id, version DESC
@@ -81,8 +93,10 @@ type ListAssetExclusionsBeforeParams struct {
 }
 
 type ListAssetExclusionsBeforeRow struct {
-	AssetID  []byte
-	Excluded bool
+	AssetID     []byte
+	Excluded    bool
+	Version     uint64
+	EffectiveAt time.Time
 }
 
 func (q *Queries) ListAssetExclusionsBefore(ctx context.Context, arg ListAssetExclusionsBeforeParams) ([]ListAssetExclusionsBeforeRow, error) {
@@ -94,7 +108,147 @@ func (q *Queries) ListAssetExclusionsBefore(ctx context.Context, arg ListAssetEx
 	items := []ListAssetExclusionsBeforeRow{}
 	for rows.Next() {
 		var i ListAssetExclusionsBeforeRow
-		if err := rows.Scan(&i.AssetID, &i.Excluded); err != nil {
+		if err := rows.Scan(
+			&i.AssetID,
+			&i.Excluded,
+			&i.Version,
+			&i.EffectiveAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAssetExclusionsForWindow = `-- name: ListAssetExclusionsForWindow :many
+SELECT e.asset_id, e.excluded, e.version, e.effective_at
+FROM (
+    SELECT v.portfolio_id, v.asset_id, MAX(v.version) AS version
+    FROM asset_exclusion_versions v
+    WHERE v.portfolio_id = ? AND v.effective_at < ?
+    GROUP BY v.portfolio_id, v.asset_id
+) opening
+JOIN asset_exclusion_versions e ON e.portfolio_id = opening.portfolio_id AND e.asset_id = opening.asset_id AND e.version = opening.version
+UNION ALL
+SELECT delta.asset_id, delta.excluded, delta.version, delta.effective_at
+FROM asset_exclusion_versions delta
+WHERE delta.portfolio_id = ? AND delta.effective_at >= ? AND delta.effective_at < ?
+ORDER BY effective_at, version
+`
+
+type ListAssetExclusionsForWindowParams struct {
+	PortfolioID []byte
+	FromAt      time.Time
+	ToAt        time.Time
+}
+
+type ListAssetExclusionsForWindowRow struct {
+	AssetID     []byte
+	Excluded    bool
+	Version     uint64
+	EffectiveAt time.Time
+}
+
+// Keep one opening version per asset and only changes within the window.
+// Effective times need not follow version order; MAX selects the adopted rule.
+func (q *Queries) ListAssetExclusionsForWindow(ctx context.Context, arg ListAssetExclusionsForWindowParams) ([]ListAssetExclusionsForWindowRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAssetExclusionsForWindow,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.PortfolioID,
+		arg.FromAt,
+		arg.ToAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAssetExclusionsForWindowRow{}
+	for rows.Next() {
+		var i ListAssetExclusionsForWindowRow
+		if err := rows.Scan(
+			&i.AssetID,
+			&i.Excluded,
+			&i.Version,
+			&i.EffectiveAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCalculatedAssetChangesBetween = `-- name: ListCalculatedAssetChangesBetween :many
+SELECT c.asset_id, c.evaluated_at, c.cycle_id, c.treatment, a.platform, a.symbol
+FROM calculated_asset_changes c FORCE INDEX (PRIMARY)
+STRAIGHT_JOIN assets a ON a.portfolio_id = c.portfolio_id AND a.id = c.asset_id
+WHERE c.portfolio_id = ? AND c.asset_id IN (/*SLICE:asset_ids*/?)
+  AND c.evaluated_at >= ? AND c.evaluated_at <= ?
+ORDER BY c.evaluated_at, c.cycle_id
+`
+
+type ListCalculatedAssetChangesBetweenParams struct {
+	PortfolioID []byte
+	AssetIds    [][]byte
+	FromAt      time.Time
+	ToAt        time.Time
+}
+
+type ListCalculatedAssetChangesBetweenRow struct {
+	AssetID     []byte
+	EvaluatedAt time.Time
+	CycleID     []byte
+	Treatment   string
+	Platform    string
+	Symbol      string
+}
+
+// Constant asset IDs let the primary key bound both asset and time. An
+// asset-driven correlated join filters time after walking the asset's history.
+func (q *Queries) ListCalculatedAssetChangesBetween(ctx context.Context, arg ListCalculatedAssetChangesBetweenParams) ([]ListCalculatedAssetChangesBetweenRow, error) {
+	query := listCalculatedAssetChangesBetween
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.AssetIds) > 0 {
+		for _, v := range arg.AssetIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:asset_ids*/?", strings.Repeat(",?", len(arg.AssetIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:asset_ids*/?", "NULL", 1)
+	}
+	queryParams = append(queryParams, arg.FromAt)
+	queryParams = append(queryParams, arg.ToAt)
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCalculatedAssetChangesBetweenRow{}
+	for rows.Next() {
+		var i ListCalculatedAssetChangesBetweenRow
+		if err := rows.Scan(
+			&i.AssetID,
+			&i.EvaluatedAt,
+			&i.CycleID,
+			&i.Treatment,
+			&i.Platform,
+			&i.Symbol,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -113,6 +267,7 @@ SELECT DISTINCT a.id, a.platform, a.symbol
 FROM valuation_points p
 JOIN assets a ON a.portfolio_id = p.portfolio_id
 WHERE p.portfolio_id = ? AND p.cycle_id IN (?, ?)
+  AND a.id IN (/*SLICE:asset_ids*/?)
   AND COALESCE((
     SELECT prior.treatment <> 'absent' FROM calculated_asset_changes prior
     WHERE prior.portfolio_id = a.portfolio_id AND prior.asset_id = a.id
@@ -126,6 +281,7 @@ type ListCalculatedAssetsAtCyclesParams struct {
 	PortfolioID  []byte
 	StartCycleID []byte
 	EndCycleID   []byte
+	AssetIds     [][]byte
 }
 
 type ListCalculatedAssetsAtCyclesRow struct {
@@ -138,7 +294,20 @@ type ListCalculatedAssetsAtCyclesRow struct {
 // changes after that endpoint; see ListLatestCalculatedAssetChanges for the
 // ORDER BY constraint.
 func (q *Queries) ListCalculatedAssetsAtCycles(ctx context.Context, arg ListCalculatedAssetsAtCyclesParams) ([]ListCalculatedAssetsAtCyclesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCalculatedAssetsAtCycles, arg.PortfolioID, arg.StartCycleID, arg.EndCycleID)
+	query := listCalculatedAssetsAtCycles
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	queryParams = append(queryParams, arg.StartCycleID)
+	queryParams = append(queryParams, arg.EndCycleID)
+	if len(arg.AssetIds) > 0 {
+		for _, v := range arg.AssetIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:asset_ids*/?", strings.Repeat(",?", len(arg.AssetIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:asset_ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
 	if err != nil {
 		return nil, err
 	}
@@ -162,9 +331,12 @@ func (q *Queries) ListCalculatedAssetsAtCycles(ctx context.Context, arg ListCalc
 
 const listCurrentAssetExclusions = `-- name: ListCurrentAssetExclusions :many
 SELECT e.asset_id, e.excluded, e.reason, e.version, e.effective_at
-FROM asset_exclusion_versions e
-WHERE e.portfolio_id = ?
-  AND e.version = (SELECT MAX(v.version) FROM asset_exclusion_versions v WHERE v.portfolio_id = e.portfolio_id AND v.asset_id = e.asset_id)
+FROM (
+    SELECT v.portfolio_id, v.asset_id, MAX(v.version) AS version
+    FROM asset_exclusion_versions v WHERE v.portfolio_id = ?
+    GROUP BY v.portfolio_id, v.asset_id
+) latest
+JOIN asset_exclusion_versions e ON e.portfolio_id = latest.portfolio_id AND e.asset_id = latest.asset_id AND e.version = latest.version
 `
 
 type ListCurrentAssetExclusionsRow struct {
@@ -191,6 +363,58 @@ func (q *Queries) ListCurrentAssetExclusions(ctx context.Context, portfolioID []
 			&i.Version,
 			&i.EffectiveAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCurrentAssetExclusionsByAssets = `-- name: ListCurrentAssetExclusionsByAssets :many
+SELECT e.asset_id, e.excluded
+FROM assets a
+JOIN asset_exclusion_versions e ON e.portfolio_id = a.portfolio_id AND e.asset_id = a.id
+    AND e.version = (SELECT v.version FROM asset_exclusion_versions v WHERE v.portfolio_id = a.portfolio_id AND v.asset_id = a.id ORDER BY v.portfolio_id DESC, v.asset_id DESC, v.version DESC LIMIT 1)
+WHERE a.portfolio_id = ? AND a.id IN (/*SLICE:asset_ids*/?)
+`
+
+type ListCurrentAssetExclusionsByAssetsParams struct {
+	PortfolioID []byte
+	AssetIds    [][]byte
+}
+
+type ListCurrentAssetExclusionsByAssetsRow struct {
+	AssetID  []byte
+	Excluded bool
+}
+
+func (q *Queries) ListCurrentAssetExclusionsByAssets(ctx context.Context, arg ListCurrentAssetExclusionsByAssetsParams) ([]ListCurrentAssetExclusionsByAssetsRow, error) {
+	query := listCurrentAssetExclusionsByAssets
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.PortfolioID)
+	if len(arg.AssetIds) > 0 {
+		for _, v := range arg.AssetIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:asset_ids*/?", strings.Repeat(",?", len(arg.AssetIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:asset_ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCurrentAssetExclusionsByAssetsRow{}
+	for rows.Next() {
+		var i ListCurrentAssetExclusionsByAssetsRow
+		if err := rows.Scan(&i.AssetID, &i.Excluded); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -80,13 +80,18 @@ func (s *Service) pointSeries(ctx context.Context, p PortfolioContext, from, to 
 		return out, nil
 	}
 	selected := []sqlcgen.ListValuationPointHeadersBetweenRow{}
+	var batch []sqlcgen.ListValuationPointHeadersBetweenRow
+	loc := p.location()
 	params := sqlcgen.ListValuationPointHeaderPageParams{PortfolioID: p.ID[:], FromAt: from.UTC(), ToAt: to.UTC(), CursorID: make([]byte, 16)}
 	for {
 		page, err := mysql.Queries(ctx, s.db).ListValuationPointHeaderPage(ctx, params)
 		if err != nil {
 			return nil, err
 		}
-		batch := make([]sqlcgen.ListValuationPointHeadersBetweenRow, 0, len(page)+1)
+		batch = batch[:0]
+		if cap(batch) < len(page)+1 {
+			batch = make([]sqlcgen.ListValuationPointHeadersBetweenRow, 0, len(page)+1)
+		}
 		if len(selected) > 0 {
 			batch = append(batch, selected[len(selected)-1])
 			selected = selected[:len(selected)-1]
@@ -94,11 +99,11 @@ func (s *Service) pointSeries(ctx context.Context, p PortfolioContext, from, to 
 		for _, row := range page {
 			batch = append(batch, sqlcgen.ListValuationPointHeadersBetweenRow(row))
 		}
-		selected = append(selected, sample(batch, granularity, p.location())...)
+		selected = appendSample(selected, batch, granularity, loc)
 		if len(selected) > maxPoints {
 			return nil, ErrSeriesLimit
 		}
-		if len(page) < 1000 {
+		if len(page) < 10000 {
 			break
 		}
 		last := page[len(page)-1]

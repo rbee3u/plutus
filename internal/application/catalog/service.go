@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/application/ordering"
+	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
@@ -96,50 +97,82 @@ type ListFilter struct {
 
 // ListAssets returns an offset page of assets.
 func (s *Service) ListAssets(ctx context.Context, in ListFilter) (Page[Asset], error) {
+	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (Page[Asset], error) { return s.listAssets(ctx, in) })
+}
+
+func (s *Service) listAssets(ctx context.Context, in ListFilter) (Page[Asset], error) {
 	limit, offset, err := normalizePage(in.Limit, in.Offset)
 	if err != nil {
 		return Page[Asset]{}, err
 	}
 	query := likePattern(in.Query)
 	filterStatus := flag(in.Status == "active" || in.Status == "excluded")
-	rows, err := s.q.ListAssets(ctx, sqlcgen.ListAssetsParams{
-		PlatformOrder:  ordering.PlatformsCSV(),
-		PortfolioID:    in.PortfolioID[:],
-		FilterPlatform: flag(in.Platform != ""),
-		Platform:       in.Platform,
-		FilterQuery:    flag(query != ""),
-		Query:          query,
-		FilterStatus:   filterStatus,
-		Status:         in.Status,
-		Limit:          int32(limit),  // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
-		Offset:         int32(offset), // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
-	})
-	if err != nil {
-		return Page[Asset]{}, err
-	}
-	total, err := s.q.CountAssets(ctx, sqlcgen.CountAssetsParams{
-		PortfolioID:    in.PortfolioID[:],
-		FilterPlatform: flag(in.Platform != ""),
-		Platform:       in.Platform,
-		FilterQuery:    flag(query != ""),
-		Query:          query,
-		FilterStatus:   filterStatus,
-		Status:         in.Status,
-	})
-	if err != nil {
-		return Page[Asset]{}, err
-	}
-	items := make([]Asset, 0, len(rows))
-	states, err := s.currentExclusions(ctx, in.PortfolioID)
-	if err != nil {
-		return Page[Asset]{}, err
-	}
-	for i := range rows {
-		item, err := assetFromRow(&rows[i])
+	q := mysql.Queries(ctx, s.db)
+	var rows []sqlcgen.ListAssetsRow
+	var total int64
+	if filterStatus == 0 {
+		page, readErr := q.ListAssetsWithoutStatus(ctx, sqlcgen.ListAssetsWithoutStatusParams{
+			PortfolioID: in.PortfolioID[:], PlatformOrder: ordering.PlatformsCSV(),
+			FilterPlatform: flag(in.Platform != ""), Platform: in.Platform,
+			FilterQuery: flag(query != ""), Query: query,
+			Limit: int32(limit), Offset: int32(offset), // #nosec G115 -- normalizePage bounds pagination.
+		})
+		if readErr != nil {
+			return Page[Asset]{}, readErr
+		}
+		for _, row := range page {
+			rows = append(rows, sqlcgen.ListAssetsRow(row))
+		}
+		total, err = q.CountAssetsWithoutStatus(ctx, sqlcgen.CountAssetsWithoutStatusParams{
+			PortfolioID: in.PortfolioID[:], FilterPlatform: flag(in.Platform != ""), Platform: in.Platform,
+			FilterQuery: flag(query != ""), Query: query,
+		})
 		if err != nil {
 			return Page[Asset]{}, err
 		}
-		applyExclusion(&item, states[item.ID])
+	} else {
+		rows, err = q.ListAssets(ctx, sqlcgen.ListAssetsParams{
+			PlatformOrder:  ordering.PlatformsCSV(),
+			PortfolioID:    in.PortfolioID[:],
+			FilterPlatform: flag(in.Platform != ""),
+			Platform:       in.Platform,
+			FilterQuery:    flag(query != ""),
+			Query:          query,
+			FilterStatus:   filterStatus,
+			Status:         in.Status,
+			Limit:          int32(limit),  // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
+			Offset:         int32(offset), // #nosec G115 -- normalizePage validates the SQL int32 pagination bounds.
+		})
+		if err != nil {
+			return Page[Asset]{}, err
+		}
+		total, err = q.CountAssets(ctx, sqlcgen.CountAssetsParams{
+			PortfolioID:    in.PortfolioID[:],
+			FilterPlatform: flag(in.Platform != ""),
+			Platform:       in.Platform,
+			FilterQuery:    flag(query != ""),
+			Query:          query,
+			FilterStatus:   filterStatus,
+			Status:         in.Status,
+		})
+		if err != nil {
+			return Page[Asset]{}, err
+		}
+	}
+	items := make([]Asset, 0, len(rows))
+	for i := range rows {
+		item, err := assetFromRow(&rows[i].Asset)
+		if err != nil {
+			return Page[Asset]{}, err
+		}
+		state := exclusionState{Excluded: rows[i].Excluded.Bool, UpdatedAt: rows[i].ExcludedAt.Time}
+		if rows[i].ExclusionVersion.Valid {
+			state.Version = uint64(rows[i].ExclusionVersion.Int64) // #nosec G115 -- persisted versions are positive and bounded by the signed SQL projection.
+		}
+		if rows[i].ExclusionReason.Valid {
+			state.Reason = &rows[i].ExclusionReason.String
+		}
+		applyExclusion(&item, state)
 		items = append(items, item)
 	}
 	return Page[Asset]{Items: items, Offset: offset, Limit: limit, Total: int(total)}, nil

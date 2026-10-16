@@ -9,10 +9,9 @@ INSERT INTO sessions (
 );
 
 -- name: GetSessionByTokenHash :one
-SELECT id, user_id, token_hash, csrf_secret, created_at, last_seen_at,
-       idle_expires_at, absolute_expires_at, revoked_at, user_agent
-FROM sessions
-WHERE token_hash = sqlc.arg(token_hash);
+SELECT sqlc.embed(s), sqlc.embed(u)
+FROM sessions s JOIN users u ON u.id = s.user_id
+WHERE s.token_hash = sqlc.arg(token_hash);
 
 -- name: GetSessionByID :one
 SELECT id, user_id, token_hash, csrf_secret, created_at, last_seen_at,
@@ -24,8 +23,14 @@ WHERE id = sqlc.arg(id);
 SELECT id, user_id, token_hash, csrf_secret, created_at, last_seen_at,
        idle_expires_at, absolute_expires_at, revoked_at, user_agent
 FROM sessions
-WHERE user_id = sqlc.arg(user_id)
+WHERE user_id = sqlc.arg(user_id) AND revoked_at IS NULL
+  AND idle_expires_at >= sqlc.arg(now) AND absolute_expires_at >= sqlc.arg(now)
 ORDER BY created_at DESC, id DESC;
+
+-- name: CountActiveSessionsByUser :one
+SELECT COUNT(*) FROM sessions
+WHERE user_id = sqlc.arg(user_id) AND revoked_at IS NULL
+  AND idle_expires_at >= sqlc.arg(now) AND absolute_expires_at >= sqlc.arg(now);
 
 -- name: TouchSession :exec
 UPDATE sessions

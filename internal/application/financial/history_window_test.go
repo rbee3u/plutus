@@ -109,7 +109,7 @@ func TestHistorySamplingDST(t *testing.T) {
 				for _, i := range indices {
 					want = append(want, points[i])
 				}
-				got := sample(points, kind, loc)
+				got := appendSample([]sqlcgen.ListValuationPointHeadersBetweenRow{}, points, kind, loc)
 				if !reflect.DeepEqual(got, want) {
 					t.Fatalf("%s: got %+v, want %+v", kind, got, want)
 				}
@@ -142,11 +142,11 @@ func FuzzHistorySamplingKeepsFinalPoints(f *testing.F) {
 					want = append(want, point)
 				}
 			}
-			got := sample(points, kind, time.UTC)
+			got := appendSample([]sqlcgen.ListValuationPointHeadersBetweenRow{}, points, kind, time.UTC)
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("%s: got %+v, want final actual points %+v", kind, got, want)
 			}
-			if again := sample(got, kind, time.UTC); !reflect.DeepEqual(again, got) {
+			if again := appendSample([]sqlcgen.ListValuationPointHeadersBetweenRow{}, got, kind, time.UTC); !reflect.DeepEqual(again, got) {
 				t.Fatalf("%s sampling is not idempotent", kind)
 			}
 			if !reflect.DeepEqual(points, original) {

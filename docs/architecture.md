@@ -64,10 +64,48 @@ application code uses the normalized adapter contract, `valuation` cannot import
 
 The financial service reads stored points and account valuations through the
 valuation service, sharing decoding, account issues, and an operation-scoped
-`PriceBook`. Readers aggregate stored decimals; writers retain unrounded
-rationals privately. Internal source metadata is excluded from JSON. Product
-filters, totals, and completeness stay separate. `application/ordering` uses the
-offered platform catalog; `shared` has no business dependencies.
+`PriceBook`. Point details share the account evidence used to derive issues.
+Calendar comparisons load one window's timeline, unique endpoints, flows, and
+sparse policy and boundary evidence, then calculate each period in memory.
+Policy reads combine one highest eligible opening version per asset with changes
+in the endpoint creation-time window. A single ordered pass retains the highest
+eligible version, including when effective times do not follow version order.
+Opening aggregation can still scan historical rules; it bounds transferred state
+rather than promising constant scan cost. Only assets with differing endpoint
+exclusions need presence evidence. Their constant IDs and time bounds form
+primary-key ranges in batches of 256; merged changes retain evaluation-time and
+cycle-ID order across those batches. Custom comparisons seek their endpoints and
+read sparse version transitions without transferring every intervening header.
+Sparse point hydration batches at most 256 constant-bound predecessor seeks in
+one query; larger point sets retain the shared timeline read. Comparison event
+headers probe at most 1,001 indexed timeline entries. Windows of at most 1,000
+points seek evidence by cycle; longer windows keep the sparse event path. This
+bounds short-window work independently of optimizer statistics without forcing a
+full timeline scan for long sparse comparisons. Period closes reuse their loaded
+headers for predecessor lookup. Grouped curves read at most 10,000 headers per
+batch while retaining Go's timezone sampling. Timezones are loaded once per
+operation. Sampling appends into the selected headers and reuses a separate
+batch buffer, carrying the final bucket across page boundaries.
+
+Current manual balances resolve the latest revision before joining its children;
+current exclusion reads resolve the latest version before expanding its state.
+Manual overlays restrict revisions to requested accounts and read current rules
+only for their balance assets, preserving versions for empty ledgers. An applied
+manual revision equal to the current revision reuses its already loaded
+balances. Overview batches holding-existence checks. Capital flow pages join
+their account labels. Without a state filter, Catalog counts read only assets
+and list queries select the asset page before loading its exclusion states;
+state-filtered pages resolve rules before counting and pagination.
+Authentication joins the session and user, still checking revocation and
+touching each request. Fresh idempotent creates revalidate the session and user
+after acquiring the serialization lock, without a second touch, then reuse that
+user for portfolio ownership checks. Session counts and lists filter the same
+active set in SQL.
+
+Readers aggregate stored decimals; writers retain unrounded rationals privately.
+Internal source metadata is excluded from JSON. Product filters, totals, and
+completeness stay separate. `application/ordering` uses the offered platform
+catalog; `shared` has no business dependencies.
 
 Collection loaders feed one valuation evaluator with prepared inputs, without
 SQL, clocks, or query callbacks. The `app` package injects shared catalog,
@@ -455,7 +493,9 @@ The four idempotent creation routes authenticate and check CSRF before replay. A
 user row lock serializes request lookup, business writes, audit, and successful
 response insertion in one transaction. Different bodies conflict; failures roll
 back the business mutation and key. Resource lookup happens only for a fresh
-request, allowing an authorized replay after resource deletion.
+request, allowing an authorized replay after resource deletion. Fresh creations
+recheck authentication in that transaction after obtaining the user lock, so a
+revocation, expiry, or user disable committed during the wait rejects creation.
 
 Browser writes send `If-Edit-Version` from the JSON baseline paired with the
 edited data or deletion confirmation. Versions protect editable state, not the

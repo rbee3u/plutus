@@ -121,15 +121,15 @@ func (a *API) PostAuthLogoutAll(ctx context.Context, request api.PostAuthLogoutA
 }
 
 func (a *API) GetAuthMe(ctx context.Context, _ api.GetAuthMeRequestObject) (api.GetAuthMeResponseObject, error) {
-	user, session, err := a.currentSession(ctx)
+	user, _, err := a.currentSession(ctx)
 	if err != nil {
 		return nil, err
 	}
-	sessions, err := a.Auth.ListSessions(ctx, user.ID, session.ID)
+	sessions, err := a.Auth.CountSessions(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
-	return api.GetAuthMe200JSONResponse{User: toAPIUser(user), SessionCount: len(sessions)}, nil
+	return api.GetAuthMe200JSONResponse{User: toAPIUser(user), SessionCount: sessions}, nil
 }
 
 func (a *API) PutAuthPassword(ctx context.Context, request api.PutAuthPasswordRequestObject) (api.PutAuthPasswordResponseObject, error) {

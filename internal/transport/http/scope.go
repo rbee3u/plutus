@@ -33,20 +33,29 @@ func (a *API) scoped(ctx context.Context, portfolioID uuid.UUID) (scope, error) 
 	if err != nil {
 		return scope{}, err
 	}
-	if a.Portfolios == nil {
-		return scope{}, ErrNotImplemented
-	}
-	item, err := a.Portfolios.Get(ctx, user.ID, portfolioID)
-	if errors.Is(err, portfolio.ErrNotFound) {
-		return scope{}, errNotFound
-	}
+	item, err := a.ownedPortfolio(ctx, user, portfolioID)
 	if err != nil {
 		return scope{}, err
 	}
-	if item.DeletionRequestedAt != nil {
-		return scope{}, errNotFound
-	}
 	return scope{user: user, session: session, portfolio: item}, nil
+}
+
+// ownedPortfolio reuses authentication already performed before idempotent creation.
+func (a *API) ownedPortfolio(ctx context.Context, user auth.User, portfolioID uuid.UUID) (portfolio.Portfolio, error) {
+	if a.Portfolios == nil {
+		return portfolio.Portfolio{}, ErrNotImplemented
+	}
+	item, err := a.Portfolios.Get(ctx, user.ID, portfolioID)
+	if errors.Is(err, portfolio.ErrNotFound) {
+		return portfolio.Portfolio{}, errNotFound
+	}
+	if err != nil {
+		return portfolio.Portfolio{}, err
+	}
+	if item.DeletionRequestedAt != nil {
+		return portfolio.Portfolio{}, errNotFound
+	}
+	return item, nil
 }
 
 // mutating is scoped plus the CSRF check required by every state change.

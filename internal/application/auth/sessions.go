@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
 )
 
@@ -82,37 +83,46 @@ func (s *Service) createSession(ctx context.Context, q *sqlcgen.Queries, userID 
 
 // Authenticate loads a valid session from a cookie token.
 func (s *Service) Authenticate(ctx context.Context, token string) (User, Session, error) {
+	user, session, err := s.readSession(ctx, s.q, token)
+	if err != nil {
+		return User{}, Session{}, err
+	}
+	now := s.now().UTC()
+	if err := s.q.TouchSession(ctx, sqlcgen.TouchSessionParams{
+		LastSeenAt: now, IdleExpiresAt: now.Add(s.idle), ID: session.ID[:],
+	}); err != nil {
+		return User{}, Session{}, err
+	}
+	session.LastSeenAt, session.IdleExpiresAt = now, now.Add(s.idle)
+	return user, session, nil
+}
+
+// CheckSession revalidates after a serialized create has acquired its user lock.
+// It joins that transaction without touching the session a second time.
+func (s *Service) CheckSession(ctx context.Context, token string) (User, error) {
+	user, _, err := s.readSession(ctx, mysql.Queries(ctx, s.db), token)
+	return user, err
+}
+
+func (s *Service) readSession(ctx context.Context, q *sqlcgen.Queries, token string) (User, Session, error) {
 	if token == "" {
 		return User{}, Session{}, ErrUnauthenticated
 	}
 	sum := sha256.Sum256([]byte(token))
-	row, err := s.q.GetSessionByTokenHash(ctx, sum[:])
+	result, err := q.GetSessionByTokenHash(ctx, sum[:])
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return User{}, Session{}, ErrUnauthenticated
 		}
 		return User{}, Session{}, err
 	}
+	row, userRow := result.Session, result.User
 	now := s.now().UTC()
 	if row.RevokedAt.Valid || now.After(row.IdleExpiresAt) || now.After(row.AbsoluteExpiresAt) {
 		return User{}, Session{}, ErrUnauthenticated
 	}
-	userRow, err := s.q.GetUserByID(ctx, row.UserID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return User{}, Session{}, ErrUnauthenticated
-	}
-	if err != nil {
-		return User{}, Session{}, err
-	}
 	if userRow.Status != "active" {
 		return User{}, Session{}, ErrUserDisabled
-	}
-	if err := s.q.TouchSession(ctx, sqlcgen.TouchSessionParams{
-		LastSeenAt:    now,
-		IdleExpiresAt: now.Add(s.idle),
-		ID:            row.ID,
-	}); err != nil {
-		return User{}, Session{}, err
 	}
 	user, err := userFromRow(&userRow)
 	if err != nil {
@@ -122,8 +132,6 @@ func (s *Service) Authenticate(ctx context.Context, token string) (User, Session
 	if err != nil {
 		return User{}, Session{}, err
 	}
-	session.LastSeenAt = now
-	session.IdleExpiresAt = now.Add(s.idle)
 	return user, session, nil
 }
 
@@ -142,17 +150,13 @@ func (s *Service) LogoutAll(ctx context.Context, userID uuid.UUID) error {
 
 // ListSessions returns the user's sessions.
 func (s *Service) ListSessions(ctx context.Context, userID, currentID uuid.UUID) ([]Session, error) {
-	rows, err := s.q.ListSessionsByUser(ctx, userID[:])
+	rows, err := s.q.ListSessionsByUser(ctx, sqlcgen.ListSessionsByUserParams{UserID: userID[:], Now: sessionExpiryCutoff(s.now())})
 	if err != nil {
 		return nil, err
 	}
 	out := make([]Session, 0, len(rows))
-	now := s.now().UTC()
 	for i := range rows {
 		row := &rows[i]
-		if row.RevokedAt.Valid || now.After(row.IdleExpiresAt) || now.After(row.AbsoluteExpiresAt) {
-			continue
-		}
 		sess, err := sessionFromRow(row, "", bytesEqualUUID(row.ID, currentID))
 		if err != nil {
 			return nil, err
@@ -160,6 +164,12 @@ func (s *Service) ListSessions(ctx context.Context, userID, currentID uuid.UUID)
 		out = append(out, sess)
 	}
 	return out, nil
+}
+
+// CountSessions returns the same active set as ListSessions without loading it.
+func (s *Service) CountSessions(ctx context.Context, userID uuid.UUID) (int, error) {
+	total, err := s.q.CountActiveSessionsByUser(ctx, sqlcgen.CountActiveSessionsByUserParams{UserID: userID[:], Now: sessionExpiryCutoff(s.now())})
+	return int(total), err
 }
 
 // RevokeOwnedSession revokes one session that belongs to the user.
@@ -217,6 +227,12 @@ func bytesEqualUUID(raw []byte, id uuid.UUID) bool {
 
 // PruneExpired removes only unusable sessions in bounded batches.
 func (s *Service) PruneExpired(ctx context.Context) error {
-	_, err := s.q.PruneExpiredSessions(ctx, sqlcgen.PruneExpiredSessionsParams{Now: s.now().UTC()})
+	_, err := s.q.PruneExpiredSessions(ctx, sqlcgen.PruneExpiredSessionsParams{Now: sessionExpiryCutoff(s.now())})
 	return err
+}
+
+// SQL timestamps have microsecond precision; round upward so a session that
+// expired a fraction of a microsecond ago remains expired in list/count reads.
+func sessionExpiryCutoff(now time.Time) time.Time {
+	return now.UTC().Add(time.Microsecond - time.Nanosecond).Truncate(time.Microsecond)
 }

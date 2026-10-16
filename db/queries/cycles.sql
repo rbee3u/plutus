@@ -106,3 +106,7 @@ WHERE c.portfolio_id = sqlc.arg(portfolio_id)
   AND (sqlc.arg(has_cursor) = 0 OR c.created_at < sqlc.arg(cursor_created_at)
        OR (c.created_at = sqlc.arg(cursor_created_at) AND c.id < sqlc.arg(cursor_id)))
 ORDER BY c.created_at DESC, c.id DESC LIMIT ?;
+
+-- name: ListCollectionCycleTimes :many
+SELECT id, created_at FROM collection_cycles
+WHERE portfolio_id = sqlc.arg(portfolio_id) AND id IN (sqlc.slice('cycle_ids'));

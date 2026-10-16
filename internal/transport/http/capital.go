@@ -43,14 +43,14 @@ func (a *API) CreateCapitalFlow(ctx context.Context, request api.CreateCapitalFl
 		return nil, ErrNotImplemented
 	}
 	body, err := createIdempotent(ctx, a, request.Params.XCSRFToken, stringValue(request.Params.IdempotencyKey), request.Body, http.StatusCreated, func(ctx context.Context, user auth.User) (api.CapitalFlow, error) {
-		sc, err := a.scoped(ctx, request.PortfolioId)
+		owned, err := a.ownedPortfolio(ctx, user, request.PortfolioId)
 		if err != nil {
 			return api.CapitalFlow{}, err
 		}
 		direction := string(request.Body.Direction)
 		at := request.Body.EffectiveAt.UTC()
 		input := capital.Input{ActorUserID: user.ID, RequestID: requestTraceID(ctx), Direction: &direction, CanonicalAssetSymbol: &request.Body.CanonicalAssetSymbol, Quantity: &request.Body.Quantity, ValueUSD: request.Body.ValueUsd, EffectiveAt: &at, AccountID: request.Body.AccountId, Note: request.Body.Note, PricingPlatform: request.Body.PricingPlatform}
-		item, err := a.Capital.Create(ctx, sc.portfolio.ID, &input)
+		item, err := a.Capital.Create(ctx, owned.ID, &input)
 		if err != nil {
 			return api.CapitalFlow{}, err
 		}

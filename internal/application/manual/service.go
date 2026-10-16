@@ -122,9 +122,13 @@ func (s *Service) Get(ctx context.Context, portfolioID, identityID uuid.UUID) (S
 		if err == nil && applied.Valid {
 			version := uint64(applied.Int64) // #nosec G115 -- revision numbers are positive BIGINT UNSIGNED values far below 2^63.
 			state.AppliedVersion = &version
-			state.AppliedItems, err = Hydrate(ctx, q, portfolioID[:], account.ID, version)
-			if err != nil {
-				return State{}, err
+			if version == revision.RevisionNumber {
+				state.AppliedItems = append([]Balance{}, state.Items...)
+			} else {
+				state.AppliedItems, err = Hydrate(ctx, q, portfolioID[:], account.ID, version)
+				if err != nil {
+					return State{}, err
+				}
 			}
 		}
 		state.Pending = !sameQuantities(state.Items, state.AppliedItems)

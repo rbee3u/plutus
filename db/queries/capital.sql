@@ -9,8 +9,11 @@ INSERT INTO capital_flows (
 );
 
 -- name: GetCapitalFlow :one
-SELECT * FROM capital_flows
-WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id);
+SELECT sqlc.embed(f), a.account_type, i.display_name AS identity_name
+FROM capital_flows f
+LEFT JOIN accounts a ON a.portfolio_id = f.portfolio_id AND a.id = f.account_id
+LEFT JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE f.portfolio_id = sqlc.arg(portfolio_id) AND f.id = sqlc.arg(id);
 
 -- name: ListCapitalFlows :many
 SELECT * FROM capital_flows
@@ -40,11 +43,23 @@ WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id) AND version = 
 DELETE FROM capital_flows
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id) AND version = sqlc.arg(version);
 
+-- name: ListCapitalFlowsWithAccounts :many
+SELECT sqlc.embed(f), a.account_type, i.display_name AS identity_name
+FROM capital_flows f
+LEFT JOIN accounts a ON a.portfolio_id = f.portfolio_id AND a.id = f.account_id
+LEFT JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE f.portfolio_id = sqlc.arg(portfolio_id)
+  AND f.effective_at >= sqlc.arg(from_at) AND f.effective_at < sqlc.arg(to_at)
+ORDER BY f.effective_at DESC, f.id DESC;
+
 -- name: ListCapitalFlowPage :many
-SELECT * FROM capital_flows
-WHERE portfolio_id = sqlc.arg(portfolio_id)
-  AND effective_at >= sqlc.arg(from_at) AND effective_at < sqlc.arg(to_at)
-ORDER BY effective_at DESC, id DESC LIMIT ? OFFSET ?;
+SELECT sqlc.embed(f), a.account_type, i.display_name AS identity_name
+FROM capital_flows f
+LEFT JOIN accounts a ON a.portfolio_id = f.portfolio_id AND a.id = f.account_id
+LEFT JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE f.portfolio_id = sqlc.arg(portfolio_id)
+  AND f.effective_at >= sqlc.arg(from_at) AND f.effective_at < sqlc.arg(to_at)
+ORDER BY f.effective_at DESC, f.id DESC LIMIT ? OFFSET ?;
 
 -- name: CountCapitalFlows :one
 SELECT COUNT(*) FROM capital_flows

@@ -26,7 +26,14 @@ func createIdempotent[T any](ctx context.Context, a *API, csrf *string, key stri
 		return zero, err
 	}
 	run := func(ctx context.Context) (idempotency.Record, error) {
-		body, err := create(ctx, user)
+		current, err := a.Auth.CheckSession(ctx, session.Token)
+		if errors.Is(err, auth.ErrUnauthenticated) || errors.Is(err, auth.ErrUserDisabled) {
+			return idempotency.Record{}, errUnauthenticated
+		}
+		if err != nil {
+			return idempotency.Record{}, err
+		}
+		body, err := create(ctx, current)
 		if err != nil {
 			return idempotency.Record{}, err
 		}

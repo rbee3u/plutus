@@ -48,7 +48,7 @@ FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM
 ORDER BY evaluated_at ASC, cycle_id ASC LIMIT ?;
 
 -- name: ListValuationPointHeadersBetween :many
-SELECT cycle_id, evaluated_at FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = sqlc.arg(portfolio_id)), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = sqlc.arg(portfolio_id) AND evaluated_at >= sqlc.arg(from_at) AND evaluated_at <= sqlc.arg(to_at)
+SELECT cycle_id, evaluated_at, calculation_version FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = sqlc.arg(portfolio_id)), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = sqlc.arg(portfolio_id) AND evaluated_at >= sqlc.arg(from_at) AND evaluated_at <= sqlc.arg(to_at)
 ORDER BY evaluated_at ASC, cycle_id ASC;
 
 -- name: ListValuationPointSummariesByIDs :many
@@ -184,41 +184,51 @@ ORDER BY b.asset_id;
 SELECT * FROM valuation_points WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE id = sqlc.arg(portfolio_id)), CAST('1000-01-01' AS DATETIME(6))) AND portfolio_id = sqlc.arg(portfolio_id) AND evaluated_at < sqlc.arg(evaluated_at) AND detail_state IN ('full','daily')
 ORDER BY evaluated_at DESC, cycle_id DESC LIMIT 1;
 
--- Read only points that can contribute comparison evidence. The version window
--- includes one predecessor, so A -> B -> A and equal-time cycle ordering survive.
+-- Probe at most 1,001 timeline headers. Short windows seek evidence by cycle;
+-- longer windows keep the sparse evidence path without scanning the timeline.
 -- name: ListComparisonPointHeadersBetween :many
-SELECT p.cycle_id, p.evaluated_at
-FROM manual_balance_changes m
-STRAIGHT_JOIN valuation_points p ON p.portfolio_id = m.portfolio_id AND p.cycle_id = m.cycle_id
-WHERE m.portfolio_id = sqlc.arg(portfolio_id) AND p.evaluated_at >= sqlc.arg(from_at) AND p.evaluated_at <= sqlc.arg(to_at)
-UNION
-SELECT p.cycle_id, p.evaluated_at
-FROM boundary_events e
-STRAIGHT_JOIN valuation_points p ON p.portfolio_id = e.portfolio_id AND p.cycle_id = e.cycle_id
-WHERE e.portfolio_id = sqlc.arg(portfolio_id) AND p.evaluated_at >= sqlc.arg(from_at) AND p.evaluated_at <= sqlc.arg(to_at)
-UNION
-SELECT p.cycle_id, p.evaluated_at
-FROM assets a
-STRAIGHT_JOIN calculated_asset_changes c ON c.portfolio_id = a.portfolio_id AND c.asset_id = a.id
-STRAIGHT_JOIN valuation_points p ON p.portfolio_id = c.portfolio_id AND p.cycle_id = c.cycle_id
-WHERE a.portfolio_id = sqlc.arg(portfolio_id) AND a.mapping_version > 1 AND c.treatment = 'included'
-  AND p.evaluated_at >= sqlc.arg(from_at) AND p.evaluated_at <= sqlc.arg(to_at)
-UNION
-SELECT versions.cycle_id, versions.evaluated_at FROM (
-    SELECT timeline.cycle_id, timeline.evaluated_at, timeline.calculation_version,
-           LAG(timeline.calculation_version) OVER (ORDER BY timeline.evaluated_at, timeline.cycle_id) AS previous_version
-    FROM (
-        SELECT current.cycle_id, current.evaluated_at, current.calculation_version FROM valuation_points current FORCE INDEX (idx_valuation_points_timeline)
-        WHERE current.portfolio_id = sqlc.arg(portfolio_id) AND current.evaluated_at >= sqlc.arg(from_at) AND current.evaluated_at <= sqlc.arg(to_at)
-        UNION ALL
-        SELECT anchor.cycle_id, anchor.evaluated_at, anchor.calculation_version FROM (
-            SELECT earlier.cycle_id, earlier.evaluated_at, earlier.calculation_version FROM valuation_points earlier FORCE INDEX (idx_valuation_points_timeline)
-            WHERE earlier.portfolio_id = sqlc.arg(portfolio_id) AND earlier.evaluated_at < sqlc.arg(from_at)
-            ORDER BY earlier.evaluated_at DESC, earlier.cycle_id DESC LIMIT 1
-        ) anchor
-    ) timeline
-) versions WHERE versions.calculation_version <> versions.previous_version
-ORDER BY evaluated_at, cycle_id;
+WITH point_window AS (
+    SELECT vp.portfolio_id, vp.cycle_id, vp.evaluated_at
+    FROM valuation_points vp FORCE INDEX (idx_valuation_points_timeline)
+    WHERE vp.portfolio_id = sqlc.arg(portfolio_id)
+      AND vp.evaluated_at >= sqlc.arg(from_at) AND vp.evaluated_at <= sqlc.arg(to_at)
+    ORDER BY vp.evaluated_at, vp.cycle_id LIMIT 1001
+)
+SELECT events.cycle_id, events.evaluated_at FROM (
+    SELECT p.cycle_id, p.evaluated_at
+    FROM point_window p
+    WHERE (SELECT COUNT(*) FROM point_window) <= 1000
+      AND (
+        EXISTS(SELECT 1 FROM manual_balance_changes m
+               WHERE m.portfolio_id = p.portfolio_id AND m.cycle_id = p.cycle_id)
+        OR EXISTS(SELECT 1 FROM boundary_events e
+                  WHERE e.portfolio_id = p.portfolio_id AND e.cycle_id = p.cycle_id)
+        OR EXISTS(SELECT 1 FROM calculated_asset_changes c FORCE INDEX (idx_calculated_asset_changes_point)
+                  STRAIGHT_JOIN assets a ON a.portfolio_id = c.portfolio_id AND a.id = c.asset_id
+                  WHERE c.portfolio_id = p.portfolio_id AND c.cycle_id = p.cycle_id
+                    AND c.treatment = 'included' AND a.mapping_version > 1)
+      )
+    UNION
+    SELECT p.cycle_id, p.evaluated_at
+    FROM manual_balance_changes m
+    STRAIGHT_JOIN valuation_points p ON p.portfolio_id = m.portfolio_id AND p.cycle_id = m.cycle_id
+    WHERE (SELECT COUNT(*) FROM point_window) > 1000
+      AND m.portfolio_id = sqlc.arg(portfolio_id) AND p.evaluated_at >= sqlc.arg(from_at) AND p.evaluated_at <= sqlc.arg(to_at)
+    UNION
+    SELECT p.cycle_id, p.evaluated_at
+    FROM boundary_events e
+    STRAIGHT_JOIN valuation_points p ON p.portfolio_id = e.portfolio_id AND p.cycle_id = e.cycle_id
+    WHERE (SELECT COUNT(*) FROM point_window) > 1000
+      AND e.portfolio_id = sqlc.arg(portfolio_id) AND p.evaluated_at >= sqlc.arg(from_at) AND p.evaluated_at <= sqlc.arg(to_at)
+    UNION
+    SELECT p.cycle_id, p.evaluated_at
+    FROM assets a
+    STRAIGHT_JOIN calculated_asset_changes c ON c.portfolio_id = a.portfolio_id AND c.asset_id = a.id
+    STRAIGHT_JOIN valuation_points p ON p.portfolio_id = c.portfolio_id AND p.cycle_id = c.cycle_id
+    WHERE (SELECT COUNT(*) FROM point_window) > 1000
+      AND a.portfolio_id = sqlc.arg(portfolio_id) AND a.mapping_version > 1 AND c.treatment = 'included'
+      AND p.evaluated_at >= sqlc.arg(from_at) AND p.evaluated_at <= sqlc.arg(to_at)
+) events ORDER BY evaluated_at, cycle_id;
 
 -- name: ListBoundaryPointHeadersBetween :many
 SELECT DISTINCT p.cycle_id, p.evaluated_at
@@ -248,11 +258,11 @@ WHERE v.portfolio_id = sqlc.arg(portfolio_id) AND v.cycle_id = sqlc.arg(cycle_id
 ORDER BY v.cycle_id, v.account_id, a.symbol, v.asset_id;
 
 -- name: ListValuationPointHeaderPage :many
-SELECT cycle_id, evaluated_at FROM valuation_points
+SELECT cycle_id, evaluated_at, calculation_version FROM valuation_points
 WHERE evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE portfolios.id = sqlc.arg(portfolio_id)), CAST('1000-01-01' AS DATETIME(6)))
   AND portfolio_id = sqlc.arg(portfolio_id) AND evaluated_at >= sqlc.arg(from_at) AND evaluated_at <= sqlc.arg(to_at)
   AND (sqlc.arg(has_cursor) = 0 OR evaluated_at > sqlc.arg(cursor_at) OR (evaluated_at = sqlc.arg(cursor_at) AND cycle_id > sqlc.arg(cursor_id)))
-ORDER BY evaluated_at, cycle_id LIMIT 1000;
+ORDER BY evaluated_at, cycle_id LIMIT 10000;
 
 -- name: ListBoundaryEventPage :many
 SELECT e.*, p.evaluated_at, a.identity_id, a.account_type, i.account_structure, i.display_name AS identity_name, i.platform
@@ -275,3 +285,20 @@ SELECT COUNT(*) FROM valuation_points p
 JOIN boundary_events e ON e.portfolio_id = p.portfolio_id AND e.cycle_id = p.cycle_id
 WHERE p.evaluated_at >= COALESCE((SELECT history_before FROM portfolios WHERE portfolios.id = sqlc.arg(portfolio_id)), CAST('1000-01-01' AS DATETIME(6)))
   AND p.portfolio_id = sqlc.arg(portfolio_id) AND p.evaluated_at >= sqlc.arg(from_at) AND p.evaluated_at <= sqlc.arg(to_at);
+
+-- name: ListCalculationVersionChangesBetween :many
+SELECT versions.cycle_id, versions.evaluated_at FROM (
+    SELECT timeline.cycle_id, timeline.evaluated_at, timeline.calculation_version,
+           LAG(timeline.calculation_version) OVER (ORDER BY timeline.evaluated_at, timeline.cycle_id) AS previous_version
+    FROM (
+        SELECT current.cycle_id, current.evaluated_at, current.calculation_version FROM valuation_points current FORCE INDEX (idx_valuation_points_timeline)
+        WHERE current.portfolio_id = sqlc.arg(portfolio_id) AND current.evaluated_at >= sqlc.arg(from_at) AND current.evaluated_at <= sqlc.arg(to_at)
+        UNION ALL
+        SELECT anchor.cycle_id, anchor.evaluated_at, anchor.calculation_version FROM (
+            SELECT earlier.cycle_id, earlier.evaluated_at, earlier.calculation_version FROM valuation_points earlier FORCE INDEX (idx_valuation_points_timeline)
+            WHERE earlier.portfolio_id = sqlc.arg(portfolio_id) AND earlier.evaluated_at < sqlc.arg(from_at)
+            ORDER BY earlier.evaluated_at DESC, earlier.cycle_id DESC LIMIT 1
+        ) anchor
+    ) timeline
+) versions WHERE versions.calculation_version <> versions.previous_version
+ORDER BY evaluated_at, cycle_id;

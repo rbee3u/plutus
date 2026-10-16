@@ -39,6 +39,10 @@ func (s *Service) Overview(ctx context.Context, p PortfolioContext) (Overview, e
 		if err != nil {
 			return Overview{}, err
 		}
+		empty, err := s.emptyReports(ctx, p, accounts, current)
+		if err != nil {
+			return Overview{}, err
+		}
 		platformIndex := map[string]int{}
 		for i := range accounts {
 			a := &accounts[i]
@@ -60,17 +64,8 @@ func (s *Service) Overview(ctx context.Context, p PortfolioContext) (Overview, e
 				platform.Identities = append(platform.Identities, TreeIdentity{ID: a.IdentityID, DisplayName: a.IdentityName, Status: a.IdentityStatus, ConnectionStatus: a.ConnectionStatus, Completeness: valuation.CompletenessComplete})
 				identity = &platform.Identities[len(platform.Identities)-1]
 			}
-			empty := a.ReportID == uuid.Nil
-			if !empty {
-				empty, err = s.confirmedEmpty(ctx, p, a)
-				if err != nil {
-					return Overview{}, err
-				}
-			}
-			if len(current[a.AccountID]) > 0 {
-				empty = false
-			}
-			if !empty {
+			hidden := (a.ReportID == uuid.Nil || empty[a.ReportID]) && len(current[a.AccountID]) == 0
+			if !hidden {
 				identity.Accounts = append(identity.Accounts, *a)
 			}
 		}

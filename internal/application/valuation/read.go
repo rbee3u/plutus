@@ -5,9 +5,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"maps"
 	"math/big"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
@@ -56,18 +58,35 @@ func (s *Service) LatestWithAccounts(ctx context.Context, portfolioID uuid.UUID)
 		if row.DetailState == "expired" || row.DetailState == "pruning" {
 			return Point{}, ErrDetailExpired
 		}
-		byCycle, err := s.accountsByCycles(ctx, portfolioID, [][]byte{row.CycleID})
-		if err != nil {
-			return Point{}, err
-		}
-		points, err := s.pointsWithEvents(ctx, []sqlcgen.ValuationPoint{sqlcgen.ValuationPoint(row)}, false)
+		points, byCycle, err := s.PointsWithAccounts(ctx, []sqlcgen.ValuationPoint{sqlcgen.ValuationPoint(row)}, nil)
 		if err != nil {
 			return Point{}, err
 		}
 		accounts = byCycle[points[0].CycleID]
-		appendAccountIssues(&points[0], accounts)
-		for _, event := range points[0].BoundaryEvents {
-			appendBoundaryIssue(&points[0], &event)
+		return points[0], nil
+	})
+	return point, accounts, err
+}
+
+// PointByCycleWithAccounts shares the exact evidence used for point issues.
+// Expired detail retains its point and returns an empty account list.
+func (s *Service) PointByCycleWithAccounts(ctx context.Context, portfolioID, cycleID uuid.UUID) (Point, []AccountValuation, error) {
+	var accounts []AccountValuation
+	point, err := mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (Point, error) {
+		row, err := mysql.Queries(ctx, s.db).GetValuationPoint(ctx, sqlcgen.GetValuationPointParams{PortfolioID: portfolioID[:], CycleID: cycleID[:]})
+		if errors.Is(err, sql.ErrNoRows) {
+			return Point{}, ErrNotFound
+		}
+		if err != nil {
+			return Point{}, err
+		}
+		points, byCycle, err := s.PointsWithAccounts(ctx, []sqlcgen.ValuationPoint{row}, nil)
+		if err != nil {
+			return Point{}, err
+		}
+		accounts = byCycle[cycleID]
+		if accounts == nil {
+			accounts = []AccountValuation{}
 		}
 		return points[0], nil
 	})
@@ -256,7 +275,25 @@ func (s *Service) PointsWithEvents(ctx context.Context, rows []sqlcgen.Valuation
 }
 
 func (s *Service) pointsWithEvents(ctx context.Context, rows []sqlcgen.ValuationPoint, includeAccountIssues bool) ([]Point, error) {
-	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) ([]Point, error) {
+	points, _, err := s.readPoints(ctx, rows, nil, includeAccountIssues)
+	return points, err
+}
+
+// PointsWithAccounts hydrates each retained account once, sharing it with callers.
+// A supplied timeline must include every selected point and its predecessor.
+func (s *Service) PointsWithAccounts(ctx context.Context, rows []sqlcgen.ValuationPoint, timeline []sqlcgen.ListPointComparisonTimelineRow) ([]Point, map[uuid.UUID][]AccountValuation, error) {
+	return s.readPoints(ctx, rows, timeline, true)
+}
+
+// PointsWithTimeline reuses an already loaded comparison timeline.
+func (s *Service) PointsWithTimeline(ctx context.Context, rows []sqlcgen.ValuationPoint, timeline []sqlcgen.ListPointComparisonTimelineRow) ([]Point, error) {
+	points, _, err := s.readPoints(ctx, rows, timeline, false)
+	return points, err
+}
+
+func (s *Service) readPoints(ctx context.Context, rows []sqlcgen.ValuationPoint, timeline []sqlcgen.ListPointComparisonTimelineRow, includeAccounts bool) ([]Point, map[uuid.UUID][]AccountValuation, error) {
+	allAccounts := map[uuid.UUID][]AccountValuation{}
+	points, err := mysql.WithReadContext(ctx, s.db, func(ctx context.Context) ([]Point, error) {
 		out := make([]Point, 0, len(rows))
 		for _, row := range rows {
 			point, err := PointFromRow(&row)
@@ -268,18 +305,64 @@ func (s *Service) pointsWithEvents(ctx context.Context, rows []sqlcgen.Valuation
 		if len(out) == 0 {
 			return out, nil
 		}
-		previous, err := s.predecessors(ctx, out[0].PortfolioID, out)
-		if err != nil {
-			return nil, err
+		var previous map[uuid.UUID]sqlcgen.ListPointComparisonTimelineRow
+		var err error
+		if timeline == nil {
+			previous, err = s.predecessors(ctx, out[0].PortfolioID, out)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			previous, err = timelinePredecessors(timeline, out)
+			if err != nil {
+				return nil, err
+			}
 		}
 		for start := 0; start < len(out); start += valuationReadBatch {
 			batch := out[start:min(start+valuationReadBatch, len(out))]
-			if err := s.hydratePointDetails(ctx, batch, previous, includeAccountIssues); err != nil {
+			if includeAccounts {
+				ids := [][]byte{}
+				for _, point := range batch {
+					if point.DetailState == "full" || point.DetailState == "daily" {
+						ids = append(ids, point.CycleID[:])
+					}
+				}
+				if len(ids) > 0 {
+					accounts, err := s.accountsByCycles(ctx, out[0].PortfolioID, ids)
+					if err != nil {
+						return nil, err
+					}
+					maps.Copy(allAccounts, accounts)
+					for i := range batch {
+						appendAccountIssues(&batch[i], accounts[batch[i].CycleID])
+					}
+				}
+			}
+			if err := s.hydratePointDetails(ctx, batch, previous, includeAccounts); err != nil {
 				return nil, err
 			}
 		}
 		return out, nil
 	})
+	return points, allAccounts, err
+}
+
+func timelinePredecessors(timeline []sqlcgen.ListPointComparisonTimelineRow, points []Point) (map[uuid.UUID]sqlcgen.ListPointComparisonTimelineRow, error) {
+	previous := make(map[uuid.UUID]sqlcgen.ListPointComparisonTimelineRow, len(points))
+	selected := map[uuid.UUID]bool{}
+	for _, p := range points {
+		selected[p.CycleID] = true
+	}
+	for i := 1; i < len(timeline); i++ {
+		cycle, err := uuid.FromBytes(timeline[i].CycleID)
+		if err != nil {
+			return nil, err
+		}
+		if selected[cycle] {
+			previous[cycle] = timeline[i-1]
+		}
+	}
+	return previous, nil
 }
 
 func appendAccountIssues(point *Point, accounts []AccountValuation) {
@@ -304,10 +387,9 @@ func appendBoundaryIssue(point *Point, event *BoundaryEvent) {
 // hydratePointDetails derives every comparison marker except manual
 // adjustments from retained facts. Named account omissions follow detail
 // retention; an expired point keeps only its counts.
-func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previous map[uuid.UUID]sqlcgen.ListPointComparisonTimelineRow, includeAccountIssues bool) error {
+func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previous map[uuid.UUID]sqlcgen.ListPointComparisonTimelineRow, includeBoundaryIssues bool) error {
 	portfolio := points[0].PortfolioID
 	cycles := make([][]byte, 0, len(points))
-	retained := make([][]byte, 0, len(points))
 	byCycle := make(map[uuid.UUID]*Point, len(points))
 	for i := range points {
 		point := &points[i]
@@ -315,21 +397,9 @@ func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previ
 			return errors.New("point batch crosses portfolios")
 		}
 		cycles = append(cycles, point.CycleID[:])
-		if point.DetailState == "full" || point.DetailState == "daily" {
-			retained = append(retained, point.CycleID[:])
-		}
 		byCycle[point.CycleID] = point
 	}
 	q := mysql.Queries(ctx, s.db)
-	if includeAccountIssues && len(retained) > 0 {
-		accounts, err := s.accountsByCycles(ctx, portfolio, retained)
-		if err != nil {
-			return err
-		}
-		for cycle, list := range accounts {
-			appendAccountIssues(byCycle[cycle], list)
-		}
-	}
 	adjustments, err := q.ListManualBalanceChangesByCycles(ctx, sqlcgen.ListManualBalanceChangesByCyclesParams{PortfolioID: portfolio[:], CycleIds: cycles})
 	if err != nil {
 		return err
@@ -403,7 +473,7 @@ func (s *Service) hydratePointDetails(ctx context.Context, points []Point, previ
 		}
 		totals.add(cycle, event.Direction, event.valueRat)
 		point.BoundaryEvents = append(point.BoundaryEvents, event)
-		if includeAccountIssues {
+		if includeBoundaryIssues {
 			appendBoundaryIssue(point, &event)
 		}
 	}
@@ -502,27 +572,65 @@ func maxTime(a, b time.Time) time.Time {
 // predecessors maps each point to its immediate predecessor in the portfolio's
 // timeline, which may fall outside the requested points.
 func (s *Service) predecessors(ctx context.Context, portfolio uuid.UUID, points []Point) (map[uuid.UUID]sqlcgen.ListPointComparisonTimelineRow, error) {
-	from, to := points[0].EvaluatedAt, points[0].EvaluatedAt
-	selected := make(map[uuid.UUID]bool, len(points))
-	for _, point := range points {
-		selected[point.CycleID] = true
-		from, to = minTime(from, point.EvaluatedAt), maxTime(to, point.EvaluatedAt)
-	}
-	timeline, err := mysql.Queries(ctx, s.db).ListPointComparisonTimeline(ctx, sqlcgen.ListPointComparisonTimelineParams{PortfolioID: portfolio[:], FromAt: from, ToAt: to})
-	if err != nil {
-		return nil, err
-	}
-	previous := make(map[uuid.UUID]sqlcgen.ListPointComparisonTimelineRow, len(points))
-	for i := 1; i < len(timeline); i++ {
-		cycle, err := uuid.FromBytes(timeline[i].CycleID)
+	// Dense point sets retain the shared range read instead of preparing many
+	// independent seeks. Sparse detail reads fit one bounded SQL batch.
+	if len(points) > valuationReadBatch {
+		from, to := points[0].EvaluatedAt, points[0].EvaluatedAt
+		for _, point := range points {
+			from, to = minTime(from, point.EvaluatedAt), maxTime(to, point.EvaluatedAt)
+		}
+		timeline, err := mysql.Queries(ctx, s.db).ListPointComparisonTimeline(ctx, sqlcgen.ListPointComparisonTimelineParams{PortfolioID: portfolio[:], FromAt: from, ToAt: to})
 		if err != nil {
 			return nil, err
 		}
-		if selected[cycle] {
-			previous[cycle] = timeline[i-1]
-		}
+		return timelinePredecessors(timeline, points)
 	}
-	return previous, nil
+	previous := make(map[uuid.UUID]sqlcgen.ListPointComparisonTimelineRow, len(points))
+	if len(points) == 0 {
+		return previous, nil
+	}
+	query, args := pointPredecessorQuery(portfolio, points)
+	rows, err := mysql.Executor(ctx, s.db).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var selected []byte
+		var prior sqlcgen.ListPointComparisonTimelineRow
+		if err := rows.Scan(&selected, &prior.CycleID, &prior.EvaluatedAt, &prior.CalculationVersion); err != nil {
+			return nil, err
+		}
+		id, err := uuid.FromBytes(selected)
+		if err != nil {
+			return nil, fmt.Errorf("point predecessor target: %w", err)
+		}
+		previous[id] = prior
+	}
+	return previous, rows.Err()
+}
+
+// A variable-length UNION is bounded by valuationReadBatch and cannot be
+// generated by sqlc. Every value remains a parameter in the read transaction.
+func pointPredecessorQuery(portfolio uuid.UUID, points []Point) (string, []any) {
+	var query strings.Builder
+	args := make([]any, 0, 5*len(points))
+	for i, point := range points {
+		if i > 0 {
+			query.WriteString(" UNION ALL ")
+		}
+		// Constant cutoffs let each branch seek directly. Correlating the
+		// cutoff to an outer row instead walks later history before LIMIT.
+		query.WriteString(`SELECT CAST(? AS BINARY(16)) AS selected_cycle_id, prior.cycle_id, prior.evaluated_at, prior.calculation_version
+FROM (
+    SELECT cycle_id, evaluated_at, calculation_version
+    FROM valuation_points FORCE INDEX (idx_valuation_points_timeline)
+    WHERE portfolio_id = ? AND (evaluated_at < ? OR (evaluated_at = ? AND cycle_id < ?))
+    ORDER BY evaluated_at DESC, cycle_id DESC LIMIT 1
+) prior`)
+		args = append(args, point.CycleID[:], portfolio[:], point.EvaluatedAt, point.EvaluatedAt, point.CycleID[:])
+	}
+	return query.String(), args
 }
 
 // manualBalanceChangesByPoints compares adopted quantities with each point's actual

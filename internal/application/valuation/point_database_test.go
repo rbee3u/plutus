@@ -495,3 +495,56 @@ func TestManualBalanceChangesCrossReadBatchesWithBoundedDatabaseWork(t *testing.
 		t.Fatalf("%d points required %d database row reads", count, work)
 	}
 }
+
+func TestPredecessorsPreserveTiesScopeAndDenseReads(t *testing.T) {
+	f := newPointFixture(t)
+	var points []Point
+	for i := range 258 {
+		var id uuid.UUID
+		id[14], id[15] = byte(i/256), byte(i%256)
+		at := f.at.Add(time.Duration(i/2) * time.Minute)
+		f.exec("INSERT INTO collection_cycles(portfolio_id,id,status,trigger_kind,available_at,created_at,collection_finished_at,finished_at) VALUES(?,?,'succeeded','schedule',?,?,?,?)", f.portfolio[:], id[:], at, at, at, at)
+		f.exec("INSERT INTO valuation_points(portfolio_id,cycle_id,evaluated_at,total_usd,account_count,stale_account_count,incomplete_account_count,calculation_version,detail_state) VALUES(?,?,?,100,0,0,0,?,'expired')", f.portfolio[:], id[:], at, i%3+1)
+		points = append(points, Point{PortfolioID: f.portfolio, CycleID: id, EvaluatedAt: at, CalculationVersion: uint64(i%3 + 1)})
+	}
+	other := newPointFixture(t)
+	other.exec("INSERT INTO collection_cycles(portfolio_id,id,status,trigger_kind,available_at,created_at,collection_finished_at,finished_at) VALUES(?,?,'succeeded','schedule',?,?,?,?)", other.portfolio[:], points[1].CycleID[:], f.at, f.at, f.at, f.at)
+	other.exec("INSERT INTO valuation_points(portfolio_id,cycle_id,evaluated_at,total_usd,account_count,stale_account_count,incomplete_account_count,calculation_version,detail_state) VALUES(?,?,?,999,0,0,0,99,'expired')", other.portfolio[:], points[1].CycleID[:], f.at)
+	// Retention must not hide the predecessor needed to interpret a retained point.
+	f.exec("UPDATE portfolios SET history_before=? WHERE id=?", points[100].EvaluatedAt, f.portfolio[:])
+	for _, count := range []int{1, 2, 256, 257, 258} {
+		selected := points[:count]
+		got, err := f.service.predecessors(f.ctx, f.portfolio, selected)
+		if err != nil || len(got) != count-1 {
+			t.Fatalf("%d predecessors: %d %v", count, len(got), err)
+		}
+		for i, point := range selected {
+			prior, ok := got[point.CycleID]
+			if i == 0 {
+				if ok {
+					t.Fatal("first point acquired a predecessor")
+				}
+				continue
+			}
+			if !ok || string(prior.CycleID) != string(points[i-1].CycleID[:]) || !prior.EvaluatedAt.Equal(points[i-1].EvaluatedAt) || prior.CalculationVersion != points[i-1].CalculationVersion {
+				t.Fatalf("%d point %d predecessor changed: %+v", count, i, prior)
+			}
+		}
+	}
+	query, args := pointPredecessorQuery(f.portfolio, []Point{points[0], points[1], points[100], points[257]})
+	planRows, err := f.db.QueryContext(f.ctx, "EXPLAIN ANALYZE "+query, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = planRows.Close() }()
+	for planRows.Next() {
+		var plan string
+		if err := planRows.Scan(&plan); err != nil {
+			t.Fatal(err)
+		}
+		t.Log(plan)
+	}
+	if err := planRows.Err(); err != nil {
+		t.Fatal(err)
+	}
+}

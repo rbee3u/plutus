@@ -50,8 +50,11 @@ func (q *Queries) DeleteCapitalFlow(ctx context.Context, arg DeleteCapitalFlowPa
 }
 
 const getCapitalFlow = `-- name: GetCapitalFlow :one
-SELECT portfolio_id, id, account_id, direction, canonical_asset_symbol, quantity, value_usd, pricing_method, pricing_platform, price_observation_id, pricing_attempted_at, calculation_version, effective_at, note, version, created_at, updated_at FROM capital_flows
-WHERE portfolio_id = ? AND id = ?
+SELECT f.portfolio_id, f.id, f.account_id, f.direction, f.canonical_asset_symbol, f.quantity, f.value_usd, f.pricing_method, f.pricing_platform, f.price_observation_id, f.pricing_attempted_at, f.calculation_version, f.effective_at, f.note, f.version, f.created_at, f.updated_at, a.account_type, i.display_name AS identity_name
+FROM capital_flows f
+LEFT JOIN accounts a ON a.portfolio_id = f.portfolio_id AND a.id = f.account_id
+LEFT JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE f.portfolio_id = ? AND f.id = ?
 `
 
 type GetCapitalFlowParams struct {
@@ -59,27 +62,35 @@ type GetCapitalFlowParams struct {
 	ID          []byte
 }
 
-func (q *Queries) GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) (CapitalFlow, error) {
+type GetCapitalFlowRow struct {
+	CapitalFlow  CapitalFlow
+	AccountType  sql.NullString
+	IdentityName sql.NullString
+}
+
+func (q *Queries) GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) (GetCapitalFlowRow, error) {
 	row := q.db.QueryRowContext(ctx, getCapitalFlow, arg.PortfolioID, arg.ID)
-	var i CapitalFlow
+	var i GetCapitalFlowRow
 	err := row.Scan(
-		&i.PortfolioID,
-		&i.ID,
-		&i.AccountID,
-		&i.Direction,
-		&i.CanonicalAssetSymbol,
-		&i.Quantity,
-		&i.ValueUsd,
-		&i.PricingMethod,
-		&i.PricingPlatform,
-		&i.PriceObservationID,
-		&i.PricingAttemptedAt,
-		&i.CalculationVersion,
-		&i.EffectiveAt,
-		&i.Note,
-		&i.Version,
-		&i.CreatedAt,
-		&i.UpdatedAt,
+		&i.CapitalFlow.PortfolioID,
+		&i.CapitalFlow.ID,
+		&i.CapitalFlow.AccountID,
+		&i.CapitalFlow.Direction,
+		&i.CapitalFlow.CanonicalAssetSymbol,
+		&i.CapitalFlow.Quantity,
+		&i.CapitalFlow.ValueUsd,
+		&i.CapitalFlow.PricingMethod,
+		&i.CapitalFlow.PricingPlatform,
+		&i.CapitalFlow.PriceObservationID,
+		&i.CapitalFlow.PricingAttemptedAt,
+		&i.CapitalFlow.CalculationVersion,
+		&i.CapitalFlow.EffectiveAt,
+		&i.CapitalFlow.Note,
+		&i.CapitalFlow.Version,
+		&i.CapitalFlow.CreatedAt,
+		&i.CapitalFlow.UpdatedAt,
+		&i.AccountType,
+		&i.IdentityName,
 	)
 	return i, err
 }
@@ -139,10 +150,13 @@ func (q *Queries) InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowPa
 }
 
 const listCapitalFlowPage = `-- name: ListCapitalFlowPage :many
-SELECT portfolio_id, id, account_id, direction, canonical_asset_symbol, quantity, value_usd, pricing_method, pricing_platform, price_observation_id, pricing_attempted_at, calculation_version, effective_at, note, version, created_at, updated_at FROM capital_flows
-WHERE portfolio_id = ?
-  AND effective_at >= ? AND effective_at < ?
-ORDER BY effective_at DESC, id DESC LIMIT ? OFFSET ?
+SELECT f.portfolio_id, f.id, f.account_id, f.direction, f.canonical_asset_symbol, f.quantity, f.value_usd, f.pricing_method, f.pricing_platform, f.price_observation_id, f.pricing_attempted_at, f.calculation_version, f.effective_at, f.note, f.version, f.created_at, f.updated_at, a.account_type, i.display_name AS identity_name
+FROM capital_flows f
+LEFT JOIN accounts a ON a.portfolio_id = f.portfolio_id AND a.id = f.account_id
+LEFT JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE f.portfolio_id = ?
+  AND f.effective_at >= ? AND f.effective_at < ?
+ORDER BY f.effective_at DESC, f.id DESC LIMIT ? OFFSET ?
 `
 
 type ListCapitalFlowPageParams struct {
@@ -153,7 +167,13 @@ type ListCapitalFlowPageParams struct {
 	Offset      int32
 }
 
-func (q *Queries) ListCapitalFlowPage(ctx context.Context, arg ListCapitalFlowPageParams) ([]CapitalFlow, error) {
+type ListCapitalFlowPageRow struct {
+	CapitalFlow  CapitalFlow
+	AccountType  sql.NullString
+	IdentityName sql.NullString
+}
+
+func (q *Queries) ListCapitalFlowPage(ctx context.Context, arg ListCapitalFlowPageParams) ([]ListCapitalFlowPageRow, error) {
 	rows, err := q.db.QueryContext(ctx, listCapitalFlowPage,
 		arg.PortfolioID,
 		arg.FromAt,
@@ -165,27 +185,29 @@ func (q *Queries) ListCapitalFlowPage(ctx context.Context, arg ListCapitalFlowPa
 		return nil, err
 	}
 	defer rows.Close()
-	items := []CapitalFlow{}
+	items := []ListCapitalFlowPageRow{}
 	for rows.Next() {
-		var i CapitalFlow
+		var i ListCapitalFlowPageRow
 		if err := rows.Scan(
-			&i.PortfolioID,
-			&i.ID,
-			&i.AccountID,
-			&i.Direction,
-			&i.CanonicalAssetSymbol,
-			&i.Quantity,
-			&i.ValueUsd,
-			&i.PricingMethod,
-			&i.PricingPlatform,
-			&i.PriceObservationID,
-			&i.PricingAttemptedAt,
-			&i.CalculationVersion,
-			&i.EffectiveAt,
-			&i.Note,
-			&i.Version,
-			&i.CreatedAt,
-			&i.UpdatedAt,
+			&i.CapitalFlow.PortfolioID,
+			&i.CapitalFlow.ID,
+			&i.CapitalFlow.AccountID,
+			&i.CapitalFlow.Direction,
+			&i.CapitalFlow.CanonicalAssetSymbol,
+			&i.CapitalFlow.Quantity,
+			&i.CapitalFlow.ValueUsd,
+			&i.CapitalFlow.PricingMethod,
+			&i.CapitalFlow.PricingPlatform,
+			&i.CapitalFlow.PriceObservationID,
+			&i.CapitalFlow.PricingAttemptedAt,
+			&i.CapitalFlow.CalculationVersion,
+			&i.CapitalFlow.EffectiveAt,
+			&i.CapitalFlow.Note,
+			&i.CapitalFlow.Version,
+			&i.CapitalFlow.CreatedAt,
+			&i.CapitalFlow.UpdatedAt,
+			&i.AccountType,
+			&i.IdentityName,
 		); err != nil {
 			return nil, err
 		}
@@ -240,6 +262,71 @@ func (q *Queries) ListCapitalFlows(ctx context.Context, arg ListCapitalFlowsPara
 			&i.Version,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCapitalFlowsWithAccounts = `-- name: ListCapitalFlowsWithAccounts :many
+SELECT f.portfolio_id, f.id, f.account_id, f.direction, f.canonical_asset_symbol, f.quantity, f.value_usd, f.pricing_method, f.pricing_platform, f.price_observation_id, f.pricing_attempted_at, f.calculation_version, f.effective_at, f.note, f.version, f.created_at, f.updated_at, a.account_type, i.display_name AS identity_name
+FROM capital_flows f
+LEFT JOIN accounts a ON a.portfolio_id = f.portfolio_id AND a.id = f.account_id
+LEFT JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
+WHERE f.portfolio_id = ?
+  AND f.effective_at >= ? AND f.effective_at < ?
+ORDER BY f.effective_at DESC, f.id DESC
+`
+
+type ListCapitalFlowsWithAccountsParams struct {
+	PortfolioID []byte
+	FromAt      time.Time
+	ToAt        time.Time
+}
+
+type ListCapitalFlowsWithAccountsRow struct {
+	CapitalFlow  CapitalFlow
+	AccountType  sql.NullString
+	IdentityName sql.NullString
+}
+
+func (q *Queries) ListCapitalFlowsWithAccounts(ctx context.Context, arg ListCapitalFlowsWithAccountsParams) ([]ListCapitalFlowsWithAccountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCapitalFlowsWithAccounts, arg.PortfolioID, arg.FromAt, arg.ToAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCapitalFlowsWithAccountsRow{}
+	for rows.Next() {
+		var i ListCapitalFlowsWithAccountsRow
+		if err := rows.Scan(
+			&i.CapitalFlow.PortfolioID,
+			&i.CapitalFlow.ID,
+			&i.CapitalFlow.AccountID,
+			&i.CapitalFlow.Direction,
+			&i.CapitalFlow.CanonicalAssetSymbol,
+			&i.CapitalFlow.Quantity,
+			&i.CapitalFlow.ValueUsd,
+			&i.CapitalFlow.PricingMethod,
+			&i.CapitalFlow.PricingPlatform,
+			&i.CapitalFlow.PriceObservationID,
+			&i.CapitalFlow.PricingAttemptedAt,
+			&i.CapitalFlow.CalculationVersion,
+			&i.CapitalFlow.EffectiveAt,
+			&i.CapitalFlow.Note,
+			&i.CapitalFlow.Version,
+			&i.CapitalFlow.CreatedAt,
+			&i.CapitalFlow.UpdatedAt,
+			&i.AccountType,
+			&i.IdentityName,
 		); err != nil {
 			return nil, err
 		}
