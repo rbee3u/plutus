@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { PositionRow } from "@/api";
 import {
   presentNumber,
@@ -7,6 +8,7 @@ import {
   plainNumberText,
   type NumberKind,
 } from "@/shared/lib/amount";
+import { formatContractSize } from "@/shared/lib/contract";
 import { formatInstant } from "@/shared/lib/datetime";
 import { Badge } from "@/shared/ui/Badge";
 import { HoverCard, HoverDetails } from "@/shared/ui/HoverDetails";
@@ -73,10 +75,29 @@ export function positionMarginDescription(item: PositionRow): string {
   return "margin mode unavailable";
 }
 
-export function positionRow(item: PositionRow, timezone?: string): DataRow {
-  const inverse = item.kind.startsWith("inverse_");
+/** Contract facts in Catalog futures column order, with the Catalog values. */
+export function contractDetailRows(item: PositionRow, timezone?: string) {
   const delivery = item.kind.endsWith("_delivery");
-  const factorUnit = inverse ? item.quoteAssetSymbol : item.baseAssetSymbol;
+  const rows: Array<{ label: string; value: ReactNode }> = [
+    { label: "Base", value: item.baseAssetSymbol ?? "—" },
+    { label: "Quote", value: item.quoteAssetSymbol ?? "—" },
+    { label: "Settle", value: item.settlementAssetSymbol ?? "—" },
+  ];
+  if (delivery) {
+    rows.push({
+      label: "Expiry",
+      value: item.expiryAt ? formatInstant(item.expiryAt, timezone) : "—",
+    });
+  }
+  rows.push({
+    label: "Contract size",
+    value: <NumericText>{formatContractSize(item)}</NumericText>,
+  });
+  return rows;
+}
+
+export function positionRow(item: PositionRow, timezone?: string): DataRow {
+  const delivery = item.kind.endsWith("_delivery");
   const marginLabel =
     item.settlementMargin != null && item.settlementAssetSymbol
       ? `${formatDecimal(item.settlementMargin)} ${item.settlementAssetSymbol}`
@@ -91,38 +112,18 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
       >
         <HoverCard
           title={item.futuresSymbol}
-          tags={[inverse ? "Inverse" : "Linear", delivery ? "Delivery" : "Perpetual"]}
+          tags={[
+            item.kind.startsWith("inverse_") ? "Inverse" : "Linear",
+            delivery ? "Delivery" : "Perpetual",
+          ]}
         >
           <dl>
-            <div>
-              <dt>Base</dt>
-              <dd>{item.baseAssetSymbol ?? "—"}</dd>
-            </div>
-            <div>
-              <dt>Quote</dt>
-              <dd>{item.quoteAssetSymbol ?? "—"}</dd>
-            </div>
-            <div>
-              <dt>Settle</dt>
-              <dd>{item.settlementAssetSymbol ?? "—"}</dd>
-            </div>
-            {item.contractSize ? (
-              <div>
-                <dt>Contract size</dt>
-                <dd>
-                  1 contract = <NumericText>{formatDecimal(item.contractSize)}</NumericText>{" "}
-                  {factorUnit ?? "—"}
-                </dd>
+            {contractDetailRows(item, timezone).map(({ label, value }) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
               </div>
-            ) : null}
-            {delivery && item.expiryAt ? (
-              <div>
-                <dt>Delivery</dt>
-                <dd>
-                  {formatInstant(item.expiryAt, timezone)} {timezone}
-                </dd>
-              </div>
-            ) : null}
+            ))}
           </dl>
         </HoverCard>
       </HoverDetails>

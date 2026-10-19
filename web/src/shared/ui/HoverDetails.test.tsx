@@ -143,6 +143,39 @@ describe("HoverDetails computePosition", () => {
     expect(posRight.top + panelHeight).toBeLessThanOrEqual(windowHeight - 8);
     expect(posRight.arrowOffsetY).toBeGreaterThanOrEqual(12);
   });
+
+  it("positions correctly on narrow mobile viewport with actual panel dimensions", () => {
+    const mobileWidth = 390;
+    const mobileHeight = 844;
+    // An anchor near the right side of the screen, e.g. Margin cell in a table.
+    const anchor = {
+      left: 320,
+      top: 380,
+      right: 380,
+      bottom: 400,
+      width: 60,
+      height: 20,
+    };
+    const actualWidth = 120;
+    const actualHeight = 36;
+    const pos = computePosition(
+      anchor,
+      actualWidth,
+      actualHeight,
+      "above",
+      mobileWidth,
+      mobileHeight,
+    );
+    expect(pos.placement).toBe("above");
+    // Sits 8px directly above anchor
+    expect(pos.top).toBe(anchor.top - actualHeight - 8);
+    // Panel right edge remains within viewport margin (390 - 8 = 382)
+    expect(pos.left + actualWidth).toBeLessThanOrEqual(mobileWidth - 8);
+    expect(pos.left).toBe(mobileWidth - actualWidth - 8);
+    // Arrow points towards anchor center (320 + 30 = 350)
+    const anchorCenterX = anchor.left + anchor.width / 2;
+    expect(pos.left + pos.arrowOffset + 4).toBe(anchorCenterX);
+  });
 });
 
 describe("HoverDetails and HoverCard markup", () => {

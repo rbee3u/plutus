@@ -1,6 +1,6 @@
 import { keys, listFuturesContracts } from "@/api";
-import type { FuturesContract, FuturesContractList } from "@/api";
-import { formatDecimal } from "@/shared/lib/amount";
+import type { FuturesContractList } from "@/api";
+import { formatContractSize } from "@/shared/lib/contract";
 import { formatInstant } from "@/shared/lib/datetime";
 import { capitalize } from "@/shared/lib/text";
 import { platformLabel } from "@/shared/lib/usePlatforms";
@@ -13,18 +13,6 @@ import { TableFilterHeader } from "@/shared/ui/TableFilterHeader";
 import { PAGE_SIZE, type TabProps } from "../lib/catalog";
 import shared from "@/shared/styles/page.module.css";
 import manageStyles from "../styles.module.css";
-
-function formatContractSize(item: FuturesContract): string {
-  const isInverse = item.kind.includes("inverse");
-  const unit = isInverse ? item.quoteAssetSymbol : item.baseAssetSymbol;
-  const nativeBaseQuantity =
-    item.platform === "binance" &&
-    (item.kind === "linear_perpetual" || item.kind === "linear_delivery") &&
-    Boolean(unit);
-  const size = formatDecimal(item.contractSize ?? (nativeBaseQuantity ? "1" : null));
-  const separator = !isInverse && unit && /^\d/.test(unit) ? " × " : " ";
-  return size !== "—" && unit ? `${size}${separator}${unit}` : size;
-}
 
 function renderFuturesContractKind(kind: string) {
   const isPerp = kind.includes("perpetual");

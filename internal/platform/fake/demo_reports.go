@@ -421,7 +421,7 @@ func demoPosition(d DemoIdentity, anchor, at time.Time, asset demoAsset, i int, 
 		settle = "USD"
 	}
 	var expiry *time.Time
-	if d.Profile != "daily" && i%3 == 2 {
+	if demoDatedLeg(d, inverse, asset.Symbol) || d.Profile != "daily" && i%3 == 2 {
 		end := cohort.AddDate(0, 0, 35)
 		expiry = &end
 		kind = adapters.KindLinearDelivery
@@ -484,6 +484,25 @@ func demoPositionPnl(p adapters.Position) string {
 		value = demoMul(value, "-1")
 	}
 	return value
+}
+
+// demoDatedLeg keeps a fixed delivery minority in the daily walkthrough, so
+// current holdings and the Catalog cover perpetual and delivery contracts on
+// every platform. Each named account holds one dated leg; the Binance classic
+// COIN-M and Kraken Coin-M wallets use inverse settlement, the others linear.
+func demoDatedLeg(d DemoIdentity, inverse bool, symbol string) bool {
+	if d.Profile != "daily" {
+		return false
+	}
+	switch d.ID {
+	case "daily-classic":
+		return inverse && symbol == "BTC" || !inverse && symbol == "ETH"
+	case "daily-okx-usd", "daily-bybit":
+		return !inverse && symbol == "ETH"
+	case "daily-kraken":
+		return inverse && symbol == "BTC"
+	}
+	return false
 }
 
 func demoFuturesContractSymbol(platform adapters.Platform, base string, inverse bool, expiry *time.Time) string {

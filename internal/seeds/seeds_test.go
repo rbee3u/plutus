@@ -216,6 +216,40 @@ func assertWalkthroughReads(ctx context.Context, t *testing.T, db *sql.DB, ancho
 	if err != nil || dual.Total != 2 {
 		t.Fatalf("healthy dual concentration: %d %v", dual.Total, err)
 	}
+	positions, err := v.FlatPositions(ctx, main, &financial.ListFilter{Limit: 200})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deliveries := map[string]bool{}
+	for _, row := range positions.Items {
+		if row.Kind != adapters.KindLinearDelivery && row.Kind != adapters.KindInverseDelivery {
+			continue
+		}
+		if row.ExpiryAt == nil || !row.ExpiryAt.After(anchor) {
+			t.Fatalf("held delivery contract lost its future expiry: %s", row.FuturesSymbol)
+		}
+		deliveries[row.Kind] = true
+	}
+	if !deliveries[adapters.KindLinearDelivery] || !deliveries[adapters.KindInverseDelivery] {
+		t.Fatalf("current holdings lost their delivery mix: %v", deliveries)
+	}
+	contracts, err := catalog.NewService(db).ListFuturesContracts(ctx, catalog.ListFilter{PortfolioID: main.ID, Limit: 200})
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalogKinds := map[string]bool{}
+	for _, item := range contracts.Items {
+		if item.Kind != adapters.KindLinearDelivery && item.Kind != adapters.KindInverseDelivery {
+			continue
+		}
+		if item.ExpiryAt == nil {
+			t.Fatalf("catalog delivery contract lost its expiry: %s", item.Symbol)
+		}
+		catalogKinds[item.Kind] = true
+	}
+	if !catalogKinds[adapters.KindLinearDelivery] || !catalogKinds[adapters.KindInverseDelivery] {
+		t.Fatalf("catalog lost its delivery contracts: %v", catalogKinds)
+	}
 	closes, err := v.PeriodCloses(ctx, edge, financial.PeriodDay, anchor.AddDate(0, 0, -7), anchor)
 	if err != nil {
 		t.Fatal(err)

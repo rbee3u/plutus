@@ -42,12 +42,15 @@ concentrated in earn and trading wallets. Negative stablecoin equity and tiny
 balances are normal observations. The aggregate synthetic scale is a few hundred
 thousand USD, with one larger main login and several smaller logins.
 
-Current futures positions are short cross perpetuals, with both linear and
-inverse settlement. Most earn descriptions are flexible product aggregates;
-Kraken retains strategy granularity and bonded/timed descriptions. Dual has just
-two current BTC/USDT subscriptions under `okxSum`, with 120 USDT and 0.002 BTC
-principal. Other selected dual wallets are empty. Optional measures stay unknown
-where the simulated platform does not supply them.
+Current futures positions are short cross hedges: a perpetual majority with both
+linear and inverse settlement, plus one dated delivery contract each for the
+Binance classic USDⓈ-M and COIN-M wallets, the OKX USDⓈ-M wallet, Bybit unified,
+and Kraken Coin-M, all with expiry ahead of the anchor. Most earn descriptions
+are flexible product aggregates; Kraken retains strategy granularity and
+bonded/timed descriptions. Dual has just two current BTC/USDT subscriptions
+under `okxSum`, with 120 USDT and 0.002 BTC principal. Other selected dual
+wallets are empty. Optional measures stay unknown where the simulated platform
+does not supply them.
 
 Expand identities and accounts in Overview, then inspect balances, futures,
 earn, and dual investment. Create a new portfolio to inspect empty state.

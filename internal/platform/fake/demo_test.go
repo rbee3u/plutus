@@ -14,6 +14,8 @@ import (
 func TestDemoNormalMajorityAndConcentration(t *testing.T) {
 	anchor := time.Date(2026, 10, 14, 10, 0, 0, 0, time.UTC)
 	normal, exceptional, archived, empty, earn, dual := 0, 0, 0, 0, 0, 0
+	normalPerpetuals, normalDeliveries := 0, 0
+	deliveryKinds := map[string]bool{}
 	shapes := map[string]bool{}
 	total := "0"
 	for _, d := range DemoIdentities() {
@@ -58,8 +60,23 @@ func TestDemoNormalMajorityAndConcentration(t *testing.T) {
 				}
 			}
 			for _, p := range r.Positions {
-				if p.Side != adapters.SideShort || p.MarginSetting != "cross" || p.FuturesContract.ExpiryAt != nil {
-					t.Fatal("normal hedges lost the production-shaped short perpetual mix")
+				if p.Side != adapters.SideShort || p.MarginSetting != "cross" {
+					t.Fatal("normal hedges lost the production-shaped short cross mix")
+				}
+				switch p.FuturesContract.Kind {
+				case adapters.KindLinearPerpetual, adapters.KindInversePerpetual:
+					normalPerpetuals++
+					if p.FuturesContract.ExpiryAt != nil {
+						t.Fatal("normal perpetual gained a delivery expiry")
+					}
+				case adapters.KindLinearDelivery, adapters.KindInverseDelivery:
+					normalDeliveries++
+					deliveryKinds[p.FuturesContract.Kind] = true
+					if p.FuturesContract.ExpiryAt == nil || !p.FuturesContract.ExpiryAt.After(anchor) {
+						t.Fatal("normal delivery leg lost its future expiry")
+					}
+				default:
+					t.Fatalf("normal hedge has an unsupported kind %s", p.FuturesContract.Kind)
 				}
 			}
 		}
@@ -71,6 +88,10 @@ func TestDemoNormalMajorityAndConcentration(t *testing.T) {
 	}
 	if empty < 20 || earn < 15 || earn > 30 || dual != 2 {
 		t.Fatalf("wallet/product concentration: empty=%d earn=%d dual=%d", empty, earn, dual)
+	}
+	if normalPerpetuals < 20 || normalDeliveries < 2 || normalDeliveries > 8 ||
+		!deliveryKinds[adapters.KindLinearDelivery] || !deliveryKinds[adapters.KindInverseDelivery] {
+		t.Fatalf("normal futures mix lost its perpetual majority or delivery coverage: perpetual=%d delivery=%d kinds=%v", normalPerpetuals, normalDeliveries, deliveryKinds)
 	}
 	if demoNumber(total).Cmp(demoNumber("200000")) < 0 || demoNumber(total).Cmp(demoNumber("400000")) > 0 {
 		t.Fatalf("normal value left the intended synthetic scale: %s", total)

@@ -2,7 +2,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { PositionRow } from "@/api";
 import { DataTable } from "@/shared/ui/DataTable";
-import { POSITION_COLUMNS, positionMarginDescription, positionRow } from "./PositionsTable";
+import {
+  POSITION_COLUMNS,
+  contractDetailRows,
+  positionMarginDescription,
+  positionRow,
+} from "./PositionsTable";
 
 const position: PositionRow = {
   displayLeverage: "3",
@@ -54,6 +59,59 @@ function render(item: PositionRow) {
     />,
   );
 }
+
+describe("contract details", () => {
+  it("reuses the Catalog futures values without redundant labels", () => {
+    const delivery: PositionRow = {
+      ...position,
+      platform: "binance",
+      kind: "linear_delivery",
+      baseAssetSymbol: "ETH",
+      quoteAssetSymbol: "USDT",
+      settlementAssetSymbol: "USDT",
+      contractSize: "1",
+      expiryAt: "2026-11-15T00:00:00Z",
+    };
+    const rows = contractDetailRows(delivery, "Asia/Shanghai");
+    expect(rows.map((row) => row.label)).toEqual([
+      "Base",
+      "Quote",
+      "Settle",
+      "Expiry",
+      "Contract size",
+    ]);
+    const html = renderToStaticMarkup(
+      <>
+        {rows.map((row) => (
+          <span key={row.label}>{row.value}</span>
+        ))}
+      </>,
+    );
+    const text = html.replace(/<[^>]*>/g, "");
+    expect(text).toContain("2026-11-15 08:00");
+    expect(text).not.toContain("Asia/Shanghai");
+    expect(text).toContain("1 ETH");
+    expect(text).not.toContain("contract =");
+  });
+  it("keeps the Catalog columns without expiry rows for perpetual contracts", () => {
+    const rows = contractDetailRows(position, "Asia/Shanghai");
+    expect(rows.map((row) => row.label)).toEqual(["Base", "Quote", "Settle", "Contract size"]);
+    const size = rows.find((row) => row.label === "Contract size");
+    expect(renderToStaticMarkup(<>{size?.value}</>).replace(/<[^>]*>/g, "")).toBe("—");
+  });
+  it("exposes tiny contract sizes as ordinary decimals to screen readers", () => {
+    const rows = contractDetailRows({
+      ...position,
+      kind: "linear_perpetual",
+      contractSize: "0.000001",
+    });
+    const size = rows.find((row) => row.label === "Contract size");
+    const html = renderToStaticMarkup(<>{size?.value}</>);
+    expect(html).toContain('aria-hidden="true">0.0<sub');
+    expect(html).toContain(">5</sub>1 BTC");
+    expect(html).toContain(">0.000001 BTC</span>");
+  });
+});
 
 describe("shared position cells", () => {
   it("uses the agreed inner columns, Both signs, settlement amounts, and timezone", () => {

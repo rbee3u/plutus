@@ -309,10 +309,11 @@ Columns are `Platform`, `Identity`, `Account`, `Symbol`, `Side`, `Size`,
 `Entry price`, `Mark price`, `Liq. price`, `Unrealized PnL`, `Margin`,
 `Notional (USD)`, and `Issues`.
 
-Symbol disclosures show base, quote, settle, effective contract size and its
-currency, linear/inverse payoff, perpetual/delivery term, and delivery time.
-Contract size already includes any multiplier; a USD face amount is not a
-dimensionless multiplier.
+Symbol disclosures reuse the Catalog futures values in column order: base,
+quote, settle, delivery expiry as a portfolio-local time without a timezone
+label, then effective contract size and its currency. Linear/inverse payoff and
+perpetual/delivery term stay in the header badges. Contract size already
+includes any multiplier; a USD face amount is not a dimensionless multiplier.
 
 One-way positions display `Both` with signed size; hedged positions display
 `Long` or `Short` with positive size. Unknown historical mode keeps known

@@ -180,7 +180,8 @@ test("Position details work with hover, keyboard, click, scroll, and narrow tabl
   ]);
   await symbol.hover();
   const details = page.getByRole("tooltip");
-  await expect(details).toContainText("1 contract = 100 USD");
+  await expect(details).toContainText("100 USD");
+  await expect(details).not.toContainText("contract =");
   await expect(details).toContainText("Inverse");
   await expect(details).toContainText("Perpetual");
   await expect(details).not.toContainText("Leverage");
@@ -197,7 +198,8 @@ test("Position details work with hover, keyboard, click, scroll, and narrow tabl
   await expect(page.getByRole("button", { name: "Full amount" })).toHaveCount(0);
   await page.getByRole("button", { name: "Contract details for BTCUSD_261225" }).click();
   await expect(details).toContainText("Delivery");
-  await expect(details).toContainText("2026-12-25 16:00 Asia/Shanghai");
+  await expect(details).toContainText("2026-12-25 16:00");
+  await expect(details).not.toContainText("Asia/Shanghai");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Data issues for BTCUSD_261225" }).click();
   await expect(details).toContainText("Position mode was not recorded.");

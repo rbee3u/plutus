@@ -17,6 +17,7 @@ export interface PositionState {
   placement: "below" | "above" | "right";
   arrowOffset: number;
   arrowOffsetY?: number;
+  ready?: boolean;
 }
 
 export function computePosition(
@@ -131,16 +132,30 @@ export function HoverDetails({
     }
   }
 
-  function showImmediate() {
+  const updatePosition = useCallback(() => {
+    if (!anchor.current || !panel.current) return;
+    const rect = anchor.current.getBoundingClientRect();
+    anchorPosition.current = { left: rect.left, bottom: rect.bottom };
+    const bounds = panel.current.getBoundingClientRect();
+    const measured = computePosition(
+      rect,
+      bounds.width,
+      bounds.height,
+      preferredPlacement,
+      window.innerWidth,
+      window.innerHeight,
+    );
+    setPosition({ ...measured, ready: true });
+  }, [preferredPlacement]);
+
+  const showImmediate = useCallback(() => {
     cancelTimers();
-    if (anchor.current) {
-      const rect = anchor.current.getBoundingClientRect();
-      anchorPosition.current = { left: rect.left, bottom: rect.bottom };
-      const initial = computePosition(rect, 300, 150, preferredPlacement);
-      setPosition(initial);
+    if (!open) {
+      setOpen(true);
+    } else {
+      updatePosition();
     }
-    setOpen(true);
-  }
+  }, [open, updatePosition]);
 
   function handlePointerEnter() {
     if (closeTimer.current) {
@@ -169,23 +184,13 @@ export function HoverDetails({
     pinned.current = false;
     cancelTimers();
     setOpen(false);
+    setPosition((prev) => (prev.ready ? { ...prev, ready: false } : prev));
   }, []);
 
   useLayoutEffect(() => {
-    if (!open || !anchor.current || !panel.current) return;
-    const rect = anchor.current.getBoundingClientRect();
-    anchorPosition.current = { left: rect.left, bottom: rect.bottom };
-    const bounds = panel.current.getBoundingClientRect();
-    const measured = computePosition(
-      rect,
-      bounds.width,
-      bounds.height,
-      preferredPlacement,
-      window.innerWidth,
-      window.innerHeight,
-    );
-    setPosition(measured);
-  }, [open, preferredPlacement]);
+    if (!open) return;
+    updatePosition();
+  }, [open, updatePosition, children]);
 
   useEffect(() => {
     if (!open) return;
@@ -264,6 +269,7 @@ export function HoverDetails({
                 {
                   left: position.left,
                   top: position.top,
+                  visibility: position.ready ? undefined : "hidden",
                   "--arrow-offset": `${position.arrowOffset}px`,
                   "--arrow-offset-y": `${position.arrowOffsetY ?? 16}px`,
                 } as CSSProperties
