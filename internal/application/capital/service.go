@@ -59,6 +59,9 @@ type Flow struct {
 	EffectiveAt        time.Time
 	AccountID          *uuid.UUID
 	AccountName        *string
+	IdentityID         *uuid.UUID
+	IdentityName       *string
+	Platform           *string
 	Note               *string
 	Version            uint64
 	CreatedAt          time.Time
@@ -98,7 +101,7 @@ func (s *Service) List(ctx context.Context, portfolioID uuid.UUID, from, to time
 	}
 	out := make([]Flow, 0, len(rows))
 	for i := range rows {
-		item, err := flowFromRow(&rows[i].CapitalFlow, rows[i].AccountType, rows[i].IdentityName)
+		item, err := flowFromRow(&rows[i].CapitalFlow, rows[i].AccountType, rows[i].IdentityID, rows[i].IdentityName, rows[i].Platform)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +142,7 @@ func (s *Service) ListPage(ctx context.Context, portfolioID uuid.UUID, from, to 
 		}
 		out := Page{Items: make([]Flow, 0, len(rows)), From: from.UTC(), To: to.UTC(), Offset: offset, Limit: limit, Total: int(total)}
 		for i := range rows {
-			item, err := flowFromRow(&rows[i].CapitalFlow, rows[i].AccountType, rows[i].IdentityName)
+			item, err := flowFromRow(&rows[i].CapitalFlow, rows[i].AccountType, rows[i].IdentityID, rows[i].IdentityName, rows[i].Platform)
 			if err != nil {
 				return Page{}, err
 			}
@@ -158,7 +161,7 @@ func (s *Service) Get(ctx context.Context, portfolioID, id uuid.UUID) (Flow, err
 	if err != nil {
 		return Flow{}, err
 	}
-	return flowFromRow(&row.CapitalFlow, row.AccountType, row.IdentityName)
+	return flowFromRow(&row.CapitalFlow, row.AccountType, row.IdentityID, row.IdentityName, row.Platform)
 }
 
 // Create inserts a flow, valuing it in USD from the nearest platform price when no value is given.
@@ -440,7 +443,7 @@ func optionalID(value *uuid.UUID) []byte {
 	return value[:]
 }
 
-func flowFromRow(row *sqlcgen.CapitalFlow, accountType, identityName sql.NullString) (Flow, error) {
+func flowFromRow(row *sqlcgen.CapitalFlow, accountType sql.NullString, identityID []byte, identityName, platform sql.NullString) (Flow, error) {
 	id, err := uuid.FromBytes(row.ID)
 	if err != nil {
 		return Flow{}, err
@@ -478,9 +481,24 @@ func flowFromRow(row *sqlcgen.CapitalFlow, accountType, identityName sql.NullStr
 			return Flow{}, err
 		}
 		item.AccountID = &accountID
-		if accountType.Valid && identityName.Valid {
-			name := identityName.String + " / " + adapters.AccountName(adapters.AccountType(accountType.String))
+		if accountType.Valid {
+			name := adapters.AccountName(adapters.AccountType(accountType.String))
 			item.AccountName = &name
+		}
+		if len(identityID) == 16 {
+			id, err := uuid.FromBytes(identityID)
+			if err != nil {
+				return Flow{}, err
+			}
+			item.IdentityID = &id
+		}
+		if identityName.Valid {
+			name := identityName.String
+			item.IdentityName = &name
+		}
+		if platform.Valid {
+			p := platform.String
+			item.Platform = &p
 		}
 	}
 	return item, nil

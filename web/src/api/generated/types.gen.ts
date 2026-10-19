@@ -805,6 +805,9 @@ export type CapitalFlow = {
     effectiveAt: string;
     accountId?: string | null;
     accountName?: string | null;
+    identityId?: string | null;
+    identityName?: string | null;
+    platform?: string | null;
     note?: string | null;
     version: number;
     createdAt: string;

@@ -21,6 +21,9 @@ func toAPIFlow(f *capital.Flow) api.CapitalFlow {
 		EffectiveAt:          f.EffectiveAt,
 		AccountId:            f.AccountID,
 		AccountName:          f.AccountName,
+		IdentityId:           f.IdentityID,
+		IdentityName:         f.IdentityName,
+		Platform:             f.Platform,
 		Note:                 f.Note,
 		Version:              int(f.Version), // #nosec G115 -- Versions increment from 1; overflowing int requires billions of edits even on 32-bit hosts.
 		CreatedAt:            f.CreatedAt,

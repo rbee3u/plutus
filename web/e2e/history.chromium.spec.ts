@@ -506,10 +506,10 @@ test("Range boundary events reverse cycles while retaining each cycle's account 
   await page.goto(`${historyPath}/value-changes`);
   const summary = page.getByRole("region", { name: "Selected range summary" });
   await summary.getByText("Boundary events (6)", { exact: true }).click();
-  const rows = summary
-    .getByRole("table", { name: "Boundary events in the range" })
-    .getByRole("row");
-  await expect(rows.locator("td:nth-child(3)")).toHaveText([
+  const table = summary.getByRole("table", { name: "Boundary events in the range" });
+  const accountColumn =
+    (await table.getByRole("columnheader").allTextContents()).indexOf("Account") + 1;
+  await expect(table.locator(`tbody tr td:nth-child(${accountColumn})`)).toHaveText([
     "newer Spot",
     "newer Funding",
     "newer Manual",

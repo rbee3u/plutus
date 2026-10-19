@@ -50,7 +50,7 @@ func (q *Queries) DeleteCapitalFlow(ctx context.Context, arg DeleteCapitalFlowPa
 }
 
 const getCapitalFlow = `-- name: GetCapitalFlow :one
-SELECT f.portfolio_id, f.id, f.account_id, f.direction, f.canonical_asset_symbol, f.quantity, f.value_usd, f.pricing_method, f.pricing_platform, f.price_observation_id, f.pricing_attempted_at, f.calculation_version, f.effective_at, f.note, f.version, f.created_at, f.updated_at, a.account_type, i.display_name AS identity_name
+SELECT f.portfolio_id, f.id, f.account_id, f.direction, f.canonical_asset_symbol, f.quantity, f.value_usd, f.pricing_method, f.pricing_platform, f.price_observation_id, f.pricing_attempted_at, f.calculation_version, f.effective_at, f.note, f.version, f.created_at, f.updated_at, a.account_type, i.id AS identity_id, i.display_name AS identity_name, i.platform AS platform
 FROM capital_flows f
 LEFT JOIN accounts a ON a.portfolio_id = f.portfolio_id AND a.id = f.account_id
 LEFT JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
@@ -65,7 +65,9 @@ type GetCapitalFlowParams struct {
 type GetCapitalFlowRow struct {
 	CapitalFlow  CapitalFlow
 	AccountType  sql.NullString
+	IdentityID   []byte
 	IdentityName sql.NullString
+	Platform     sql.NullString
 }
 
 func (q *Queries) GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) (GetCapitalFlowRow, error) {
@@ -90,7 +92,9 @@ func (q *Queries) GetCapitalFlow(ctx context.Context, arg GetCapitalFlowParams) 
 		&i.CapitalFlow.CreatedAt,
 		&i.CapitalFlow.UpdatedAt,
 		&i.AccountType,
+		&i.IdentityID,
 		&i.IdentityName,
+		&i.Platform,
 	)
 	return i, err
 }
@@ -150,7 +154,7 @@ func (q *Queries) InsertCapitalFlow(ctx context.Context, arg InsertCapitalFlowPa
 }
 
 const listCapitalFlowPage = `-- name: ListCapitalFlowPage :many
-SELECT f.portfolio_id, f.id, f.account_id, f.direction, f.canonical_asset_symbol, f.quantity, f.value_usd, f.pricing_method, f.pricing_platform, f.price_observation_id, f.pricing_attempted_at, f.calculation_version, f.effective_at, f.note, f.version, f.created_at, f.updated_at, a.account_type, i.display_name AS identity_name
+SELECT f.portfolio_id, f.id, f.account_id, f.direction, f.canonical_asset_symbol, f.quantity, f.value_usd, f.pricing_method, f.pricing_platform, f.price_observation_id, f.pricing_attempted_at, f.calculation_version, f.effective_at, f.note, f.version, f.created_at, f.updated_at, a.account_type, i.id AS identity_id, i.display_name AS identity_name, i.platform AS platform
 FROM capital_flows f
 LEFT JOIN accounts a ON a.portfolio_id = f.portfolio_id AND a.id = f.account_id
 LEFT JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
@@ -170,7 +174,9 @@ type ListCapitalFlowPageParams struct {
 type ListCapitalFlowPageRow struct {
 	CapitalFlow  CapitalFlow
 	AccountType  sql.NullString
+	IdentityID   []byte
 	IdentityName sql.NullString
+	Platform     sql.NullString
 }
 
 func (q *Queries) ListCapitalFlowPage(ctx context.Context, arg ListCapitalFlowPageParams) ([]ListCapitalFlowPageRow, error) {
@@ -207,7 +213,9 @@ func (q *Queries) ListCapitalFlowPage(ctx context.Context, arg ListCapitalFlowPa
 			&i.CapitalFlow.CreatedAt,
 			&i.CapitalFlow.UpdatedAt,
 			&i.AccountType,
+			&i.IdentityID,
 			&i.IdentityName,
+			&i.Platform,
 		); err != nil {
 			return nil, err
 		}
@@ -277,7 +285,7 @@ func (q *Queries) ListCapitalFlows(ctx context.Context, arg ListCapitalFlowsPara
 }
 
 const listCapitalFlowsWithAccounts = `-- name: ListCapitalFlowsWithAccounts :many
-SELECT f.portfolio_id, f.id, f.account_id, f.direction, f.canonical_asset_symbol, f.quantity, f.value_usd, f.pricing_method, f.pricing_platform, f.price_observation_id, f.pricing_attempted_at, f.calculation_version, f.effective_at, f.note, f.version, f.created_at, f.updated_at, a.account_type, i.display_name AS identity_name
+SELECT f.portfolio_id, f.id, f.account_id, f.direction, f.canonical_asset_symbol, f.quantity, f.value_usd, f.pricing_method, f.pricing_platform, f.price_observation_id, f.pricing_attempted_at, f.calculation_version, f.effective_at, f.note, f.version, f.created_at, f.updated_at, a.account_type, i.id AS identity_id, i.display_name AS identity_name, i.platform AS platform
 FROM capital_flows f
 LEFT JOIN accounts a ON a.portfolio_id = f.portfolio_id AND a.id = f.account_id
 LEFT JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
@@ -295,7 +303,9 @@ type ListCapitalFlowsWithAccountsParams struct {
 type ListCapitalFlowsWithAccountsRow struct {
 	CapitalFlow  CapitalFlow
 	AccountType  sql.NullString
+	IdentityID   []byte
 	IdentityName sql.NullString
+	Platform     sql.NullString
 }
 
 func (q *Queries) ListCapitalFlowsWithAccounts(ctx context.Context, arg ListCapitalFlowsWithAccountsParams) ([]ListCapitalFlowsWithAccountsRow, error) {
@@ -326,7 +336,9 @@ func (q *Queries) ListCapitalFlowsWithAccounts(ctx context.Context, arg ListCapi
 			&i.CapitalFlow.CreatedAt,
 			&i.CapitalFlow.UpdatedAt,
 			&i.AccountType,
+			&i.IdentityID,
 			&i.IdentityName,
+			&i.Platform,
 		); err != nil {
 			return nil, err
 		}

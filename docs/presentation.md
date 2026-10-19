@@ -50,8 +50,9 @@ list compact and avoid adding height to mapped rows. Balances and earn show a
 secondary `Canonical asset: ...` hint. Omit redundant mapping hints. Earn amount
 units use asset symbol. Catalog and mapping dialogs omit full names. Mapping
 dialogs label the source `Asset` and the target `Canonical asset`. Capital flow
-inputs and columns also use `Asset`; the stored symbol still identifies the
-cross-platform canonical asset.
+inputs use `Asset`; the stored symbol still identifies the cross-platform
+canonical asset. Capital flow tables present quantity and asset together under
+`Amount`.
 
 Catalog futures contract size uses native base units for linear contracts and
 quote face amounts for inverse contracts. Binance linear quantities already use
@@ -237,10 +238,10 @@ option.
 
 Successful candidate reads reconcile invalid URL selections to All. If an
 identity is specified without a platform or conflicts with the selected
-platform, clear identity to All while keeping the valid platform.
-Loading or failed candidate reads cannot prove a selection invalid. Configured
-candidates may yield no holdings, but stay stable during searches and collection
-failures; URL correction can deliberately widen results.
+platform, clear identity to All while keeping the valid platform. Loading or
+failed candidate reads cannot prove a selection invalid. Configured candidates
+may yield no holdings, but stay stable during searches and collection failures;
+URL correction can deliberately widen results.
 
 The futures notional total and completeness cover the portfolio boundary before
 filtering or pagination. Balance totals follow filtered collected balances;
@@ -451,6 +452,14 @@ URL pagination. Flow writes restart from the first page in the same window;
 reads recover an offset that no longer contains rows. A series exceeding its
 declared point budget shows an explicit recovery message; all original points
 remain available in the raw table.
+
+Capital flows columns are `Effective at`, `Platform`, `Identity`, `Account`,
+`Direction`, `Amount`, `Value (USD)`, and `Note`. Unallocated flows display `—`
+for platform, identity, and account. Amount combines quantity and canonical
+asset symbol. Boundary events columns are `Evaluated at`, `Platform`,
+`Identity`, `Account`, `Direction`, `Value (USD)`, and `Issues`. Issues remains
+quiet (`—`) during complete intervals, showing an `Incomplete` badge when
+incomplete.
 
 The `Valuation points` view shows filters, the full-window chart,
 `Period closes`, then raw points. Period closes shares the window. Both calendar

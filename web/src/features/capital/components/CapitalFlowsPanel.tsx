@@ -21,6 +21,7 @@ import { useSessionScope } from "@/shared/lib/session";
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
 import { accountOptions, useIdentities } from "@/shared/lib/useIdentities";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
+import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import { useTimeWindow } from "@/shared/lib/useTimeWindow";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { DirectionBadge } from "@/shared/ui/Badge";
@@ -55,6 +56,7 @@ export function CapitalFlowsPanel({
   const from = window?.from;
   const to = window?.to;
 
+  const platforms = usePlatforms();
   const identities = useIdentities(portfolioId);
   const accounts = accountOptions(identities.data?.items);
   const nonce = useRef(0);
@@ -192,11 +194,12 @@ export function CapitalFlowsPanel({
         caption="Manual capital flows, newest first"
         columns={[
           { key: "effectiveAt", header: "Effective at", nowrap: true, width: "170px" },
+          { key: "platform", header: "Platform", nowrap: true, width: "110px" },
+          { key: "identity", header: "Identity", nowrap: true, width: "130px" },
+          { key: "account", header: "Account", nowrap: true, width: "120px" },
           { key: "direction", header: "Direction", width: "110px" },
-          { key: "canonicalAssetSymbol", header: "Asset", width: "120px" },
-          { key: "quantity", header: "Quantity", numeric: true, width: "130px" },
+          { key: "amount", header: "Amount", numeric: true, nowrap: true, width: "140px" },
           { key: "valueUsd", header: "Value (USD)", numeric: true, width: "140px" },
-          { key: "account", header: "Account", width: "150px" },
           { key: "note", header: "Note" },
           { key: "actions", header: "", width: "60px" },
         ]}
@@ -209,18 +212,27 @@ export function CapitalFlowsPanel({
                 {formatInstant(item.effectiveAt, timezone)}
               </span>
             ),
+            platform: item.platform ? (
+              platformLabel(platforms.data?.items, item.platform)
+            ) : (
+              <span className={shared.muted}>—</span>
+            ),
+            identity: item.identityName ?? <span className={shared.muted}>—</span>,
+            account:
+              item.accountName ??
+              (item.accountId ? item.accountId : <span className={shared.muted}>—</span>),
             direction: <DirectionBadge value={item.direction} />,
-            canonicalAssetSymbol: <strong>{item.canonicalAssetSymbol}</strong>,
-            quantity: <NumericText>{formatDecimal(item.quantity)}</NumericText>,
+            amount: (
+              <NumericText>
+                {`${formatDecimal(item.quantity)} ${item.canonicalAssetSymbol}`}
+              </NumericText>
+            ),
             valueUsd: dec ? (
               <NumericText>{formatAmount(dec.abs().toFixed())}</NumericText>
             ) : (
               <span className={shared.muted}>—</span>
             ),
-            account:
-              item.accountName ??
-              (item.accountId ? item.accountId : <span className={shared.muted}>—</span>),
-            note: item.note ?? "—",
+            note: item.note ?? <span className={shared.muted}>—</span>,
             actions: (
               <FlowActions
                 item={item}
@@ -314,6 +326,18 @@ export function CapitalFlowsPanel({
                     "—"
                   )}
                 </span>
+              </div>
+              <div className={styles.flowSummaryItem}>
+                <span className={styles.flowSummaryLabel}>Platform</span>
+                <span className={styles.flowSummaryValue}>
+                  {deleteTarget.platform
+                    ? platformLabel(platforms.data?.items, deleteTarget.platform)
+                    : "—"}
+                </span>
+              </div>
+              <div className={styles.flowSummaryItem}>
+                <span className={styles.flowSummaryLabel}>Identity</span>
+                <span className={styles.flowSummaryValue}>{deleteTarget.identityName ?? "—"}</span>
               </div>
               <div className={styles.flowSummaryItem}>
                 <span className={styles.flowSummaryLabel}>Account</span>

@@ -2,7 +2,7 @@ import type { AccountValuation, BoundaryEvent, Issue, Platform } from "@/api";
 import { formatAmount, formatCount, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { platformLabel } from "@/shared/lib/usePlatforms";
-import { Badge, CompletenessBadge, DirectionBadge, StatusBadge } from "@/shared/ui/Badge";
+import { Badge, CompletenessBadge, DirectionBadge } from "@/shared/ui/Badge";
 import type { DataRow } from "@/shared/ui/DataTable";
 import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { NumericText } from "@/shared/ui/NumericText";
@@ -178,11 +178,12 @@ export function groupAccountValuations(
 
 export const BOUNDARY_COLUMNS = [
   { key: "evaluatedAt", header: "Evaluated at", nowrap: true, width: "170px" },
-  { key: "platform", header: "Platform", nowrap: true, width: "130px" },
-  { key: "account", header: "Account", width: "160px" },
+  { key: "platform", header: "Platform", nowrap: true, width: "110px" },
+  { key: "identity", header: "Identity", nowrap: true, width: "130px" },
+  { key: "account", header: "Account", nowrap: true, width: "120px" },
   { key: "direction", header: "Direction", width: "110px" },
   { key: "valueUsd", header: "Value (USD)", numeric: true, width: "140px" },
-  { key: "method", header: "Method", width: "120px" },
+  { key: "issues", header: "Issues", nowrap: true, width: "110px" },
 ];
 
 /** API cycles are chronological; reverse batches without reversing their accounts. */
@@ -207,24 +208,24 @@ export function boundaryEventRow(
     evaluatedAt: (
       <span className={styles.tabularDate}>{formatInstant(item.evaluatedAt, timezone)}</span>
     ),
-    platform: item.platform ? platformLabel(platforms, item.platform) : "—",
-    account: (
-      <span className={styles.cellStack}>
-        <strong>{item.accountName}</strong>
-        {item.identityName ? <span className={styles.cellMeta}>{item.identityName}</span> : null}
-      </span>
+    platform: item.platform ? (
+      platformLabel(platforms, item.platform)
+    ) : (
+      <span className={styles.muted}>—</span>
     ),
+    identity: item.identityName ?? <span className={styles.muted}>—</span>,
+    account: item.accountName ?? <span className={styles.muted}>—</span>,
     direction: <DirectionBadge value={item.direction} />,
     valueUsd: dec ? (
       <NumericText>{formatAmount(dec.abs().toFixed())}</NumericText>
     ) : (
       <span className={styles.muted}>—</span>
     ),
-    method: (
-      <span className={styles.statusGroup}>
-        <StatusBadge value={item.method} />
+    issues:
+      item.completeness === "incomplete" ? (
         <CompletenessBadge value={item.completeness} />
-      </span>
-    ),
+      ) : (
+        <span className={styles.muted}>—</span>
+      ),
   };
 }

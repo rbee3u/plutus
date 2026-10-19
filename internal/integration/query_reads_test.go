@@ -40,7 +40,7 @@ func TestCapitalAndCatalogQueryBudgets(t *testing.T) {
 			t.Fatalf("capital page: %+v %v", page, err)
 		}
 		for _, flow := range page.Items {
-			if flow.AccountName == nil || *flow.AccountName != "Renamed / Spot" {
+			if flow.AccountName == nil || *flow.AccountName != "Spot" || flow.IdentityName == nil || *flow.IdentityName != "Renamed" {
 				t.Fatalf("account label lost its current name: %+v", flow)
 			}
 		}

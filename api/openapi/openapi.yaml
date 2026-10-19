@@ -4093,6 +4093,13 @@ components:
           format: uuid
         accountName:
           type: [string, "null"]
+        identityId:
+          type: [string, "null"]
+          format: uuid
+        identityName:
+          type: [string, "null"]
+        platform:
+          type: [string, "null"]
         note:
           type: [string, "null"]
         version:

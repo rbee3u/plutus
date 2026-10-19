@@ -296,8 +296,9 @@ test("Boundary events show newest batches first, keep account order, and respect
   await expect(table).toContainText("Final microsecond");
   await expect(table).not.toContainText("Next day");
   await expect(table.locator("tbody tr")).toHaveCount(4);
-  const accountNames = await table.locator("tbody tr td:nth-child(3)").allTextContents();
-  expect(accountNames).toEqual([
+  const accountColumn =
+    (await table.getByRole("columnheader").allTextContents()).indexOf("Account") + 1;
+  await expect(table.locator(`tbody tr td:nth-child(${accountColumn})`)).toHaveText([
     "Final microsecond",
     "Final batch second",
     "Earlier batch first",

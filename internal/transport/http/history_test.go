@@ -400,7 +400,11 @@ func TestCapitalAndBoundaryHTTPPages(t *testing.T) {
 		exec("INSERT INTO boundary_events(portfolio_id,cycle_id,account_id,direction,valuation_method,value_usd,valuation_complete) VALUES(?,?,?,'contribution',?,?,?)", p.ID[:], cycleID[:], id[:], method, value, complete)
 		flow := uuid.MustParse(fmt.Sprintf("00000000-0000-7000-8000-%012d", i+1))
 		flows = append(flows, flow)
-		exec("INSERT INTO capital_flows(portfolio_id,id,direction,canonical_asset_symbol,quantity,value_usd,pricing_method,pricing_attempted_at,calculation_version,effective_at,version,created_at,updated_at) VALUES(?,?,'contribution','USD',1,1,'explicit',?,1,?,1,?,?)", p.ID[:], flow[:], at, at, at, at)
+		var acc any
+		if i == 0 {
+			acc = id[:]
+		}
+		exec("INSERT INTO capital_flows(portfolio_id,id,account_id,direction,canonical_asset_symbol,quantity,value_usd,pricing_method,pricing_attempted_at,calculation_version,effective_at,version,created_at,updated_at) VALUES(?,?,?,'contribution','USD',1,1,'explicit',?,1,?,1,?,?)", p.ID[:], flow[:], acc, at, at, at, at)
 	}
 	values := valuation.NewService(db)
 	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Services: &app.Services{DB: db, Auth: authentication, Portfolios: portfolios, Capital: capital.NewService(db), Valuation: values, Financial: financial.NewService(db, values)}})
@@ -422,6 +426,17 @@ func TestCapitalAndBoundaryHTTPPages(t *testing.T) {
 		}
 		if i < 3 && page.Items[0].Id != flows[2-i] {
 			t.Fatal("equal-time flow order drifted")
+		}
+		if i == 2 {
+			item := page.Items[0]
+			if item.Platform == nil || *item.Platform != "binance" || item.IdentityName == nil || *item.IdentityName != "Timeline" || item.AccountName == nil || *item.AccountName != "Spot" {
+				t.Fatalf("expected flow account details: %+v", item)
+			}
+		} else if i < 3 {
+			item := page.Items[0]
+			if item.Platform != nil || item.IdentityName != nil || item.AccountName != nil {
+				t.Fatalf("expected unallocated flow without account details: %+v", item)
+			}
 		}
 		res = get("/boundary-events" + query)
 		var events api.BoundaryEventList

@@ -9,7 +9,7 @@ INSERT INTO capital_flows (
 );
 
 -- name: GetCapitalFlow :one
-SELECT sqlc.embed(f), a.account_type, i.display_name AS identity_name
+SELECT sqlc.embed(f), a.account_type, i.id AS identity_id, i.display_name AS identity_name, i.platform AS platform
 FROM capital_flows f
 LEFT JOIN accounts a ON a.portfolio_id = f.portfolio_id AND a.id = f.account_id
 LEFT JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
@@ -44,7 +44,7 @@ DELETE FROM capital_flows
 WHERE portfolio_id = sqlc.arg(portfolio_id) AND id = sqlc.arg(id) AND version = sqlc.arg(version);
 
 -- name: ListCapitalFlowsWithAccounts :many
-SELECT sqlc.embed(f), a.account_type, i.display_name AS identity_name
+SELECT sqlc.embed(f), a.account_type, i.id AS identity_id, i.display_name AS identity_name, i.platform AS platform
 FROM capital_flows f
 LEFT JOIN accounts a ON a.portfolio_id = f.portfolio_id AND a.id = f.account_id
 LEFT JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
@@ -53,7 +53,7 @@ WHERE f.portfolio_id = sqlc.arg(portfolio_id)
 ORDER BY f.effective_at DESC, f.id DESC;
 
 -- name: ListCapitalFlowPage :many
-SELECT sqlc.embed(f), a.account_type, i.display_name AS identity_name
+SELECT sqlc.embed(f), a.account_type, i.id AS identity_id, i.display_name AS identity_name, i.platform AS platform
 FROM capital_flows f
 LEFT JOIN accounts a ON a.portfolio_id = f.portfolio_id AND a.id = f.account_id
 LEFT JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id
