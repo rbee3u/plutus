@@ -172,10 +172,8 @@ test("Position details work with hover, keyboard, click, scroll, and narrow tabl
     "Size",
     "Entry price",
     "Mark price",
-    "Liq. price",
     "Unrealized PnL",
     "Margin",
-    "Notional (USD)",
     "Issues",
   ]);
   await symbol.hover();
@@ -195,6 +193,14 @@ test("Position details work with hover, keyboard, click, scroll, and narrow tabl
   await page.keyboard.press("Escape");
   const row = page.getByRole("row").filter({ has: symbol });
   await expect(row.getByRole("cell").nth(6)).toHaveText("50,000.12");
+  await page
+    .getByRole("button", { name: "Entry price details for BTC-USD-SWAP: 50,000.12" })
+    .click();
+  await expect(details).toHaveText("Notional: $200");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Mark price details for BTC-USD-SWAP: 50,000" }).click();
+  await expect(details).toHaveText("Notional: $200");
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Full amount" })).toHaveCount(0);
   await page.getByRole("button", { name: "Contract details for BTCUSD_261225" }).click();
   await expect(details).toContainText("Delivery");
@@ -265,7 +271,7 @@ test("Position details work with hover, keyboard, click, scroll, and narrow tabl
   await expect(details).toContainText("Temporary collection failure");
   await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole("columnheader")).toHaveCount(13);
+  await expect(page.getByRole("columnheader")).toHaveCount(11);
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
     .toBe(true);

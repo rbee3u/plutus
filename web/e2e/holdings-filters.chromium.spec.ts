@@ -21,7 +21,7 @@ const earn: EarnPositionRow = {
   accountName: "Earn",
   accountType: "earn",
   identityId: bn,
-  identityName: "bn-main",
+  identityName: "main",
   platform: "binance",
   positionKey: "multi",
   productRef: "pool",
@@ -163,11 +163,11 @@ async function fixture(page: Page) {
         return route.fulfill({
           json: {
             items: [
-              identity(bn, "binance", "bn-main"),
+              identity(bn, "binance", "main"),
               ...Array.from({ length: 24 }, (_, i) =>
-                identity(`sub-${i}`, "binance", `bn-sub-${String(i).padStart(2, "0")}`),
+                identity(`sub-${i}`, "binance", `sub-${String(i).padStart(2, "0")}`),
               ),
-              identity(ok, "okx", "ok-main"),
+              identity(ok, "okx", "main"),
               identity(archived, "kraken", "old", "archived"),
             ]
               .filter(() => state.identityScope !== "none")
@@ -275,7 +275,7 @@ test("Balance asset search keeps symbol queries and Observed discloses the corre
       accountName: "Funding",
       accountType: "funding",
       identityId: bn,
-      identityName: "bn-main",
+      identityName: "main",
       platform: "binance",
       assetId: "asset",
       assetSymbol: "XBT",
@@ -331,31 +331,35 @@ test("Balance asset search keeps symbol queries and Observed discloses the corre
   expect(state.mutations).toHaveLength(0);
 });
 
-test("Column filters link configured candidates and clear independently", async ({ page }) => {
+test("Column filters link configured candidates with cascading dependency", async ({ page }) => {
   await fixture(page);
   await page.goto(`/p/${portfolioId}/holdings/futures`);
   const platform = page.getByRole("button", { name: "Filter platform: All", exact: true });
-  const identity = page.getByRole("button", { name: "Filter identity: All", exact: true });
-  await identity.click();
-  await page.getByRole("option", { name: "bn-main", exact: true }).click();
-  await expect(platform).toBeVisible();
-  await expect(page).toHaveURL(new RegExp(`identityId=${bn}`));
+  await expect(page.getByRole("button", { name: "Filter identity: All" })).toHaveCount(0);
+  await expect(page.getByRole("columnheader").filter({ hasText: "Identity" })).toBeVisible();
   await platform.click();
-  await expect(page.getByRole("option")).toHaveText(["All", "Binance"]);
+  await expect(page.getByRole("option")).toHaveText(["All", "Binance", "OKX"]);
   await page.getByRole("option", { name: "Binance", exact: true }).click();
-  await page.getByRole("button", { name: "Filter platform: Binance" }).click();
+  await expect(page).toHaveURL(/platform=binance/);
+  const identity = page.getByRole("button", { name: "Filter identity: All", exact: true });
+  await expect(identity).toBeVisible();
+  await identity.click();
+  await page.getByRole("option", { name: "main", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`platform=binance&identityId=${bn}`));
+  const platformActive = page.getByRole("button", { name: "Filter platform: Binance" });
+  await platformActive.click();
   await page.getByRole("button", { name: "Clear platform filter" }).click();
-  const identityActive = page.getByRole("button", { name: "Filter identity: bn-main" });
-  await expect(identityActive).toBeVisible();
-  await identityActive.click();
-  await page.getByRole("button", { name: "Clear identity filter" }).click();
+  await expect(page).not.toHaveURL(/platform=/);
+  await expect(page).not.toHaveURL(/identityId=/);
+  await expect(page.getByRole("button", { name: "Filter identity: All" })).toHaveCount(0);
   await platform.focus();
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("option")).toHaveText(["All", "Binance", "OKX"]);
   await page.keyboard.press("End");
   await page.keyboard.press("Enter");
+  await expect(identity).toBeVisible();
   await identity.click();
-  await expect(page.getByRole("option")).toHaveText(["All", "ok-main"]);
+  await expect(page.getByRole("option")).toHaveText(["All", "main"]);
   await page.keyboard.press("Escape");
   await expect(identity).toBeFocused();
   await page.getByRole("button", { name: "Clear filters", exact: true }).click();
@@ -482,8 +486,8 @@ test("Unsupported parameters are excluded and invalid selections normalize after
   );
   await expect(page).toHaveURL(
     (url) =>
-      url.searchParams.get("identityId") === bn &&
-      !url.searchParams.has("platform") &&
+      url.searchParams.get("platform") === "okx" &&
+      !url.searchParams.has("identityId") &&
       !url.searchParams.has("offset"),
   );
   await expect(page.getByRole("columnheader").nth(1)).toContainText("Identity");
@@ -508,9 +512,9 @@ test("Headers survive errors/no point and popovers fit narrow viewports", async 
   state.noPoint = true;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/p/${portfolioId}/holdings/futures`);
-  const identity = page.getByRole("button", { name: "Filter identity: All" });
-  await identity.click();
-  const choices = page.getByRole("listbox", { name: "Choose identity" });
+  const platform = page.getByRole("button", { name: "Filter platform: All" });
+  await platform.click();
+  const choices = page.getByRole("listbox", { name: "Choose platform" });
   await expect(choices).toBeVisible();
   const bounds = await choices.boundingBox();
   expect(bounds!.x).toBeGreaterThanOrEqual(8);
@@ -540,13 +544,13 @@ test("Headers survive errors/no point and popovers fit narrow viewports", async 
 test("Candidate failure keeps URL conditions until a successful retry", async ({ page }) => {
   const state = await fixture(page);
   state.failCandidates = true;
-  await page.goto(`/p/${portfolioId}/holdings/futures?identityId=${bn}`);
+  await page.goto(`/p/${portfolioId}/holdings/futures?platform=binance&identityId=${bn}`);
   await expect(page.getByRole("alert")).toContainText("Candidates unavailable");
   await expect(page).toHaveURL(new RegExp(`identityId=${bn}`));
   expect(state.requests).toHaveLength(0);
   state.failCandidates = false;
   await page.getByRole("button", { name: "Retry", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Filter identity: bn-main" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Filter identity: main" })).toBeEnabled();
   await expect.poll(() => state.requests.length).toBeGreaterThan(0);
 });
 

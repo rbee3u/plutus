@@ -18,31 +18,29 @@ export interface HoldingsFilterValues {
 }
 type FilterIdentity = Pick<Identity, "id" | "platform" | "displayName" | "status">;
 
-/** Reconcile configured candidates without silently assigning a platform. */
+/** Reconcile configured candidates with cascading platform-first dependency. */
 export function normalizeHoldingsSelection(
   values: HoldingsFilterValues,
   identities: FilterIdentity[],
 ): HoldingsFilterValues {
   const active = identities.filter((item) => item.status !== "archived");
-  const identity = active.find((item) => item.id === values.identityId);
   const platformValid = active.some((item) => item.platform === values.platform);
+  const platform = platformValid ? values.platform : "";
+  const identity = platform
+    ? active.find((item) => item.id === values.identityId && item.platform === platform)
+    : undefined;
   return {
     ...values,
+    platform,
     identityId: identity?.id ?? "",
-    platform:
-      platformValid && (!identity || identity.platform === values.platform) ? values.platform : "",
   };
 }
 
 export function holdingsCandidates(values: HoldingsFilterValues, identities: FilterIdentity[]) {
   const active = identities.filter((item) => item.status !== "archived");
   return {
-    platforms: new Set(
-      active
-        .filter((item) => !values.identityId || item.id === values.identityId)
-        .map((item) => item.platform),
-    ),
-    identities: active.filter((item) => !values.platform || item.platform === values.platform),
+    platforms: new Set(active.map((item) => item.platform)),
+    identities: values.platform ? active.filter((item) => item.platform === values.platform) : [],
   };
 }
 
@@ -178,7 +176,20 @@ export function useHoldingsFilters(portfolioId: string) {
     const symbol = pending.current;
     pending.current = null;
     composing.current = false;
-    update({ ...(symbol === null ? {} : { symbol: symbol.trim() }), ...next });
+    const nextPlatform = next.platform !== undefined ? next.platform : values.platform;
+    const nextIdentity =
+      next.identityId !== undefined
+        ? next.identityId
+        : next.platform !== undefined && next.platform !== values.platform
+          ? ""
+          : !nextPlatform
+            ? ""
+            : values.identityId;
+    update({
+      ...(symbol === null ? {} : { symbol: symbol.trim() }),
+      ...next,
+      identityId: nextIdentity,
+    });
     if (next.symbol !== undefined) setDraft({ source: next.symbol, value: next.symbol });
     setOpen(null);
   }

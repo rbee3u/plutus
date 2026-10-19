@@ -2,7 +2,7 @@ import { useParams } from "react-router";
 import { keys, listPositions } from "@/api";
 import type { PositionList } from "@/api";
 import { formatAmount } from "@/shared/lib/amount";
-import { platformLabel } from "@/shared/lib/usePlatforms";
+import { accountAlias, platformLabel } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { CompletenessBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
@@ -67,7 +67,7 @@ export function PositionsPage() {
         caption="Positions at the latest valuation point"
         columns={[
           ...holdingsAccountColumns(filters),
-          { key: "accountName", header: "Account", nowrap: true, width: "140px" },
+          { key: "accountName", header: "Account", nowrap: true, width: "100px" },
           ...POSITION_COLUMNS.map((column) =>
             column.key === "symbol"
               ? {
@@ -83,7 +83,7 @@ export function PositionsPage() {
           ...positionRow(item, data?.context.timezone),
           platform: platformLabel(filters.platforms.data?.items, item.platform),
           identityName: item.identityName,
-          accountName: item.accountName,
+          accountName: <span title={item.accountName}>{accountAlias(item.accountName)}</span>,
         }))}
         empty={
           query.isPending ? (

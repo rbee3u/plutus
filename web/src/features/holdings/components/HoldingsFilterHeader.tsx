@@ -13,6 +13,11 @@ export function HoldingsFilterHeader({
   filters: HoldingsFilters;
 }) {
   const search = filterKey === "symbol";
+  const isIdentity = filterKey === "identityId";
+  if (isIdentity && !filters.values.platform) {
+    return <span title="Select a platform first to choose an identity.">{label}</span>;
+  }
+  const disabled = search ? false : !filters.candidatesReady;
   const value = search ? filters.symbolDraft : filters.values[filterKey];
   const display = !value
     ? ""
@@ -32,7 +37,7 @@ export function HoldingsFilterHeader({
       display={display}
       active={Boolean(value)}
       open={filters.open === filterKey}
-      disabled={!search && !filters.candidatesReady}
+      disabled={disabled}
       type={search ? "search" : "select"}
       onToggle={() => filters.toggle(filterKey)}
       onClose={filters.close}
@@ -61,7 +66,7 @@ export function holdingsAccountColumns(filters?: HoldingsFilters): DataColumn[] 
       key: "platform",
       header: "Platform",
       nowrap: true,
-      width: "140px",
+      width: "95px",
       headerContent: filters ? (
         <HoldingsFilterHeader label="Platform" filterKey="platform" filters={filters} />
       ) : undefined,
@@ -70,7 +75,7 @@ export function holdingsAccountColumns(filters?: HoldingsFilters): DataColumn[] 
       key: "identityName",
       header: "Identity",
       nowrap: true,
-      width: "160px",
+      width: "115px",
       headerContent: filters ? (
         <HoldingsFilterHeader label="Identity" filterKey="identityId" filters={filters} />
       ) : undefined,

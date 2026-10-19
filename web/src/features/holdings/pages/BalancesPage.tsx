@@ -5,7 +5,7 @@ import { keys, listBalances } from "@/api";
 import type { BalanceList, Issue } from "@/api";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { formatAmount } from "@/shared/lib/amount";
-import { platformLabel } from "@/shared/lib/usePlatforms";
+import { accountAlias, platformLabel } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { ActionButton } from "@/shared/ui/ActionButton";
 import { CompletenessBadge } from "@/shared/ui/Badge";
@@ -95,7 +95,7 @@ export function BalancesPage() {
         caption="Balances"
         columns={[
           ...holdingsAccountColumns(filters),
-          { key: "accountName", header: "Account", nowrap: true, width: "140px" },
+          { key: "accountName", header: "Account", nowrap: true, width: "100px" },
           ...BALANCE_COLUMNS.map((column) =>
             column.key === "symbol"
               ? {
@@ -113,8 +113,8 @@ export function BalancesPage() {
           identityName: item.identityName,
           accountName:
             item.accountType === "manual" ? (
-              <span className={styles.inlineActionCell}>
-                <span>{item.accountName}</span>
+              <span className={styles.inlineActionCell} title={item.accountName}>
+                <span>{accountAlias(item.accountName)}</span>
                 {item.manualChange !== "deleted" ? (
                   <ManualActions
                     identityId={item.identityId}
@@ -124,7 +124,7 @@ export function BalancesPage() {
                 ) : null}
               </span>
             ) : (
-              item.accountName
+              <span title={item.accountName}>{accountAlias(item.accountName)}</span>
             ),
         }))}
         empty={

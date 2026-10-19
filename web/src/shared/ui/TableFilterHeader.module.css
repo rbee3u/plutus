@@ -109,6 +109,9 @@
 
 .trigger:disabled {
   cursor: default;
+}
+
+.trigger:disabled .icon {
   color: var(--control-disabled-ink);
 }
 

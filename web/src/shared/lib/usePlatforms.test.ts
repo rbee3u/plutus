@@ -1,6 +1,6 @@
 import type { Platform } from "@/api";
 import { describe, expect, it } from "vitest";
-import { marginModeLabel, structureLabel } from "./usePlatforms";
+import { accountAlias, marginModeLabel, structureLabel } from "./usePlatforms";
 
 const platforms: Pick<Platform, "id" | "name" | "adapterAvailable" | "accountStructures">[] = [
   {
@@ -120,4 +120,20 @@ describe("Identity structure labels", () => {
       expect(marginModeLabel(undefined, "okx", identifier, "okx_pm")).toBe("okx_pm");
     },
   );
+
+  it.each([
+    ["Portfolio margin", "Unified"],
+    ["Classic trading", "Classic"],
+    ["Unified account", "Unified"],
+    ["Unified Trading Account 2.0", "Unified"],
+    ["Separate wallets", "Classic"],
+    ["Unified wallet", "Unified"],
+    ["USDⓈ-M futures", "USDⓈ-M"],
+    ["COIN-M futures", "COIN-M"],
+    ["Dual investment", "Dual"],
+    ["Trading", "Trading"],
+    ["Earn", "Earn"],
+  ])("maps account name %s to compact alias %s", (name, expected) => {
+    expect(accountAlias(name)).toBe(expected);
+  });
 });

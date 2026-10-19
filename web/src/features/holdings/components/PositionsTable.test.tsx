@@ -5,6 +5,7 @@ import { DataTable } from "@/shared/ui/DataTable";
 import {
   POSITION_COLUMNS,
   contractDetailRows,
+  entryNotionalUsd,
   positionMarginDescription,
   positionRow,
 } from "./PositionsTable";
@@ -121,10 +122,8 @@ describe("shared position cells", () => {
       ["size", "Size"],
       ["entryPrice", "Entry price"],
       ["markPrice", "Mark price"],
-      ["liquidationPrice", "Liq. price"],
       ["unrealizedPnl", "Unrealized PnL"],
       ["margin", "Margin"],
-      ["notionalUsd", "Notional (USD)"],
       ["issues", "Issues"],
     ]);
     const row = positionRow(position, "Asia/Shanghai");
@@ -133,10 +132,8 @@ describe("shared position cells", () => {
       size: "-200 USD",
       entryPrice: "—",
       markPrice: "50,000",
-      liquidationPrice: "—",
       unrealizedPnl: "+0.000123457 BTC",
       margin: "0.002 BTC",
-      notionalUsd: "200",
       issues: "—",
     })) {
       const html = renderToStaticMarkup(<>{row[key]}</>);
@@ -144,6 +141,18 @@ describe("shared position cells", () => {
     }
     // Keep one composition check; named cells own the values and their placement.
     expect(render(position)).toContain("-200 USD");
+  });
+  it("derives entry notional in USD for linear and inverse contracts", () => {
+    expect(entryNotionalUsd({ ...position, entryPrice: null })).toBeNull();
+    expect(entryNotionalUsd({ ...position, entryPrice: "50000" })).toBe("200");
+    expect(
+      entryNotionalUsd({
+        ...position,
+        kind: "linear_perpetual",
+        size: "0.5",
+        entryPrice: "1000",
+      }),
+    ).toBe("500");
   });
   it("gives hedged sides distinct row keys and preserves stale and issue badges", () => {
     const short: PositionRow = {

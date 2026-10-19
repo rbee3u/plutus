@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { PositionRow } from "@/api";
 import {
   presentNumber,
+  formatAmount,
   formatDecimal,
   formatLeverage,
   parseDecimal,
@@ -23,10 +24,8 @@ export const POSITION_COLUMNS = [
   { key: "size", header: "Size", numeric: true, nowrap: true, width: "110px" },
   { key: "entryPrice", header: "Entry price", numeric: true, nowrap: true, width: "120px" },
   { key: "markPrice", header: "Mark price", numeric: true, nowrap: true, width: "120px" },
-  { key: "liquidationPrice", header: "Liq. price", numeric: true, nowrap: true, width: "120px" },
   { key: "unrealizedPnl", header: "Unrealized PnL", numeric: true, nowrap: true, width: "130px" },
   { key: "margin", header: "Margin", numeric: true, nowrap: true, width: "118px" },
-  { key: "notionalUsd", header: "Notional (USD)", numeric: true, nowrap: true, width: "130px" },
   { key: "issues", header: "Issues", nowrap: true, width: "100px" },
 ];
 
@@ -96,6 +95,42 @@ export function contractDetailRows(item: PositionRow, timezone?: string) {
   return rows;
 }
 
+export function entryNotionalUsd(item: PositionRow): string | null {
+  if (item.entryPrice == null) return null;
+  const size = parseDecimal(item.size);
+  if (!size) return null;
+  if (item.kind.startsWith("inverse_")) {
+    return size.abs().toFixed();
+  }
+  const price = parseDecimal(item.entryPrice);
+  if (!price || price.lte(0)) return null;
+  return size.abs().times(price).toFixed();
+}
+
+function priceCell(
+  price: string | null | undefined,
+  notionalValue: string | null | undefined,
+  label: string,
+  symbol: string,
+) {
+  if (price == null) {
+    return <span title="Price is unavailable.">—</span>;
+  }
+  const priceText = presentNumber(price, "price").text;
+  const notional = formatAmount(notionalValue);
+  const notionalText = notional === "—" ? "—" : `$${notional}`;
+  return (
+    <HoverDetails
+      label={<NumericText>{priceText}</NumericText>}
+      name={`${label} for ${symbol}: ${plainNumberText(priceText)}`}
+    >
+      <p>
+        <NumericText>{`Notional: ${notionalText}`}</NumericText>
+      </p>
+    </HoverDetails>
+  );
+}
+
 export function positionRow(item: PositionRow, timezone?: string): DataRow {
   const delivery = item.kind.endsWith("_delivery");
   const marginLabel =
@@ -136,9 +171,18 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
       </Badge>
     ),
     size: amountCell(item.size, item.sizeSymbol ?? null),
-    entryPrice: amountCell(item.entryPrice, undefined, "price"),
-    markPrice: amountCell(item.markPrice, undefined, "price"),
-    liquidationPrice: amountCell(item.liquidationPrice, undefined, "price"),
+    entryPrice: priceCell(
+      item.entryPrice,
+      entryNotionalUsd(item),
+      "Entry price details",
+      item.futuresSymbol,
+    ),
+    markPrice: priceCell(
+      item.markPrice,
+      item.notionalUsd,
+      "Mark price details",
+      item.futuresSymbol,
+    ),
     margin: (
       <HoverDetails
         className={shared.positionMarginTrigger}
@@ -151,7 +195,6 @@ export function positionRow(item: PositionRow, timezone?: string): DataRow {
       </HoverDetails>
     ),
     unrealizedPnl: pnlCell(item.unrealizedPnl, item.settlementAssetSymbol ?? null),
-    notionalUsd: amountCell(item.notionalUsd, undefined, "usd"),
     issues: (
       <ObservedCell
         observedAt={item.reportObservedAt}

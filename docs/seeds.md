@@ -26,12 +26,12 @@ seed horizon; History names those missing dates.
 ## Healthy walkthrough
 
 Identity names and account combinations borrow the shapes of a locally inspected
-production dump from October 11–13, 2026. Generic labels such as `bn-main`,
-`ok-main`, `by-main`, `kr-main`, `okxSum`, `okxCoinM`, `okxUsdM`, and `kkSum`
-are retained; personal sub-login labels become `bn-sub-01` through `bn-sub-04`.
-No production IDs, credentials, sessions, exact balances, or financial records
-are imported. The dump's roughly 57-hour history cannot establish the realism of
-three-month synthetic curves or long-term failure frequencies.
+production dump from October 11–13, 2026. Without exchange prefixes, generic
+labels such as `main`, `sum`, `coinM`, and `usdM` are retained; personal
+sub-login labels become `sub-01` through `sub-04`. No production IDs, credentials,
+sessions, exact balances, or financial records are imported. The dump's roughly
+57-hour history cannot establish the realism of three-month synthetic curves or
+long-term failure frequencies.
 
 `default` has four Binance portfolio margin logins, one Binance classic login,
 four OKX logins (one portfolio margin and three Multi-currency margin), one
@@ -48,7 +48,7 @@ Binance classic USDⓈ-M and COIN-M wallets, the OKX USDⓈ-M wallet, Bybit unif
 and Kraken Coin-M, all with expiry ahead of the anchor. Most earn descriptions
 are flexible product aggregates; Kraken retains strategy granularity and
 bonded/timed descriptions. Dual has just two current BTC/USDT subscriptions
-under `okxSum`, with 120 USDT and 0.002 BTC principal. Other selected dual
+under `sum`, with 120 USDT and 0.002 BTC principal. Other selected dual
 wallets are empty. Optional measures stay unknown where the simulated platform
 does not supply them.
 
@@ -60,17 +60,17 @@ capital or Activity; History labels use the portfolio timezone.
 
 | When            | Event                                                         | Expected result                                                           |
 | --------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| D−60 days       | `bn-sub-04` Spot receives 0.1 BTC                             | A valued contribution offsets the increase in value change                |
-| D−30 days       | `bn-sub-04` funding receives 5,000 USDT                       | Capital records the contribution                                          |
-| D−8 to D−4 days | A historical SOL hedge opens and closes in `bn-sub-04` USDⓈ-M | The position disappears after success; realized PnL remains in collateral |
+| D−60 days       | `sub-04` Spot receives 0.1 BTC                                | A valued contribution offsets the increase in value change                |
+| D−30 days       | `sub-04` funding receives 5,000 USDT                          | Capital records the contribution                                          |
+| D−8 to D−4 days | A historical SOL hedge opens and closes in `sub-04` USDⓈ-M    | The position disappears after success; realized PnL remains in collateral |
 | D−6 to D−5 days | Temporary Bybit outage                                        | Historical reports are stale; current Bybit is healthy                    |
-| D−5 days        | `bn-sub-04` funding withdraws 1,000 USDC                      | Capital records the withdrawal                                            |
+| D−5 days        | `sub-04` funding withdraws 1,000 USDC                         | Capital records the withdrawal                                            |
 | D−3 days        | 750 USDT moves funding → Spot                                 | Total principal is unchanged; no capital flow is invented                 |
-| D−3 days        | `bn-sub-04` earn/dual terms return principal                  | 400/200 USDT returns to funding after the product rows disappear          |
+| D−3 days        | `sub-04` earn/dual terms return principal                     | 400/200 USDT returns to funding after the product rows disappear          |
 | D−3 days        | Bybit changes cross → portfolio margin                        | Historical reports retain their observed regime                           |
-| D−2 days        | `bn-retired` is archived                                      | Earlier holdings and boundary withdrawals remain in History               |
+| D−2 days        | `retired` is archived                                         | Earlier holdings and boundary withdrawals remain in History               |
 
-Only `bn-sub-04` owns the scripted investment and transfer events. Ordinary
+Only `sub-04` owns the scripted investment and transfer events. Ordinary
 rolling cohorts keep entry and subscription dates stable; bounded price waves
 repeat at close/reopen boundaries. Long-term curves and all scripted financial
 events are synthetic.

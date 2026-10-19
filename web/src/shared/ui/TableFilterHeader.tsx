@@ -17,6 +17,7 @@ export interface TableFilterHeaderProps {
   active: boolean;
   open: boolean;
   disabled?: boolean;
+  title?: string;
   type?: "select" | "search";
   onToggle: () => void;
   onClose: () => void;
@@ -43,6 +44,7 @@ export function TableFilterHeader({
   active,
   open,
   disabled = false,
+  title,
   type = "select",
   onToggle,
   onClose,
@@ -157,6 +159,7 @@ export function TableFilterHeader({
         ref={anchor}
         type="button"
         className={`${styles.trigger} ${active ? styles.active : ""}`}
+        title={title}
         aria-label={
           isSearch
             ? active && display

@@ -108,3 +108,20 @@ export function marginModeLabel(
   }
   return null;
 }
+
+const ACCOUNT_NAME_ALIASES: Record<string, string> = {
+  "Portfolio margin": "Unified",
+  "Classic trading": "Classic",
+  "Unified account": "Unified",
+  "Unified Trading Account 2.0": "Unified",
+  "Separate wallets": "Classic",
+  "Unified wallet": "Unified",
+  "USDⓈ-M futures": "USDⓈ-M",
+  "COIN-M futures": "COIN-M",
+  "Dual investment": "Dual",
+};
+
+/** Compact account structure alias for dense table presentation. */
+export function accountAlias(accountName: string): string {
+  return ACCOUNT_NAME_ALIASES[accountName] ?? accountName;
+}

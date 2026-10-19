@@ -221,9 +221,10 @@ search. Headers remain interactive during loading, failure, and empty results,
 with keyboard access and unclipped popovers.
 
 Platform and identity candidates are the portfolio's non-archived identities in
-shared order. Each list is constrained by the other selection; symbol search
-does not affect candidates. All is independent: choosing an identity does not
-choose its platform. Clearing one filter preserves others; Clear filters resets
+shared order. Platform is the top-level selector; selecting a platform unlocks
+Identity to filter non-archived identities within that platform. When Platform
+is All, Identity renders as a plain text header without dropdown controls.
+Clearing or switching the platform resets Identity to All. Clear filters resets
 all three. Filter changes restart pagination.
 
 Symbol search is a case-insensitive literal substring with surrounding
@@ -234,8 +235,9 @@ Earn searches invested asset and canonical asset symbols, retaining a matching
 multi-asset position as one whole row. Balance flat lists have no grouping
 option.
 
-Successful candidate reads reconcile invalid URL selections to All. If a valid
-identity conflicts with a platform, keep identity and reset platform to All.
+Successful candidate reads reconcile invalid URL selections to All. If an
+identity is specified without a platform or conflicts with the selected
+platform, clear identity to All while keeping the valid platform.
 Loading or failed candidate reads cannot prove a selection invalid. Configured
 candidates may yield no holdings, but stay stable during searches and collection
 failures; URL correction can deliberately widen results.
@@ -287,8 +289,10 @@ earlier holdings were retained.
 
 Global and account tables share columns, units, numeric policy, and provenance.
 Account and historical details omit ownership columns already established by
-their context. Tables scroll horizontally where needed. Pointer hover, keyboard
-focus, and click/touch disclosures expose the same supporting information.
+their context. In global tables, Account uses compact structure aliases with
+their full names preserved in disclosures. Tables scroll horizontally where
+needed. Pointer hover, keyboard focus, and click/touch disclosures expose the
+same supporting information.
 
 ### Balances
 
@@ -306,8 +310,12 @@ position-style row issue counts.
 ### Futures
 
 Columns are `Platform`, `Identity`, `Account`, `Symbol`, `Side`, `Size`,
-`Entry price`, `Mark price`, `Liq. price`, `Unrealized PnL`, `Margin`,
-`Notional (USD)`, and `Issues`.
+`Entry price`, `Mark price`, `Unrealized PnL`, `Margin`, and `Issues`.
+
+Entry price and mark price disclose their corresponding USD notional in a
+`Notional: $...` popover on hover, focus, or click when their price is
+available. Missing prices display a static `—` without popovers; unavailable
+notionals display `Notional: —`.
 
 Symbol disclosures reuse the Catalog futures values in column order: base,
 quote, settle, delivery expiry as a portfolio-local time without a timezone
