@@ -100,13 +100,18 @@ export function formatRelativeTime(
   return dateFormatter(timeZone).format(date);
 }
 
-function wallTimeValue(date: Date, format: Intl.DateTimeFormat): string {
+function wallTimeValue(date: Date, format: Intl.DateTimeFormat, includeSeconds = false): string {
   const parts = format.formatToParts(date);
   const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${value("year").padStart(4, "0")}-${value("month")}-${value("day")}T${value("hour")}:${value("minute")}:${value("second")}`;
+  const base = `${value("year").padStart(4, "0")}-${value("month")}-${value("day")}T${value("hour")}:${value("minute")}`;
+  return includeSeconds ? `${base}:${value("second")}` : base;
 }
 
-export function toDatetimeLocalValue(iso: string | null | undefined, timeZone?: string): string {
+export function toDatetimeLocalValue(
+  iso: string | null | undefined,
+  timeZone?: string,
+  includeSeconds = false,
+): string {
   if (!iso) {
     return "";
   }
@@ -114,14 +119,17 @@ export function toDatetimeLocalValue(iso: string | null | undefined, timeZone?: 
   if (Number.isNaN(date.getTime())) {
     return "";
   }
-  if (timeZone) return wallTimeValue(date, formatter(timeZone, true));
+  if (timeZone) return wallTimeValue(date, formatter(timeZone, includeSeconds), includeSeconds);
   const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  const base = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return includeSeconds ? `${base}:${pad(date.getSeconds())}` : base;
 }
 
 export function fromDatetimeLocalValue(value: string, timeZone?: string): string {
+  const trimmed = value.trim();
+  const normalized = trimmed.includes(" ") ? trimmed.replace(" ", "T") : trimmed;
   if (timeZone) {
-    const wall = value.length === 16 ? `${value}:00` : value;
+    const wall = normalized.length === 16 ? `${normalized}:00` : normalized;
     const date = new Date(`${wall}Z`);
     if (
       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(wall) ||
@@ -137,11 +145,11 @@ export function fromDatetimeLocalValue(value: string, timeZone?: string): string
     // cannot silently choose an instant, including half-hour clock transitions.
     for (let hour = -48; hour <= 48; hour++) {
       const instant = date.getTime() + hour * 3_600_000;
-      offsets.add(Date.parse(`${wallTimeValue(new Date(instant), format)}Z`) - instant);
+      offsets.add(Date.parse(`${wallTimeValue(new Date(instant), format, true)}Z`) - instant);
     }
     const matches = [...offsets]
       .map((offset) => new Date(date.getTime() - offset))
-      .filter((candidate) => wallTimeValue(candidate, format) === wall);
+      .filter((candidate) => wallTimeValue(candidate, format, true) === wall);
     if (matches.length === 0) {
       throw new Error(`This local time does not exist in ${timeZone}; choose another time.`);
     }
@@ -152,7 +160,7 @@ export function fromDatetimeLocalValue(value: string, timeZone?: string): string
     }
     return matches[0].toISOString();
   }
-  const date = new Date(value);
+  const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) {
     throw new Error("Enter a valid date and time.");
   }
@@ -170,12 +178,34 @@ export function isoFromLocalInput(value: string): string | undefined {
   }
 }
 
+/** Normalizes complete local wall times to minutes, preserving unfinished input. */
+export function toDateTimeDisplay(value: string | null | undefined): string {
+  if (!value) return "";
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::[0-5]\d(?:\.\d+)?)?$/);
+  if (match) {
+    return `${match[1]} ${match[2]}`;
+  }
+  return value;
+}
+
+/** Converts a local wall-time string (e.g. `2026-10-11 03:30`) to ISO datetime-local format `2026-10-11T03:30`. */
+export function toDateTimeIso(value: string | null | undefined): string {
+  if (!value) return "";
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
+  if (match) {
+    return `${match[1]}T${match[2]}`;
+  }
+  return "";
+}
+
 /** Extracts a valid YYYY-MM-DD date string from a date or datetime-local value. */
 export function normalizeDateInput(value: string | null | undefined): string {
   if (!value) {
     return "";
   }
-  const dateStr = value.includes("T") ? value.split("T")[0] : value;
+  const dateStr = value.trim().split(/[ T]/)[0] ?? "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     return "";
   }

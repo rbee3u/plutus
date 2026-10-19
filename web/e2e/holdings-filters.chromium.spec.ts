@@ -497,7 +497,7 @@ test("Unsupported parameters are excluded and invalid selections normalize after
       (url) =>
         !url.searchParams.has("accountId") &&
         !url.searchParams.has("groupBy") &&
-        !url.searchParams.has("platform"),
+        !url.searchParams.has("identityId"),
     ),
   ).toBe(true);
   await page.goto(`/p/${portfolioId}/holdings/futures?identityId=malformed`);

@@ -386,11 +386,13 @@ updated item. Capital flow deletion conflicts close the confirmation and require
 reviewing the updated list before a new confirmation.
 
 Capital flow time inputs show and interpret wall times in the portfolio's
-timezone, with the timezone stated beside the input. Reject nonexistent or
-ambiguous replacement times, as for
-[history windows](#history-windows-and-tables). Unchanged times preserve the
-stored instant and its precision, including during a clock transition; editing
-another field does not reinterpret that instant.
+timezone at minute-level precision (`YYYY-MM-DD HH:mm`) with a calendar picker,
+with the timezone stated beside the input. Reject nonexistent or ambiguous
+replacement times, as for [history windows](#history-windows-and-tables). Typed
+drafts retain unfinished text. Complete input containing seconds is normalized
+to minutes in both the displayed value and submitted draft. Unchanged times
+preserve the stored instant and its precision, including during a clock
+transition; editing another field does not reinterpret that instant.
 
 ## Browser refresh and scrolling
 
@@ -465,7 +467,9 @@ The `Valuation points` view shows filters, the full-window chart,
 `Period closes`, then raw points. Period closes shares the window. Both calendar
 views initially use Day for day/week shortcuts, Week for 1M, and Month for 3M or
 6M. Users can override the period; applying a custom window retains it. Calendar
-reads calculate whole intersecting periods, not clipped intervals.
+reads calculate whole intersecting periods, not clipped intervals. Shared time
+window filters provide shortcut presets and minute-level custom ranges
+(`YYYY-MM-DD HH:mm`) with calendar pickers in the portfolio timezone.
 
 Value changes places a range summary below the shared time filters, before its
 chart and table. It updates automatically for the applied window, independently
@@ -482,9 +486,9 @@ periods and their changes may not sum to the range summary. Endpoint selection
 and calculation rules belong to
 [domain rules](./domain-rules.md#calendar-periods).
 
-Period closes columns are `Period`, `Close (USD)`, `Change`, and `Issues`. Raw
-valuation points columns are `Evaluated at`, `Total (USD)`, `Change`, and
-`Issues`. Value changes columns are `Period`, `Value change (USD)`,
+Period closes columns are `Period`, `Close (USD)`, `Change (USD)`, and `Issues`.
+Raw valuation points columns are `Evaluated at`, `Total (USD)`, `Change (USD)`,
+and `Issues`. Value changes columns are `Period`, `Value change (USD)`,
 `Close (USD)`, `Flows`, and `Issues`. Point-to-point and period-to-period
 movements display directional amounts and percentages. Change retains the
 known-total difference when either endpoint valuation point is incomplete, with

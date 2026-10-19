@@ -1,0 +1,60 @@
+.container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input {
+  width: 100%;
+  padding-right: 36px;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.pickerButton {
+  position: absolute;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.pickerButton:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--surface-hover);
+}
+
+.pickerButton:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -1px;
+}
+
+.pickerButton:disabled {
+  color: var(--control-disabled-ink);
+  cursor: default;
+}
+
+.hiddenPicker {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  bottom: 0;
+  right: 4px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}

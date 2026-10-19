@@ -65,7 +65,13 @@ func subtractHistoryMonths(t time.Time, months int) time.Time {
 
 // Test both surrounding offsets: time.ParseInLocation alone silently resolves gaps and folds.
 func parseHistoryLocal(value string, loc *time.Location) (time.Time, error) {
-	wall, err := time.Parse("2006-01-02T15:04", value)
+	wall, err := time.Parse("2006-01-02 15:04", value)
+	if err != nil {
+		wall, err = time.Parse("2006-01-02T15:04", value)
+	}
+	if err != nil {
+		wall, err = time.Parse("2006-01-02 15:04:05", value)
+	}
 	if err != nil {
 		wall, err = time.Parse("2006-01-02T15:04:05", value)
 	}

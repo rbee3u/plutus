@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { ActionButton } from "@/shared/ui/ActionButton";
-import { TextInput } from "@/shared/ui/FormControls";
+import { DateTimeInput } from "@/shared/ui/DateTimeInput";
 import { RequestRecovery } from "@/shared/ui/QueryRecovery";
 import {
   TIME_WINDOW_PRESETS,
@@ -88,22 +88,22 @@ function DateRangeForm({ state }: { state: TimeWindowState }) {
     <form className={styles.rangeForm} onSubmit={submit}>
       <label className={styles.rangeField}>
         <span className={styles.rangeLabel}>From</span>
-        <TextInput
-          type="datetime-local"
-          step="1"
+        <DateTimeInput
           required
+          aria-label="From"
+          className={styles.rangeInput}
           value={from}
-          onChange={(event) => setFrom(event.target.value)}
+          onChange={setFrom}
         />
       </label>
       <label className={styles.rangeField}>
         <span className={styles.rangeLabel}>To</span>
-        <TextInput
-          type="datetime-local"
-          step="1"
+        <DateTimeInput
           required
+          aria-label="To"
+          className={styles.rangeInput}
           value={to}
-          onChange={(event) => setTo(event.target.value)}
+          onChange={setTo}
         />
       </label>
       <div className={styles.rangeActions}>

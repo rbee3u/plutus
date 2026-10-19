@@ -16,7 +16,16 @@ export const VALUE_CHANGE_COLUMNS = [
   { key: "issues", header: "Issues", width: "120px" },
 ];
 
-export function valueChangeCell(amount: string | null | undefined, startAmount?: string | null) {
+export interface ValueChangeCellOptions {
+  /** When true, formats with currency prefix ('+$' or '-$') for summaries and badges. */
+  adorned?: boolean;
+}
+
+export function valueChangeCell(
+  amount: string | null | undefined,
+  startAmount?: string | null,
+  options?: ValueChangeCellOptions,
+) {
   const parsed = parseDecimal(amount);
   if (!parsed) {
     return <span className={shared.muted}>—</span>;
@@ -24,6 +33,7 @@ export function valueChangeCell(amount: string | null | undefined, startAmount?:
   const isPositive = parsed.gt(0);
   const isNegative = parsed.lt(0);
   const sign = isPositive ? "+" : isNegative ? "-" : "";
+  const currency = options?.adorned ? "$" : "";
   const className = isPositive
     ? shared.pnlPositive
     : isNegative
@@ -40,7 +50,7 @@ export function valueChangeCell(amount: string | null | undefined, startAmount?:
 
   return (
     <span className={className}>
-      <NumericText>{`${sign}$${formatAmount(parsed.abs().toFixed())}${pctText}`}</NumericText>
+      <NumericText>{`${sign}${currency}${formatAmount(parsed.abs().toFixed())}${pctText}`}</NumericText>
     </span>
   );
 }

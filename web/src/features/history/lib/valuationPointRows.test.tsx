@@ -57,7 +57,8 @@ describe("valuationPointRows", () => {
       ];
       for (const row of rows) {
         const html = renderToStaticMarkup(<>{row.change}</>);
-        expect(html).toContain("+$61,560.29");
+        expect(html).toContain("+61,560.29");
+        expect(html).not.toContain("+$");
         expect(html).toContain("(+589.69%)");
         expect(html.includes("Incomplete")).toBe(affected.length > 0);
         for (const endpoint of ["previous", "current"] as const) {
@@ -85,7 +86,7 @@ describe("valuationPointRows", () => {
     expect(PERIOD_CLOSE_COLUMNS.map((col) => col.header)).toEqual([
       "Period",
       "Close (USD)",
-      "Change",
+      "Change (USD)",
       "Issues",
     ]);
   });
@@ -94,7 +95,7 @@ describe("valuationPointRows", () => {
     expect(RAW_POINT_COLUMNS.map((col) => col.header)).toEqual([
       "Evaluated at",
       "Total (USD)",
-      "Change",
+      "Change (USD)",
       "Issues",
       "",
     ]);
@@ -102,15 +103,18 @@ describe("valuationPointRows", () => {
 
   it("formats deltaChangeCell with percentage and directional coloring", () => {
     const htmlPositive = renderToStaticMarkup(deltaChangeCell("132055.51", "131989.18"));
-    expect(htmlPositive).toContain("+$66.33");
+    expect(htmlPositive).toContain("+66.33");
+    expect(htmlPositive).not.toContain("+$");
     expect(htmlPositive).toContain("(+0.05025%)");
 
     const htmlNegative = renderToStaticMarkup(deltaChangeCell("131314.37", "131975.42"));
-    expect(htmlNegative).toContain("-$661.05");
+    expect(htmlNegative).toContain("-661.05");
+    expect(htmlNegative).not.toContain("-$");
     expect(htmlNegative).toContain("(-0.5009%)");
 
     const htmlZero = renderToStaticMarkup(deltaChangeCell("100.00", "100.00"));
-    expect(htmlZero).toContain("$0 (0%)");
+    expect(htmlZero).toContain("0 (0%)");
+    expect(htmlZero).not.toContain("$0");
 
     const htmlBlank = renderToStaticMarkup(deltaChangeCell("100.00", null));
     expect(htmlBlank).toContain("—");

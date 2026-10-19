@@ -22,15 +22,31 @@ describe("valueChangeRows", () => {
 
   it("formats valueChangeCell with percentage when startAmount is available", () => {
     const htmlPositive = renderToStaticMarkup(valueChangeCell("497.46", "131558.05"));
-    expect(htmlPositive).toContain("+$497.46");
+    expect(htmlPositive).toContain("+497.46");
+    expect(htmlPositive).not.toContain("+$");
     expect(htmlPositive).toContain("(+0.3781%)");
 
     const htmlNegative = renderToStaticMarkup(valueChangeCell("-661.05", "131975.42"));
-    expect(htmlNegative).toContain("-$661.05");
+    expect(htmlNegative).toContain("-661.05");
+    expect(htmlNegative).not.toContain("-$");
     expect(htmlNegative).toContain("(-0.5009%)");
 
     const htmlBlank = renderToStaticMarkup(valueChangeCell(null));
     expect(htmlBlank).toContain("—");
+  });
+
+  it("formats valueChangeCell with currency prefix when adorned option is enabled", () => {
+    const htmlPositive = renderToStaticMarkup(
+      valueChangeCell("497.46", "131558.05", { adorned: true }),
+    );
+    expect(htmlPositive).toContain("+$497.46");
+    expect(htmlPositive).toContain("(+0.3781%)");
+
+    const htmlNegative = renderToStaticMarkup(
+      valueChangeCell("-661.05", "131975.42", { adorned: true }),
+    );
+    expect(htmlNegative).toContain("-$661.05");
+    expect(htmlNegative).toContain("(-0.5009%)");
   });
 
   it("formats combinedFlowsCell silently when no flows exist", () => {
@@ -168,6 +184,9 @@ describe("valueChangeRows", () => {
     const row = valueChangeRow(item, "UTC");
     expect(row.id).toBe("day-2026-10-09T00:00:00Z");
     expect(row.amountUsd).toBeDefined();
+    const amountHtml = renderToStaticMarkup(row.amountUsd as React.ReactElement);
+    expect(amountHtml).toContain("+5,000");
+    expect(amountHtml).not.toContain("+$");
     expect(row.end).toBeDefined();
     expect(row.flows).toBeDefined();
     expect(row.issues).toBeDefined();

@@ -177,7 +177,7 @@ for (const action of ["create", "edit", "delete"] as const) {
       const dialog = page.getByRole("dialog");
       await dialog.getByLabel("Asset", { exact: true }).fill("USD");
       await dialog.getByLabel("Quantity", { exact: true }).fill("150");
-      await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-13T12:00");
+      await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-13 12:00");
       await dialog.getByLabel("Note", { exact: true }).fill("New flow");
       await dialog.getByRole("button", { name: "Record flow", exact: true }).click();
     } else {
@@ -190,7 +190,7 @@ for (const action of ["create", "edit", "delete"] as const) {
         .click();
       const dialog = page.getByRole("dialog");
       if (action === "edit") {
-        await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-13T12:00");
+        await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-13 12:00");
         await dialog.getByLabel("Note", { exact: true }).fill("Updated flow");
         await dialog.getByRole("button", { name: "Save flow", exact: true }).click();
       } else {
@@ -333,7 +333,7 @@ test("Capital flow edits use the JSON baseline and explicitly reload conflicts",
   state.failRead = false;
   await dialog.getByRole("button", { name: "Reload latest flow" }).click();
   await expect(dialog.getByLabel("Quantity", { exact: true })).toHaveValue("200");
-  await expect(dialog.getByLabel("Effective at", { exact: true })).toHaveValue("2026-10-11T03:30");
+  await expect(dialog.getByLabel("Effective at", { exact: true })).toHaveValue("2026-10-11 03:30");
   await dialog.getByLabel("Quantity", { exact: true }).fill("250");
   await dialog.getByRole("button", { name: "Save flow" }).click();
   await expect(dialog).toBeHidden();
@@ -342,7 +342,24 @@ test("Capital flow edits use the JSON baseline and explicitly reload conflicts",
   expect(state.updates[0]).not.toHaveProperty("effectiveAt");
 });
 
-test("Capital flow create and edit use the portfolio timezone instead of browser UTC", async ({
+test("Capital flow time can be typed from an empty field", async ({ page }) => {
+  const state = await fixture(page);
+  await page.getByRole("button", { name: "Record flow", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Asset", { exact: true }).fill("USD");
+  await dialog.getByLabel("Quantity", { exact: true }).fill("10");
+  const input = dialog.getByLabel("Effective at", { exact: true });
+  await input.fill("");
+  await input.pressSequentially("2026-10-13 ");
+  await expect(input).toHaveValue("2026-10-13 ");
+  await input.pressSequentially("12:00");
+  await expect(input).toHaveValue("2026-10-13 12:00");
+  await dialog.getByRole("button", { name: "Record flow", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect(state.creates[0]?.effectiveAt).toBe("2026-10-13T12:00:00.000Z");
+});
+
+test("Capital flow create and edit use portfolio-local minutes and preserve unchanged instants", async ({
   page,
 }) => {
   const state = await fixture(page, {
@@ -353,27 +370,27 @@ test("Capital flow create and edit use the portfolio timezone instead of browser
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByLabel("Asset", { exact: true })).toHaveValue("USD");
   await expect(dialog.getByText("Timezone: Europe/Berlin", { exact: true })).toBeVisible();
-  await expect(dialog.getByLabel("Effective at", { exact: true })).toHaveValue(
-    "2026-10-11T03:30:12",
-  );
+  await expect(dialog.getByLabel("Effective at", { exact: true })).toHaveValue("2026-10-11 03:30");
   await dialog.getByLabel("Note", { exact: true }).fill("Reviewed");
   await dialog.getByRole("button", { name: "Save flow" }).click();
   await expect(dialog).toBeHidden();
   expect(state.updates[0]).not.toHaveProperty("effectiveAt");
   expect(state.flow?.effectiveAt).toBe("2026-10-11T01:30:12.123456Z");
   await openFlowAction(page, "Edit");
-  await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-11T04:30:12");
+  await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-11 04:30:42");
+  await expect(dialog.getByLabel("Effective at", { exact: true })).toHaveValue("2026-10-11 04:30");
   await dialog.getByRole("button", { name: "Save flow" }).click();
   await expect(dialog).toBeHidden();
-  expect(state.flow?.effectiveAt).toBe("2026-10-11T02:30:12.000Z");
+  expect(state.flow?.effectiveAt).toBe("2026-10-11T02:30:00.000Z");
   await page.getByRole("button", { name: "Record flow", exact: true }).click();
   await dialog.getByLabel("Asset", { exact: true }).fill("USDT");
   await dialog.getByLabel("Quantity", { exact: true }).fill("10");
   await dialog.getByLabel("Value (USD, optional)", { exact: true }).fill("10");
-  await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-11T07:30:12");
+  await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-11T07:30:42.123456");
+  await expect(dialog.getByLabel("Effective at", { exact: true })).toHaveValue("2026-10-11 07:30");
   await dialog.getByRole("button", { name: "Record flow", exact: true }).click();
   await expect(dialog).toBeHidden();
-  expect(state.creates[0]?.effectiveAt).toBe("2026-10-11T05:30:12.000Z");
+  expect(state.creates[0]?.effectiveAt).toBe("2026-10-11T05:30:00.000Z");
 });
 
 test("Capital flow note edits preserve fold instants and reject ambiguous replacement times", async ({
@@ -389,7 +406,7 @@ test("Capital flow note edits preserve fold instants and reject ambiguous replac
   expect(state.updates[0]).not.toHaveProperty("effectiveAt");
   expect(state.flow?.effectiveAt).toBe(instant);
   await openFlowAction(page, "Edit");
-  await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-25T02:45");
+  await dialog.getByLabel("Effective at", { exact: true }).fill("2026-10-25 02:45");
   await dialog.getByRole("button", { name: "Save flow" }).click();
   await expect(dialog.getByRole("alert")).toContainText("ambiguous in Europe/Berlin");
   expect(state.updates).toHaveLength(1);

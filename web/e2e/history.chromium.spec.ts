@@ -58,8 +58,8 @@ async function fixture(page: Page) {
       const localFrom = params.get("fromLocal");
       const localTo = params.get("toLocal");
       if (localFrom && localTo) {
-        const start = new Date(`${localFrom}+08:00`);
-        const end = new Date(`${localTo}+08:00`);
+        const start = new Date(`${localFrom.trim().replace(" ", "T")}+08:00`);
+        const end = new Date(`${localTo.trim().replace(" ", "T")}+08:00`);
         if (start >= end)
           await route.fulfill({
             status: 400,
@@ -231,7 +231,7 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
     "aria-pressed",
     "true",
   );
-  await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-09-27T12:16:44");
+  await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-09-27 12:16");
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
   await expect(rawTable(page).locator("tbody > tr").first()).toContainText("100,560");
   await expect(pager(page, "Raw valuation points")).toContainText("1–20 of 561");
@@ -280,18 +280,23 @@ test("Date drafts apply once; custom endpoints survive reload, presets reanchor"
   await page.goto(historyPath);
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
   const count = state.requests.length;
-  await page.getByLabel("From", { exact: true }).fill("2026-09-01T12:00");
-  await page.getByLabel("To", { exact: true }).fill("2026-10-01T12:00");
+  await page.getByLabel("From", { exact: true }).fill("");
+  await page.getByLabel("From", { exact: true }).pressSequentially("2026-09-01 12:00");
+  await page.getByLabel("To", { exact: true }).fill("2026-10-01 12:00:42.123456");
+  await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-10-01 12:00");
   expect(state.requests).toHaveLength(count);
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page).toHaveURL(/from=2026-09-01T04/);
+  const applied = state.requests.find((url) => url.searchParams.has("fromLocal"))!;
+  expect(applied.searchParams.get("fromLocal")).toBe("2026-09-01 12:00");
+  expect(applied.searchParams.get("toLocal")).toBe("2026-10-01 12:00");
   await expect(page.getByRole("button", { name: "1W", exact: true })).toHaveAttribute(
     "aria-pressed",
     "false",
   );
   await page.reload();
-  await expect(page.getByLabel("From", { exact: true })).toHaveValue(/2026-09-01T12:00(:00)?/);
-  await page.getByLabel("From", { exact: true }).fill("2026-10-02T12:00");
+  await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-09-01 12:00");
+  await page.getByLabel("From", { exact: true }).fill("2026-10-02 12:00");
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("The end must be after the start.");
   await expect(page).toHaveURL(/from=2026-09-01T04/);
@@ -299,7 +304,7 @@ test("Date drafts apply once; custom endpoints survive reload, presets reanchor"
   await expect(page.getByText(/ · Hourly$/)).toBeVisible();
   state.now = "2026-10-05T04:16:44Z";
   await page.reload();
-  await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-10-05T12:16:44");
+  await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-10-05 12:16");
   await expect(page.getByRole("button", { name: "1W", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -345,8 +350,8 @@ test("Value changes shares the applied range with its summary, independently of 
   await expect(summary).toContainText("at 2026-09-04 12:15");
   await expect(pager(page, "Value changes")).toContainText("1–20 of 42");
   const appliedReads = state.requests.filter((url) => url.pathname.endsWith("/range")).length;
-  await page.getByLabel("From", { exact: true }).fill("2026-09-01T13:00");
-  await page.getByLabel("To", { exact: true }).fill("2026-10-01T15:00");
+  await page.getByLabel("From", { exact: true }).fill("2026-09-01 13:00");
+  await page.getByLabel("To", { exact: true }).fill("2026-10-01 15:00");
   expect(state.requests.filter((url) => url.pathname.endsWith("/range"))).toHaveLength(
     appliedReads,
   );

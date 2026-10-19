@@ -4,11 +4,16 @@ import { createCapitalFlow, getCapitalFlow, patchCapitalFlow, problemMessage } f
 import { usePlatforms } from "@/shared/lib/usePlatforms";
 import type { CapitalFlow } from "@/api";
 import type { AccountOption } from "@/shared/lib/useIdentities";
-import { fromDatetimeLocalValue, toDatetimeLocalValue } from "@/shared/lib/datetime";
+import {
+  fromDatetimeLocalValue,
+  toDateTimeDisplay,
+  toDatetimeLocalValue,
+} from "@/shared/lib/datetime";
 import { newIdempotencyKey } from "@/shared/lib/id";
 import { parseDecimal } from "@/shared/lib/amount";
 import { useSessionScope } from "@/shared/lib/session";
 import { ActionButton } from "@/shared/ui/ActionButton";
+import { DateTimeInput } from "@/shared/ui/DateTimeInput";
 import { Dialog } from "@/shared/ui/Dialog";
 import { Select, TextArea, TextInput } from "@/shared/ui/FormControls";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
@@ -35,7 +40,7 @@ function newEmptyForm(timezone: string): FlowFields {
     canonicalAssetSymbol: "",
     quantity: "",
     valueUsd: "",
-    effectiveAt: toDatetimeLocalValue(new Date().toISOString(), timezone),
+    effectiveAt: toDateTimeDisplay(toDatetimeLocalValue(new Date().toISOString(), timezone)),
     accountId: "",
     pricingPlatform: "",
     note: "",
@@ -48,7 +53,7 @@ function formFromFlow(item: CapitalFlow, timezone: string): FlowFields {
     canonicalAssetSymbol: item.canonicalAssetSymbol,
     quantity: item.quantity,
     valueUsd: item.pricingMethod === "explicit" ? (item.valueUsd ?? "") : "",
-    effectiveAt: toDatetimeLocalValue(item.effectiveAt, timezone),
+    effectiveAt: toDateTimeDisplay(toDatetimeLocalValue(item.effectiveAt, timezone)),
     accountId: item.accountId ?? "",
     pricingPlatform: item.pricingPlatform ?? "",
     note: item.note ?? "",
@@ -160,7 +165,9 @@ function FlowForm({
     setError(null);
     try {
       const timeChanged =
-        !baseline || form.effectiveAt !== toDatetimeLocalValue(baseline.effectiveAt, timezone);
+        !baseline ||
+        form.effectiveAt !==
+          toDateTimeDisplay(toDatetimeLocalValue(baseline.effectiveAt, timezone));
       const effectiveAt = timeChanged
         ? fromDatetimeLocalValue(form.effectiveAt, timezone)
         : baseline.effectiveAt;
@@ -311,14 +318,12 @@ function FlowForm({
       <div className={styles.formRow2}>
         <div className={shared.field}>
           <label htmlFor={effectiveAtId}>Effective at</label>
-          <TextInput
+          <DateTimeInput
             id={effectiveAtId}
             disabled={busy}
-            type="datetime-local"
-            step="1"
             aria-describedby={`${valueId}-timezone`}
             value={form.effectiveAt}
-            onChange={(event) => set({ effectiveAt: event.target.value })}
+            onChange={(effectiveAt) => set({ effectiveAt })}
             required
           />
           <span id={`${valueId}-timezone`} className={shared.muted}>

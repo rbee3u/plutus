@@ -73,7 +73,9 @@ function RangeResult({ change, timezone }: { change: ValueChange; timezone?: str
         <div className={styles.pointStatCard}>
           <span className={styles.pointStatLabel}>Value change</span>
           <div className={styles.pointStatValue}>
-            {valueChangeCell(unavailable ? null : change.amountUsd, change.startPoint?.totalUsd)}
+            {valueChangeCell(unavailable ? null : change.amountUsd, change.startPoint?.totalUsd, {
+              adorned: true,
+            })}
           </div>
           <span className={styles.pointStatMeta}>
             <span className={shared.nowrap}>{formatInstant(change.from, timezone)}</span> –{" "}

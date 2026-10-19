@@ -51,11 +51,9 @@ describe("timeWindow helpers", () => {
   });
 
   it("formats inputs in the portfolio timezone rather than the browser timezone", () => {
-    expect(timeWindowLocalValue("2026-10-04T04:16:44Z", "Asia/Shanghai")).toBe(
-      "2026-10-04T12:16:44",
-    );
+    expect(timeWindowLocalValue("2026-10-04T04:16:44Z", "Asia/Shanghai")).toBe("2026-10-04 12:16");
     expect(timeWindowLocalValue("2026-03-08T07:30:00Z", "America/New_York")).toBe(
-      "2026-03-08T03:30:00",
+      "2026-03-08 03:30",
     );
   });
 });

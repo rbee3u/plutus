@@ -51,6 +51,7 @@ func TestHistoryWindowPresets(t *testing.T) {
 func TestHistoryLocalTimeValidation(t *testing.T) {
 	for _, tc := range []struct{ zone, from, to, wantError string }{
 		{"Asia/Shanghai", "2026-10-04T12:00", "2026-10-04T13:00", ""},
+		{"Asia/Shanghai", "2026-10-04 12:00", "2026-10-04 13:00", ""},
 		{"America/New_York", "2026-03-08T02:30", "2026-03-08T04:00", "This local time does not exist in America/New_York. Choose another time."},
 		{"America/New_York", "2026-11-01T01:30", "2026-11-01T03:00", "This local time is ambiguous in America/New_York. Choose a time outside the clock transition."},
 		{"Australia/Lord_Howe", "2026-04-05T01:45", "2026-04-05T03:00", "This local time is ambiguous in Australia/Lord_Howe. Choose a time outside the clock transition."},

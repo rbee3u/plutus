@@ -1,5 +1,5 @@
 import type { PeriodKind } from "@/api";
-import { toDatetimeLocalValue } from "./datetime";
+import { toDateTimeDisplay, toDatetimeLocalValue } from "./datetime";
 
 export const TIME_WINDOW_PRESETS = ["1D", "3D", "1W", "2W", "1M", "3M", "6M"] as const;
 export type TimeWindowPreset = (typeof TIME_WINDOW_PRESETS)[number];
@@ -49,6 +49,6 @@ export const normalizePreset = normalizeTimeWindowPreset;
 
 /** Wall-clock text only; range interpretation happens on the server. */
 export function timeWindowLocalValue(iso: string, timezone: string): string {
-  return toDatetimeLocalValue(iso, timezone);
+  return toDateTimeDisplay(toDatetimeLocalValue(iso, timezone));
 }
 export const historyLocalValue = timeWindowLocalValue;

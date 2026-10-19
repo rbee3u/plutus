@@ -15,14 +15,14 @@ import shared from "@/shared/styles/page.module.css";
 export const PERIOD_CLOSE_COLUMNS = [
   { key: "label", header: "Period" },
   { key: "totalUsd", header: "Close (USD)", numeric: true, width: "160px" },
-  { key: "change", header: "Change", numeric: true, width: "180px" },
+  { key: "change", header: "Change (USD)", numeric: true, width: "180px" },
   { key: "issues", header: "Issues", width: "120px" },
 ];
 
 export const RAW_POINT_COLUMNS = [
   { key: "evaluatedAt", header: "Evaluated at", nowrap: true, width: "170px" },
   { key: "totalUsd", header: "Total (USD)", numeric: true, width: "160px" },
-  { key: "change", header: "Change", numeric: true, width: "180px" },
+  { key: "change", header: "Change (USD)", numeric: true, width: "180px" },
   { key: "issues", header: "Issues", width: "120px" },
   { key: "actions", header: "", width: "80px" },
 ];
@@ -40,7 +40,7 @@ export function deltaChangeCell(
   if (diff.isZero()) {
     return (
       <span className={shared.pnlNeutral}>
-        <NumericText>$0 (0%)</NumericText>
+        <NumericText>0 (0%)</NumericText>
       </span>
     );
   }
@@ -49,7 +49,7 @@ export function deltaChangeCell(
   const pct = previous.isZero() ? null : diff.abs().dividedBy(previous.abs());
 
   const pctText = pct !== null ? ` (${sign}${formatPercent(pct.toFixed())})` : "";
-  const text = `${sign}$${formatAmount(diff.abs().toFixed())}${pctText}`;
+  const text = `${sign}${formatAmount(diff.abs().toFixed())}${pctText}`;
 
   return (
     <span className={isPositive ? shared.pnlPositive : shared.pnlNegative}>
