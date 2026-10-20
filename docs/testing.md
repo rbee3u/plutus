@@ -57,6 +57,18 @@ URL without requesting collection. Record device/browser versions and outcomes;
 leave coverage outstanding until observed. Embedded and home-screen modes are
 outside acceptance scope.
 
+## Secret scanning
+
+Run from the repository root:
+
+```sh
+gitleaks git -v --redact
+```
+
+`--redact` hides secret values in output. [`.gitleaks.toml`](../.gitleaks.toml)
+keeps the default rules and ignores reviewed false positives by exact value and
+file path. Review new findings before adding exceptions.
+
 ## Read-query benchmarks
 
 The financial package has opt-in benchmarks for a ten-year timeline and large

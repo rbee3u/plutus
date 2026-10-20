@@ -1,0 +1,42 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Test passwords"
+condition = "AND"
+paths = [
+  '''(^|/)internal/(application/)?auth/service_test\.go$''',
+  '''(^|/)internal/transport/http/auth_test\.go$''',
+]
+regexes = ['''^(Correct|OldPass|NewPass|Replacement)=123456$''']
+
+[[rules.allowlists]]
+description = "Binance interface sample names"
+condition = "AND"
+paths = ['''(^|/)internal/(adapters|platform)/binance/samples_test\.go$''']
+regexes = ['''^(papi_v1_um_positionRisk|fapi_v3_positionRisk)$''']
+
+[[rules.allowlists]]
+description = "Kraken interface sample names"
+condition = "AND"
+paths = ['''(^|/)internal/(adapters|platform)/kraken/samples_test\.go$''']
+regexes = ['''^(0_private_Earn_Strategies|derivatives_api_v3_tickers)$''']
+
+[[rules.allowlists]]
+description = "Empty example variable"
+condition = "AND"
+paths = ['''(^|/)config/record-example\.env$''']
+regexes = ['''^PLUTUS_RECORD_OKX_APIKEY=$''']
+
+[[rules.allowlists]]
+description = "Decoded and reviewed OpenAPI chunks"
+condition = "AND"
+paths = ['''(^|/)internal/transport/http/api/gen\.go$''']
+regexes = [
+  '''^bYNYMorZHX3W/1t3U6M3YrcopifZukvC35OtHt2ANHeCIsrbwKid3PANIgVaAD8oomeZqTcu1sGJASkj$''',
+  '''^bdjoU1SDmYy5aNnmf3SjtbJ5I86sQGBJr0mLSs0rL3TNTVX5zBNrL/8QoyIEw8aG/YBM\+VSEp9rggDhM$''',
+  '''^BQw9oNDi7nw3SocLJMDEUuEPQgjC6gtOpqoKMpZ2erH9y2IhXUsLo0\+1vyWsp3AYDPADtfQiEwc9FjlQ$''',
+]
