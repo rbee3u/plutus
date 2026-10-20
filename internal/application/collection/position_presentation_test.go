@@ -76,8 +76,8 @@ func TestPositionNotionalCompletenessAndHistoricalSource(t *testing.T) {
 		t.Fatalf("full %+v %v", full, err)
 	}
 	filtered, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Symbol: "btcUsd_p", Limit: 1})
-	if err != nil || filtered.Total != 1 || *filtered.TotalUSD != *full.TotalUSD {
-		t.Fatalf("row filters changed boundary total: %+v %v", filtered, err)
+	if err != nil || filtered.Total != 1 || filtered.TotalUSD == nil || *filtered.TotalUSD != *filtered.Items[0].NotionalUSD {
+		t.Fatalf("filtered notional did not follow rows: %+v %v", filtered, err)
 	}
 	for _, account := range h.accountsByType(first.Point.CycleID, item.ID) {
 		if account.AccountType == string(adapters.TypeManual) {

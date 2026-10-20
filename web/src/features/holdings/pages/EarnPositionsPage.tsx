@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { useParams } from "react-router";
 import { keys, listEarnPositions } from "@/api";
 import type { EarnPositionList } from "@/api";
-import { formatCount } from "@/shared/lib/amount";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { IssuesPanel } from "@/shared/ui/IssueList";
 import { TableEmptyState } from "@/shared/ui/TableEmptyState";
@@ -12,7 +11,7 @@ import {
   HoldingsListRecovery,
   HoldingsNoPoint,
 } from "../components/HoldingsFilterControls";
-import { HoldingsSummary } from "../components/HoldingsSummary";
+import { holdingsIssues, HoldingsSummary } from "../components/HoldingsSummary";
 import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
 import { holdingsListRequest } from "../lib/listRequest";
 import shared from "@/shared/styles/page.module.css";
@@ -68,11 +67,7 @@ export function EarnPositionsPage() {
         fallback="Earn positions could not be loaded."
       />
       {data?.context.cycleId ? (
-        <HoldingsSummary
-          context={data.context}
-          label="Positions"
-          value={!data.coverage.complete ? "Details incomplete" : formatCount(data.page.total)}
-        ></HoldingsSummary>
+        <HoldingsSummary context={data.context} label="Total holdings" total={data} />
       ) : null}
       <EarnPositionsTable
         items={data?.items ?? []}
@@ -88,7 +83,7 @@ export function EarnPositionsPage() {
       />
       {data?.context.cycleId ? (
         <IssuesPanel
-          issues={data.issues}
+          issues={holdingsIssues(data)}
           timezone={data.context.timezone}
           resolveScope={filters.resolveIssueScope}
         />

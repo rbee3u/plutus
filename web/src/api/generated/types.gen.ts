@@ -614,10 +614,30 @@ export type EarnPositionList = {
      * Portfolio valuation issues, plus applicable holding issues for matching rows before pagination.
      */
     issues: Array<Issue>;
+    /**
+     * Known USD total of matching holdings before pagination. Null when no value is known and the total is incomplete. Confirmed empty results are zero.
+     */
+    filteredTotalUsd: NullableDecimal;
+    /**
+     * Completeness of this filtered total, independent of portfolio valuation completeness. Missing reports remain omissions during symbol search.
+     */
+    filteredTotalCompleteness: Completeness;
+    /**
+     * Stale when a report in the filtered account scope is carried forward.
+     */
+    filteredTotalFreshness: Freshness;
+    /**
+     * Missing reports, unknown values, and stale reports qualifying this filtered total.
+     */
+    filteredTotalIssues: Array<Issue>;
 };
 
 export type BalanceList = {
     manualOverlay: ManualOverlay | null;
+    /**
+     * Stale when a report in the filtered account scope is carried forward.
+     */
+    filteredTotalFreshness: Freshness;
     /**
      * Completeness of filtered collected balance value before pagination. Missing reports qualify this total even when symbol search cannot determine their contents. Independent of portfolio valuation completeness.
      */
@@ -631,7 +651,7 @@ export type BalanceList = {
     items: Array<BalanceRow>;
     page: OffsetPage;
     /**
-     * Sum of known USD values of filtered collected balances before pagination. Pending manual additions have no collected value.
+     * Sum of known USD values of filtered collected balances before pagination. Pending manual additions have no collected value. Null when no value is known and the total is incomplete; confirmed empty results are zero.
      */
     filteredTotalUsd: NullableDecimal;
     /**
@@ -650,17 +670,25 @@ export type PositionList = {
     items: Array<PositionRow>;
     page: OffsetPage;
     /**
-     * Sum of known absolute USD notionals for all positions in the boundary, before row filtering and pagination.
-     */
-    boundaryNotionalUsd: NullableDecimal;
-    /**
-     * Completeness of absolute notional for all futures accounts in the boundary, independent of filters and pagination.
-     */
-    notionalCompleteness: Completeness;
-    /**
-     * Futures account and notional issues across the boundary before row filtering and pagination.
+     * Futures account issues in the selected platform and identity, plus matching position issues before pagination.
      */
     issues: Array<Issue>;
+    /**
+     * Known USD total of matching holdings before pagination. Null when no value is known and the total is incomplete. Confirmed empty results are zero.
+     */
+    filteredTotalUsd: NullableDecimal;
+    /**
+     * Completeness of this filtered total, independent of portfolio valuation completeness. Missing reports remain omissions during symbol search.
+     */
+    filteredTotalCompleteness: Completeness;
+    /**
+     * Stale when a report in the filtered account scope is carried forward.
+     */
+    filteredTotalFreshness: Freshness;
+    /**
+     * Missing reports, unknown values, and stale reports qualifying this filtered total.
+     */
+    filteredTotalIssues: Array<Issue>;
 };
 
 export type DualPositionList = {
@@ -676,6 +704,22 @@ export type DualPositionList = {
      * Portfolio valuation issues, plus applicable holding issues for matching rows before pagination.
      */
     issues: Array<Issue>;
+    /**
+     * Known USD total of matching holdings before pagination. Null when no value is known and the total is incomplete. Confirmed empty results are zero.
+     */
+    filteredTotalUsd: NullableDecimal;
+    /**
+     * Completeness of this filtered total, independent of portfolio valuation completeness. Missing reports remain omissions during symbol search.
+     */
+    filteredTotalCompleteness: Completeness;
+    /**
+     * Stale when a report in the filtered account scope is carried forward.
+     */
+    filteredTotalFreshness: Freshness;
+    /**
+     * Missing reports, unknown values, and stale reports qualifying this filtered total.
+     */
+    filteredTotalIssues: Array<Issue>;
 };
 
 export type HistoryWindow = {

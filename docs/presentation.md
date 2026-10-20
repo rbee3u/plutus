@@ -243,17 +243,34 @@ failed candidate reads cannot prove a selection invalid. Configured candidates
 may yield no holdings, but stay stable during searches and collection failures;
 URL correction can deliberately widen results.
 
-The futures notional total and completeness cover the portfolio boundary before
-filtering or pagination. Balance totals follow filtered collected balances;
-pending manual additions have no valuation and do not enter those totals. The
-balance total's badge qualifies that filtered sum, independently of the
-portfolio valuation. Its omissions name unpriced balances and missing reports.
-Empty holdings use report coverage for their filtered account scope; stale
-reports with readable holdings do not turn into unknown sets. Filtering never
-changes the portfolio boundary. A holdings view keeps its collected valuation
-point across filter changes, pagination, and retries; re-entry, browser reload,
-or collection completion resolves it again. Manual saves reset balance
-pagination while keeping the collected point.
+All four holdings summaries follow platform, identity, and symbol filters and
+sum every matching row before pagination. Earn symbol matches retain all assets
+of the matching product; dual pair matches value the invested principal asset.
+Summary labels are `Total balance`, `Total notional`, `Total holdings`, and
+`Total principal` for Balances, Futures, Earn, and Dual investment respectively.
+All show USD amounts, independent completeness and freshness badges, and the
+collected point's evaluation time. Row counts belong in the table footer.
+
+Balance totals sum collected balance values; pending manual additions have no
+valuation and do not enter those totals. This is not Overview's account-equity
+sum. Futures totals sum absolute USD notionals without netting long and short
+positions. Earn totals value reported current holdings, including rewards only
+when already incorporated into those amounts; separate rewards are not added.
+Dual totals value outstanding principal without expected yield. Product totals
+reuse the balance valuation's adopted prices and exclusions, including the
+original prices of stale reports; they never use a new market quote.
+
+Each summary is qualified only by its filtered account scope and matching
+holdings. Missing reports remain omissions even when symbol search cannot
+determine their contents. Unpriced holdings name their omitted assets. Known
+values are summed and marked Incomplete when required values are unknown; no
+known value in an incomplete total displays `—`. Confirmed empty results show
+`$0`. Compatible carried-forward reports qualify the total as Stale, separately
+from completeness. Optional product metadata does not make known value
+incomplete. Filtering never changes the portfolio boundary. A holdings view
+keeps its collected valuation point across filter changes, pagination, and
+retries; re-entry, browser reload, or collection completion resolves it again.
+Manual saves reset balance pagination while keeping the collected point.
 
 ### Manual editing
 
@@ -342,8 +359,8 @@ the visible row prioritizes `Unrealized PnL` and the margin amount.
 Issues remains quiet (`—`) when healthy, exposing stale or data issue badges on
 hover. Badges identify stale data and missing position mode, size, or USD
 notional. Failures without rows remain in page-level Issues. Known notionals are
-summed before filtering and pagination; missing required notionals or missing
-position-capable accounts make that total incomplete. Balance valuation
+summed after filtering and before pagination; missing required notionals or
+missing position-capable accounts make that total incomplete. Balance valuation
 omissions alone do not make known contract notional incomplete.
 
 ### Earn and dual investment

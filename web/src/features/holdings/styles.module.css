@@ -39,14 +39,6 @@
   letter-spacing: -0.02em;
 }
 
-.holdingsSummaryCurrency {
-  font-family: var(--font-sans);
-  font-size: 0.82em;
-  font-weight: var(--weight-medium);
-  color: var(--ink-secondary);
-  margin-right: 1px;
-}
-
 .holdingsSummaryEnd {
   display: flex;
   flex-wrap: wrap;

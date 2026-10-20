@@ -175,19 +175,7 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 			out.Issues = point.Issues
 		}
 		out.Coverage = reportCoverage(accounts, f, "", point != nil)
-		if point != nil && out.Coverage.Complete {
-			out.TotalCompleteness = valuation.CompletenessComplete
-		}
-		for i := range accounts {
-			a := &accounts[i]
-			if !matchesAccount(f, a) {
-				continue
-			}
-			if a.SourceReportID == nil {
-				id := a.AccountID
-				out.TotalIssues = append(out.TotalIssues, valuation.Issue{Code: "missing", AccountID: &id, AccountName: a.AccountName, Detail: "No compatible successful account report supplies balances for the filtered total."})
-			}
-		}
+		total := newHoldingTotal(accounts, f, "", point != nil)
 		if f.IncludePendingManual {
 			accounts, err = s.withManualAccounts(ctx, p, accounts)
 		}
@@ -276,14 +264,13 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 			}
 		}
 		filtered := all[:0]
-		total := decimal.Zero()
 		for _, row := range all {
 			if !matchesAccount(f, byAccount[row.AccountID]) || !matchesSymbol(f.Symbol, row.CanonicalAssetSymbol, row.AssetSymbol) {
 				continue
 			}
 			filtered = append(filtered, row)
 			if row.EquityUSD == nil && !row.Excluded && row.ManualChange != "added" {
-				out.TotalCompleteness = valuation.CompletenessIncomplete
+				total.completeness = valuation.CompletenessIncomplete
 				code := "balance_value_unknown"
 				if row.NoPrice {
 					code = "no_price"
@@ -292,16 +279,14 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 				if row.CanonicalAssetSymbol != row.AssetSymbol {
 					omitted.CanonicalAssetSymbol = row.CanonicalAssetSymbol
 				}
-				out.TotalIssues = append(out.TotalIssues, valuation.Issue{Code: code, AccountID: &row.AccountID, AccountName: row.AccountName, Symbol: row.AssetSymbol, OmittedBalance: omitted, ReportObservedAt: row.ReportObservedAt, Detail: "The balance has no known USD value and is omitted from the filtered total."})
+				total.issues = append(total.issues, valuation.Issue{Code: code, AccountID: &row.AccountID, AccountName: row.AccountName, Symbol: row.AssetSymbol, OmittedBalance: omitted, ReportObservedAt: row.ReportObservedAt, Detail: "The balance has no known USD value and is omitted from the filtered total."})
 			}
 			if row.equityUSDRat != nil {
-				total = decimal.Add(total, row.equityUSDRat)
+				total.add(row.equityUSDRat)
 			}
 		}
 		all = filtered
-		if point != nil {
-			out.TotalUSD = decimal.FormatPtr(total)
-		}
+		out.setTotal(total)
 		sortBalances(all, accountRanks(accounts))
 		out.paginate(all)
 		if err := s.balancePageDetails(ctx, p, &out, byAccount); err != nil {

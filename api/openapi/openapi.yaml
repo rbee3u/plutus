@@ -3597,6 +3597,10 @@ components:
         - page
         - valuationCompleteness
         - issues
+        - filteredTotalUsd
+        - filteredTotalCompleteness
+        - filteredTotalFreshness
+        - filteredTotalIssues
       properties:
         coverage:
           $ref: "#/components/schemas/ReportCoverage"
@@ -3620,6 +3624,20 @@ components:
           description:
             Portfolio valuation issues, plus applicable holding issues
             for matching rows before pagination.
+        filteredTotalUsd:
+          $ref: "#/components/schemas/NullableDecimal"
+          description: Known USD total of matching holdings before pagination. Null when no value is known and the total is incomplete. Confirmed empty results are zero.
+        filteredTotalCompleteness:
+          $ref: "#/components/schemas/Completeness"
+          description: Completeness of this filtered total, independent of portfolio valuation completeness. Missing reports remain omissions during symbol search.
+        filteredTotalFreshness:
+          $ref: "#/components/schemas/Freshness"
+          description: Stale when a report in the filtered account scope is carried forward.
+        filteredTotalIssues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+          description: Missing reports, unknown values, and stale reports qualifying this filtered total.
     BalanceList:
       type: object
       additionalProperties: false
@@ -3629,6 +3647,7 @@ components:
         - items
         - page
         - filteredTotalUsd
+        - filteredTotalFreshness
         - filteredTotalCompleteness
         - filteredTotalIssues
         - manualOverlay
@@ -3639,6 +3658,9 @@ components:
           oneOf:
             - $ref: "#/components/schemas/ManualOverlay"
             - type: "null"
+        filteredTotalFreshness:
+          $ref: "#/components/schemas/Freshness"
+          description: Stale when a report in the filtered account scope is carried forward.
         filteredTotalCompleteness:
           $ref: "#/components/schemas/Completeness"
           description: Completeness of filtered collected balance value before pagination. Missing reports qualify this total even when symbol search cannot determine their contents. Independent of portfolio valuation completeness.
@@ -3661,6 +3683,8 @@ components:
           description:
             Sum of known USD values of filtered collected balances before
             pagination. Pending manual additions have no collected value.
+            Null when no value is known and the total is incomplete; confirmed
+            empty results are zero.
           $ref: "#/components/schemas/NullableDecimal"
         valuationCompleteness:
           $ref: "#/components/schemas/Completeness"
@@ -3682,9 +3706,11 @@ components:
         - context
         - items
         - page
-        - boundaryNotionalUsd
-        - notionalCompleteness
         - issues
+        - filteredTotalUsd
+        - filteredTotalCompleteness
+        - filteredTotalFreshness
+        - filteredTotalIssues
       properties:
         coverage:
           $ref: "#/components/schemas/ReportCoverage"
@@ -3696,23 +3722,27 @@ components:
             $ref: "#/components/schemas/PositionRow"
         page:
           $ref: "#/components/schemas/OffsetPage"
-        boundaryNotionalUsd:
-          description:
-            Sum of known absolute USD notionals for all positions in the
-            boundary, before row filtering and pagination.
-          $ref: "#/components/schemas/NullableDecimal"
-        notionalCompleteness:
-          $ref: "#/components/schemas/Completeness"
-          description:
-            Completeness of absolute notional for all futures accounts
-            in the boundary, independent of filters and pagination.
         issues:
           type: array
           items:
             $ref: "#/components/schemas/Issue"
           description:
-            Futures account and notional issues across the boundary before
-            row filtering and pagination.
+            Futures account issues in the selected platform and identity,
+            plus matching position issues before pagination.
+        filteredTotalUsd:
+          $ref: "#/components/schemas/NullableDecimal"
+          description: Known USD total of matching holdings before pagination. Null when no value is known and the total is incomplete. Confirmed empty results are zero.
+        filteredTotalCompleteness:
+          $ref: "#/components/schemas/Completeness"
+          description: Completeness of this filtered total, independent of portfolio valuation completeness. Missing reports remain omissions during symbol search.
+        filteredTotalFreshness:
+          $ref: "#/components/schemas/Freshness"
+          description: Stale when a report in the filtered account scope is carried forward.
+        filteredTotalIssues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+          description: Missing reports, unknown values, and stale reports qualifying this filtered total.
     DualPositionList:
       type: object
       additionalProperties: false
@@ -3723,6 +3753,10 @@ components:
         - page
         - valuationCompleteness
         - issues
+        - filteredTotalUsd
+        - filteredTotalCompleteness
+        - filteredTotalFreshness
+        - filteredTotalIssues
       properties:
         coverage:
           $ref: "#/components/schemas/ReportCoverage"
@@ -3746,6 +3780,20 @@ components:
           description:
             Portfolio valuation issues, plus applicable holding issues
             for matching rows before pagination.
+        filteredTotalUsd:
+          $ref: "#/components/schemas/NullableDecimal"
+          description: Known USD total of matching holdings before pagination. Null when no value is known and the total is incomplete. Confirmed empty results are zero.
+        filteredTotalCompleteness:
+          $ref: "#/components/schemas/Completeness"
+          description: Completeness of this filtered total, independent of portfolio valuation completeness. Missing reports remain omissions during symbol search.
+        filteredTotalFreshness:
+          $ref: "#/components/schemas/Freshness"
+          description: Stale when a report in the filtered account scope is carried forward.
+        filteredTotalIssues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+          description: Missing reports, unknown values, and stale reports qualifying this filtered total.
     HistoryWindow:
       type: object
       additionalProperties: false

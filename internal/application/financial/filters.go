@@ -12,7 +12,7 @@ func reportCoverage(accounts []valuation.AccountValuation, f *ListFilter, kind s
 	out := ReportCoverage{Complete: hasPoint, MissingAccountIDs: []uuid.UUID{}}
 	for i := range accounts {
 		a := &accounts[i]
-		if !matchesAccount(f, a) || (kind != "" && kind != "positions" && a.AccountType != kind) || (kind == "positions" && !positionAccount(a)) {
+		if !matchesHoldingAccount(f, a, kind) {
 			continue
 		}
 		if a.SourceReportID == nil {
@@ -21,6 +21,16 @@ func reportCoverage(accounts []valuation.AccountValuation, f *ListFilter, kind s
 		}
 	}
 	return out
+}
+
+func matchesHoldingAccount(f *ListFilter, a *valuation.AccountValuation, kind string) bool {
+	if !matchesAccount(f, a) {
+		return false
+	}
+	if kind == "positions" {
+		return positionAccount(a)
+	}
+	return kind == "" || a.AccountType == kind
 }
 
 func matchesAccount(f *ListFilter, a *valuation.AccountValuation) bool {

@@ -116,6 +116,8 @@ func (s *Service) FlatDualPositions(ctx context.Context, p PortfolioContext, f *
 		}
 		out := FlatList[DualPositionRow]{Context: c, Items: []DualPositionRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}
 		out.Coverage = reportCoverage(accounts, f, "dual_investment", point != nil)
+		total := newHoldingTotal(accounts, f, "dual_investment", point != nil)
+		out.setTotal(total)
 		if point == nil {
 			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
 			return out, nil
@@ -128,6 +130,13 @@ func (s *Service) FlatDualPositions(ctx context.Context, p PortfolioContext, f *
 			return out, err
 		}
 		var all []DualPositionRow
+		holdings := []productHolding{}
+		matching := []valuation.AccountValuation{}
+		for _, account := range accounts {
+			if account.AccountType == "dual_investment" && matchesAccount(f, &account) {
+				matching = append(matching, account)
+			}
+		}
 		for i := range rows {
 			r := &rows[i]
 			id, err := uuid.FromBytes(r.AccountID)
@@ -143,8 +152,13 @@ func (s *Service) FlatDualPositions(ctx context.Context, p PortfolioContext, f *
 				continue
 			}
 			all = append(all, row)
+			holdings = append(holdings, productHolding{row.AccountID, row.PrincipalAssetSymbol, row.Principal})
 			out.Issues = append(out.Issues, dualIssues(&row)...)
 		}
+		if err := s.totalProductHoldings(ctx, p, matching, holdings, total); err != nil {
+			return out, err
+		}
+		out.setTotal(total)
 		sortDualPositions(all, accountRanks(accounts))
 		out.paginate(all)
 		return out, nil

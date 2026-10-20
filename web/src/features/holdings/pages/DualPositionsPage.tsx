@@ -10,7 +10,7 @@ import {
   HoldingsListRecovery,
   HoldingsNoPoint,
 } from "../components/HoldingsFilterControls";
-import { HoldingsSummary } from "../components/HoldingsSummary";
+import { holdingsIssues, HoldingsSummary } from "../components/HoldingsSummary";
 import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
 import { holdingsListRequest } from "../lib/listRequest";
 import shared from "@/shared/styles/page.module.css";
@@ -41,11 +41,7 @@ export function DualPositionsPage() {
         fallback="Dual positions could not be loaded."
       />
       {data?.context.cycleId ? (
-        <HoldingsSummary
-          context={data.context}
-          label="Subscriptions"
-          value={data.page.total ?? data.items.length}
-        />
+        <HoldingsSummary context={data.context} label="Total principal" total={data} />
       ) : null}
       <DualPositionsTable
         items={data?.items ?? []}
@@ -77,7 +73,7 @@ export function DualPositionsPage() {
       <HoldingsFilterFooter filters={filters} page={data?.page} />
       {data?.context.cycleId ? (
         <IssuesPanel
-          issues={data.issues}
+          issues={holdingsIssues(data)}
           timezone={data.context.timezone}
           resolveScope={filters.resolveIssueScope}
         />

@@ -28,11 +28,15 @@ func (a *API) ListEarnPositions(ctx context.Context, request api.ListEarnPositio
 		return nil, err
 	}
 	return api.ListEarnPositions200JSONResponse{
-		Context:               toAPIContext(&list.Context),
-		Items:                 toAPIEarnPositions(list.Items),
-		Coverage:              toAPIReportCoverage(list.Coverage),
-		Page:                  toOffsetPage(list.Offset, list.Limit, list.Total),
-		ValuationCompleteness: api.Completeness(list.Completeness),
-		Issues:                toAPIIssues(list.Issues),
+		Context:                   toAPIContext(&list.Context),
+		Items:                     toAPIEarnPositions(list.Items),
+		Coverage:                  toAPIReportCoverage(list.Coverage),
+		Page:                      toOffsetPage(list.Offset, list.Limit, list.Total),
+		ValuationCompleteness:     api.Completeness(list.Completeness),
+		FilteredTotalUsd:          list.TotalUSD,
+		FilteredTotalCompleteness: api.Completeness(list.TotalCompleteness),
+		FilteredTotalFreshness:    api.Freshness(list.TotalFreshness),
+		FilteredTotalIssues:       toAPIIssues(list.TotalIssues),
+		Issues:                    toAPIIssues(list.Issues),
 	}, nil
 }

@@ -35,6 +35,10 @@ func TestPositionCompletenessSeparatesBalanceOmissionsAndMissingSources(t *testi
 	second, _ := h.runCycle()
 	accountID := h.accountsByType(second.Point.CycleID, missing.ID)["unified"].AccountID
 	positions, err = h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Platform: "binance", Limit: 50})
+	if err != nil || positions.Completeness != valuation.CompletenessComplete || positions.TotalCompleteness != valuation.CompletenessComplete || len(positions.TotalIssues) != 0 {
+		t.Fatalf("unrelated missing account qualified filtered notional: %+v %v", positions, err)
+	}
+	positions, err = h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Limit: 50})
 	if err != nil || positions.Completeness != valuation.CompletenessIncomplete || positions.TotalUSD == nil || *positions.TotalUSD == "0" {
 		t.Fatalf("missing position source omitted: %+v %v", positions, err)
 	}

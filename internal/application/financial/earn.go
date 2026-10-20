@@ -194,6 +194,8 @@ func (s *Service) FlatEarnPositions(ctx context.Context, p PortfolioContext, f *
 			Issues:       []valuation.Issue{},
 		}
 		out.Coverage = reportCoverage(accounts, f, "earn", point != nil)
+		total := newHoldingTotal(accounts, f, "earn", point != nil)
+		out.setTotal(total)
 		if point == nil {
 			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
 			return out, nil
@@ -211,6 +213,7 @@ func (s *Service) FlatEarnPositions(ctx context.Context, p PortfolioContext, f *
 			return EarnList{}, err
 		}
 		all := []EarnPositionRow{}
+		holdings := []productHolding{}
 		for i := range accounts {
 			account := &accounts[i]
 			if account.AccountType != "earn" || !matchesAccount(f, account) {
@@ -222,10 +225,17 @@ func (s *Service) FlatEarnPositions(ctx context.Context, p PortfolioContext, f *
 					continue
 				}
 				all = append(all, row)
+				for _, asset := range row.Assets {
+					holdings = append(holdings, productHolding{row.AccountID, asset.AssetSymbol, asset.Amount})
+				}
 				out.Issues = appendNonStaleIssues(out.Issues, row.Issues)
 			}
 
 		}
+		if err := s.totalProductHoldings(ctx, p, matching, holdings, total); err != nil {
+			return EarnList{}, err
+		}
+		out.setTotal(total)
 		sortEarnPositions(all, accountRanks(accounts))
 		out.paginate(all)
 		return out, nil

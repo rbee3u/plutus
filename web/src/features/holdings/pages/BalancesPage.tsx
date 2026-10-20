@@ -1,18 +1,15 @@
 import { Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useParams } from "react-router";
 import { keys, listBalances } from "@/api";
-import type { BalanceList, Issue } from "@/api";
+import type { BalanceList } from "@/api";
 import { iconSize } from "@/shared/icons/iconSizes";
-import { formatAmount } from "@/shared/lib/amount";
 import { accountAlias, platformLabel } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { ActionButton } from "@/shared/ui/ActionButton";
-import { CompletenessBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import { IssuesPanel } from "@/shared/ui/IssueList";
-import { NumericText } from "@/shared/ui/NumericText";
 import { BALANCE_COLUMNS, balanceRow } from "../components/BalancesTable";
 import {
   HoldingsFilterFooter,
@@ -20,7 +17,7 @@ import {
   HoldingsNoPoint,
 } from "../components/HoldingsFilterControls";
 import { holdingsAccountColumns, HoldingsFilterHeader } from "../components/HoldingsFilterHeader";
-import { HoldingsSummary } from "../components/HoldingsSummary";
+import { holdingsIssues, HoldingsSummary } from "../components/HoldingsSummary";
 import { ManualDialog } from "../dialogs/ManualBalances";
 import { ManualActions, type ManualTarget } from "../dialogs/manual";
 import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
@@ -46,19 +43,6 @@ export function BalancesPage() {
       ),
   });
   const data = query.data;
-  const issues = useMemo(() => {
-    const key = (issue: Issue) => JSON.stringify([issue.code, issue.accountId, issue.symbol]);
-    const combined = [...(data?.filteredTotalIssues ?? [])];
-    const seen = new Set(combined.map(key));
-    for (const issue of data?.issues ?? []) {
-      const id = key(issue);
-      if (!seen.has(id)) {
-        seen.add(id);
-        combined.push(issue);
-      }
-    }
-    return combined;
-  }, [data]);
   const [manualTarget, setManualTarget] = useState<ManualTarget | null>(null);
   const addManualButton = (
     <ActionButton tone="secondary" onClick={() => setManualTarget({ identityId })}>
@@ -76,16 +60,8 @@ export function BalancesPage() {
       {data?.context.cycleId ? (
         <HoldingsSummary
           context={data.context}
-          label="Collected balance total"
-          value={
-            <>
-              {data.filteredTotalUsd ? (
-                <span className={styles.holdingsSummaryCurrency}>$</span>
-              ) : null}
-              <NumericText>{formatAmount(data.filteredTotalUsd)}</NumericText>
-            </>
-          }
-          badge={<CompletenessBadge value={data.filteredTotalCompleteness} />}
+          label="Total balance"
+          total={data}
           action={addManualButton}
         />
       ) : (
@@ -165,7 +141,7 @@ export function BalancesPage() {
       />
       {data?.context.cycleId ? (
         <IssuesPanel
-          issues={issues}
+          issues={holdingsIssues(data)}
           timezone={data.context.timezone}
           resolveScope={filters.resolveIssueScope}
         />

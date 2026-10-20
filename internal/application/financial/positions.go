@@ -123,6 +123,8 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 		}
 		out := FlatList[PositionRow]{Context: c, Items: []PositionRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}
 		out.Coverage = reportCoverage(accounts, f, "positions", point != nil)
+		total := newHoldingTotal(accounts, f, "positions", point != nil)
+		out.setTotal(total)
 		if point == nil {
 			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
 			return out, nil
@@ -130,7 +132,7 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 		out.Completeness = valuation.CompletenessComplete
 		for i := range accounts {
 			account := &accounts[i]
-			if positionAccount(account) {
+			if positionAccount(account) && matchesAccount(f, account) {
 				if account.Method == valuation.MethodMissing {
 					out.Completeness = valuation.CompletenessIncomplete
 				}
@@ -143,7 +145,6 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 			return FlatList[PositionRow]{}, err
 		}
 		all := make([]PositionRow, 0, len(rows))
-		total := decimal.Zero()
 		for i := range rows {
 			r := &rows[i]
 			accountID, err := uuid.FromBytes(r.AccountID)
@@ -151,7 +152,7 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 				return FlatList[PositionRow]{}, err
 			}
 			account, ok := byAccount[accountID]
-			if !ok {
+			if !ok || !matchesAccount(f, account) || !matchesSymbol(f.Symbol, r.FuturesSymbol) {
 				continue
 			}
 			row, err := positionRow(account, &sqlcgen.ListPositionsByReportRow{
@@ -182,16 +183,19 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 			out.Issues = append(out.Issues, positionDataIssues(row.Issues)...)
 			if row.NotionalUSD == nil {
 				out.Completeness = valuation.CompletenessIncomplete
+				total.completeness = valuation.CompletenessIncomplete
+				for _, issue := range row.Issues {
+					if issue.Code == "position_notional_unknown" {
+						total.issues = append(total.issues, issue)
+					}
+				}
 			}
 			if row.NotionalUSD != nil {
-				total = decimal.Add(total, decimal.ParseOrZero(*row.NotionalUSD))
-			}
-			if !matchesAccount(f, account) || !matchesSymbol(f.Symbol, r.FuturesSymbol) {
-				continue
+				total.add(decimal.ParseOrZero(*row.NotionalUSD))
 			}
 			all = append(all, row)
 		}
-		out.TotalUSD = decimal.FormatPtr(total)
+		out.setTotal(total)
 		sortPositions(all, accountRanks(accounts))
 		out.paginate(all)
 		for i := range out.Items {

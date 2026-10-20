@@ -67,11 +67,11 @@ func TestEarnDetailsStaleEmptyAndIsolation(t *testing.T) {
 		t.Fatalf("detail: %+v %v", view, err)
 	}
 	page, err := h.financial.FlatEarnPositions(h.ctx, pctx, &financial.ListFilter{Symbol: "uSdT", Limit: 1, Offset: 1})
-	if err != nil || page.Total != 2 || len(page.Items) != 1 || page.Items[0].PositionKey != "fixed" {
+	if err != nil || page.Total != 2 || page.TotalUSD == nil || *page.TotalUSD != "50" || page.TotalCompleteness != "complete" || len(page.Items) != 1 || page.Items[0].PositionKey != "fixed" {
 		t.Fatalf("sort/filter/page: %+v %v", page, err)
 	}
 	page, err = h.financial.FlatEarnPositions(h.ctx, pctx, &financial.ListFilter{Symbol: "sDc", Limit: 50})
-	if err != nil || page.Total != 1 || len(page.Items[0].Assets) != 2 || len(page.Items[0].Issues) != 1 {
+	if err != nil || page.Total != 1 || page.TotalUSD == nil || *page.TotalUSD != "25" || len(page.Items[0].Assets) != 2 || len(page.Items[0].Issues) != 1 {
 		t.Fatalf("multiasset row: %+v %v", page, err)
 	}
 	if _, err := h.financial.AccountEarnPositions(h.ctx, financial.PortfolioContext{ID: uuid.New(), Timezone: "UTC"}, account.AccountID); !errors.Is(err, valuation.ErrNotFound) {

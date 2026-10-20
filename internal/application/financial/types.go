@@ -170,6 +170,7 @@ type FlatList[T any] struct {
 	Issues            []valuation.Issue
 	Coverage          ReportCoverage
 	TotalCompleteness string
+	TotalFreshness    string
 	TotalIssues       []valuation.Issue
 	ManualOverlay     *ManualOverlay
 }

@@ -89,7 +89,7 @@ func TestDualSeparateAccountsStaleAndRetry(t *testing.T) {
 				}
 			}
 			flat, err := h.financial.FlatDualPositions(h.ctx, pctx, &financial.ListFilter{Symbol: "USDT", Limit: 1, Offset: 1})
-			if err != nil || flat.Total != 2 || len(flat.Items) != 1 || flat.Items[0].PositionKey != "one" {
+			if err != nil || flat.Total != 2 || flat.TotalUSD == nil || *flat.TotalUSD != "40" || flat.TotalCompleteness != "complete" || len(flat.Items) != 1 || flat.Items[0].PositionKey != "one" {
 				t.Fatalf("pagination: %+v %v", flat, err)
 			}
 			adapter.failEarn = false

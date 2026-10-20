@@ -62,6 +62,7 @@ func (a *API) ListBalances(ctx context.Context, request api.ListBalancesRequestO
 		Coverage:                  toAPIReportCoverage(list.Coverage),
 		ManualOverlay:             toAPIManualOverlay(list.ManualOverlay),
 		FilteredTotalCompleteness: api.Completeness(list.TotalCompleteness),
+		FilteredTotalFreshness:    api.Freshness(list.TotalFreshness),
 		FilteredTotalIssues:       toAPIIssues(list.TotalIssues),
 		Items:                     toAPIBalanceRows(list.Items),
 		Page:                      toOffsetPage(list.Offset, list.Limit, list.Total),
@@ -92,13 +93,15 @@ func (a *API) ListPositions(ctx context.Context, request api.ListPositionsReques
 		return nil, err
 	}
 	return api.ListPositions200JSONResponse{
-		Context:              toAPIContext(&list.Context),
-		Coverage:             toAPIReportCoverage(list.Coverage),
-		Items:                toAPIPositionRows(list.Items),
-		Page:                 toOffsetPage(list.Offset, list.Limit, list.Total),
-		BoundaryNotionalUsd:  list.TotalUSD,
-		NotionalCompleteness: api.Completeness(list.Completeness),
-		Issues:               toAPIIssues(list.Issues),
+		Context:                   toAPIContext(&list.Context),
+		Coverage:                  toAPIReportCoverage(list.Coverage),
+		Items:                     toAPIPositionRows(list.Items),
+		Page:                      toOffsetPage(list.Offset, list.Limit, list.Total),
+		FilteredTotalUsd:          list.TotalUSD,
+		FilteredTotalCompleteness: api.Completeness(list.TotalCompleteness),
+		FilteredTotalFreshness:    api.Freshness(list.TotalFreshness),
+		FilteredTotalIssues:       toAPIIssues(list.TotalIssues),
+		Issues:                    toAPIIssues(list.Issues),
 	}, nil
 }
 
@@ -123,12 +126,16 @@ func (a *API) ListDualPositions(ctx context.Context, request api.ListDualPositio
 		return nil, err
 	}
 	return api.ListDualPositions200JSONResponse{
-		Context:               toAPIContext(&list.Context),
-		Coverage:              toAPIReportCoverage(list.Coverage),
-		Items:                 toAPIDualPositionRows(list.Items),
-		Page:                  toOffsetPage(list.Offset, list.Limit, list.Total),
-		ValuationCompleteness: api.Completeness(list.Completeness),
-		Issues:                toAPIIssues(list.Issues),
+		Context:                   toAPIContext(&list.Context),
+		Coverage:                  toAPIReportCoverage(list.Coverage),
+		Items:                     toAPIDualPositionRows(list.Items),
+		Page:                      toOffsetPage(list.Offset, list.Limit, list.Total),
+		ValuationCompleteness:     api.Completeness(list.Completeness),
+		FilteredTotalUsd:          list.TotalUSD,
+		FilteredTotalCompleteness: api.Completeness(list.TotalCompleteness),
+		FilteredTotalFreshness:    api.Freshness(list.TotalFreshness),
+		FilteredTotalIssues:       toAPIIssues(list.TotalIssues),
+		Issues:                    toAPIIssues(list.Issues),
 	}, nil
 }
 

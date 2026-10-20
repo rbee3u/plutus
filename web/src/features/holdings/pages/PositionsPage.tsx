@@ -1,13 +1,10 @@
 import { useParams } from "react-router";
 import { keys, listPositions } from "@/api";
 import type { PositionList } from "@/api";
-import { formatAmount } from "@/shared/lib/amount";
 import { accountAlias, platformLabel } from "@/shared/lib/usePlatforms";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
-import { CompletenessBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssuesPanel } from "@/shared/ui/IssueList";
-import { NumericText } from "@/shared/ui/NumericText";
 import { TableEmptyState } from "@/shared/ui/TableEmptyState";
 import {
   HoldingsFilterFooter,
@@ -15,11 +12,10 @@ import {
   HoldingsNoPoint,
 } from "../components/HoldingsFilterControls";
 import { holdingsAccountColumns, HoldingsFilterHeader } from "../components/HoldingsFilterHeader";
-import { HoldingsSummary } from "../components/HoldingsSummary";
+import { holdingsIssues, HoldingsSummary } from "../components/HoldingsSummary";
 import { POSITION_COLUMNS, positionRow } from "../components/PositionsTable";
 import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
 import { holdingsListRequest } from "../lib/listRequest";
-import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
 export function PositionsPage() {
@@ -49,19 +45,7 @@ export function PositionsPage() {
         fallback="Positions could not be loaded."
       />
       {data?.context.cycleId ? (
-        <HoldingsSummary
-          context={data.context}
-          label="Total notional"
-          value={
-            <>
-              {data.boundaryNotionalUsd ? (
-                <span className={styles.holdingsSummaryCurrency}>$</span>
-              ) : null}
-              <NumericText>{formatAmount(data.boundaryNotionalUsd)}</NumericText>
-            </>
-          }
-          badge={<CompletenessBadge value={data.notionalCompleteness} />}
-        />
+        <HoldingsSummary context={data.context} label="Total notional" total={data} />
       ) : null}
       <DataTable
         caption="Positions at the latest valuation point"
@@ -116,7 +100,7 @@ export function PositionsPage() {
       <HoldingsFilterFooter filters={filters} page={data?.page} />
       {data?.context.cycleId ? (
         <IssuesPanel
-          issues={data.issues}
+          issues={holdingsIssues(data)}
           timezone={data.context.timezone}
           resolveScope={filters.resolveIssueScope}
         />

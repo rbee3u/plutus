@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -36,8 +37,8 @@ func TestHoldingsSubstringFiltersBeforePagination(t *testing.T) {
 		t.Fatalf("substring pagination or total: %+v %v", page, err)
 	}
 	missing, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Symbol: "no-match"})
-	if err != nil || missing.Total != 0 || *missing.TotalUSD != *full.TotalUSD || missing.Completeness != full.Completeness {
-		t.Fatalf("empty filter changed boundary totals: %+v %v", missing, err)
+	if err != nil || missing.Total != 0 || *missing.TotalUSD != "0" || missing.Completeness != full.Completeness {
+		t.Fatalf("empty filter total: %+v %v", missing, err)
 	}
 	balances, err := h.financial.FlatBalances(h.ctx, pctx, &financial.ListFilter{Symbol: "sDt", Limit: 500})
 	if err != nil || balances.Total == 0 {
@@ -193,7 +194,7 @@ func TestReportedEquityDoesNotQualifyFilteredBalanceTotals(t *testing.T) {
 		t.Fatalf("reported equity hid unknown balance values: %+v", all)
 	}
 	unknown := read("mystery")
-	if unknown.TotalUSD == nil || *unknown.TotalUSD != "0" || unknown.TotalCompleteness != valuation.CompletenessIncomplete || len(unknown.Items) != 1 || !unknown.Items[0].NoPrice {
+	if unknown.TotalUSD != nil || unknown.TotalCompleteness != valuation.CompletenessIncomplete || len(unknown.Items) != 1 || !unknown.Items[0].NoPrice {
 		t.Fatalf("unknown subtotal: %+v", unknown)
 	}
 	known := read("usd")
@@ -203,7 +204,7 @@ func TestReportedEquityDoesNotQualifyFilteredBalanceTotals(t *testing.T) {
 	a.failed = true
 	h.runCycle()
 	stale := read("")
-	if !stale.Coverage.Complete || stale.TotalCompleteness != valuation.CompletenessIncomplete || len(stale.Items) == 0 || stale.Items[0].Freshness != valuation.FreshnessStale {
+	if !stale.Coverage.Complete || stale.TotalCompleteness != valuation.CompletenessIncomplete || stale.TotalFreshness != valuation.FreshnessStale || len(stale.Items) == 0 || stale.Items[0].Freshness != valuation.FreshnessStale {
 		t.Fatalf("stale report coverage: %+v", stale)
 	}
 	missing := h.createIdentity("No report", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
@@ -213,7 +214,112 @@ func TestReportedEquityDoesNotQualifyFilteredBalanceTotals(t *testing.T) {
 		t.Fatalf("unrelated missing account changed filtered total: %+v", known)
 	}
 	missingRows, err := h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{IdentityID: &missing.ID, Symbol: "unmatched"})
-	if err != nil || missingRows.Coverage.Complete || missingRows.TotalCompleteness != valuation.CompletenessIncomplete || len(missingRows.Coverage.MissingAccountIDs) == 0 || len(missingRows.TotalIssues) == 0 {
+	if err != nil || missingRows.Coverage.Complete || missingRows.TotalCompleteness != valuation.CompletenessIncomplete || missingRows.TotalUSD != nil || len(missingRows.Coverage.MissingAccountIDs) == 0 || len(missingRows.TotalIssues) == 0 {
 		t.Fatalf("empty search lost missing reports: %+v %v", missingRows, err)
 	}
+}
+
+// Product summaries value selected position amounts, rather than whole accounts
+// or separately reported rewards, using the point's adopted price evidence.
+func TestProductTotalsUseMatchingHoldingsAndAdoptedPrices(t *testing.T) {
+	h := newHarness(t)
+	a := &summaryScenario{price: "50000"}
+	h.registry.Register(adapters.PlatformOKX, a)
+	item := h.createIdentity("Product totals", adapters.PlatformOKX, adapters.StructureOKXUnified, "earn", "dual_investment")
+	item = h.storeCredentials(item, "summary")
+	if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
+		t.Fatalf("enable: %+v %v", outcome, err)
+	}
+	_, first := h.runCycle()
+	p := financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"}
+	check := func(symbol string, cycle *uuid.UUID, earnWant, dualWant *string, complete, freshness string) {
+		t.Helper()
+		filter := &financial.ListFilter{IdentityID: &item.ID, Symbol: symbol, Limit: 1, Offset: 1, CycleID: cycle}
+		earn, err := h.financial.FlatEarnPositions(h.ctx, p, filter)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertHoldingTotal(t, earn, earnWant, complete, freshness)
+		dual, err := h.financial.FlatDualPositions(h.ctx, p, filter)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertHoldingTotal(t, dual, dualWant, complete, freshness)
+	}
+	check("", nil, new("50010"), new("50010"), "incomplete", "fresh")
+	check("BTC", nil, new("50010"), new("50000"), "complete", "fresh")
+	check("MYSTERY", nil, nil, nil, "incomplete", "fresh")
+	check("no-match", nil, new("0"), new("0"), "complete", "fresh")
+	// A missing unrelated identity affects the portfolio, not these totals.
+	missing := h.createIdentity("Missing products", adapters.PlatformBinance, adapters.StructureBinanceClassic, "earn", "dual_investment")
+	a.failed, a.price = true, "90000"
+	h.runCycle()
+	check("BTC", nil, new("50010"), new("50000"), "complete", "stale")
+	check("MYSTERY", nil, nil, nil, "incomplete", "stale")
+	check("BTC", &first, new("50010"), new("50000"), "complete", "fresh")
+	filter := &financial.ListFilter{IdentityID: &missing.ID, Symbol: "no-match"}
+	earn, err := h.financial.FlatEarnPositions(h.ctx, p, filter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertHoldingTotal(t, earn, nil, "incomplete", "fresh")
+	dual, err := h.financial.FlatDualPositions(h.ctx, p, filter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertHoldingTotal(t, dual, nil, "incomplete", "fresh")
+	// Only a successful empty report establishes zero held value.
+	a.failed, a.empty, a.price = false, true, "90000"
+	h.runCycle()
+	check("", nil, new("0"), new("0"), "complete", "fresh")
+}
+
+func assertHoldingTotal[T any](t *testing.T, list financial.FlatList[T], want *string, completeness, freshness string) {
+	t.Helper()
+	if !reflect.DeepEqual(list.TotalUSD, want) || list.TotalCompleteness != completeness || list.TotalFreshness != freshness {
+		t.Fatalf("total: %+v; want %v / %s / %s", list, want, completeness, freshness)
+	}
+	if completeness == "incomplete" && len(list.TotalIssues) == 0 {
+		t.Fatal("incomplete total has no named omissions")
+	}
+}
+
+type summaryScenario struct {
+	price         string
+	failed, empty bool
+}
+
+func (a *summaryScenario) Validate(context.Context, adapters.Credentials, adapters.AccountStructure) (adapters.ValidationResult, error) {
+	return adapters.ValidationResult{ExternalRef: "summary", MarginMode: adapters.MarginOKXPM}, nil
+}
+
+func (a *summaryScenario) Collect(_ context.Context, _ adapters.Credentials, _ adapters.AccountStructure, kinds []adapters.AccountType) (adapters.Batch, error) {
+	at := time.Now().UTC()
+	out := adapters.Batch{CollectedAt: at, MarginMode: adapters.MarginOKXPM, Prices: []adapters.Price{{CanonicalAssetSymbol: "BTC", QuoteCanonicalAssetSymbol: "USD", Price: a.price, SourceMarketRef: "BTCUSD", RetrievedAt: at}}}
+	for _, kind := range kinds {
+		if a.failed {
+			out.Reports = append(out.Reports, adapters.FailedReport(kind, adapters.NewError(adapters.ClassTemporary, "Synthetic product failure.")))
+			continue
+		}
+		r := adapters.AccountReport{AccountType: kind, Status: adapters.StatusSucceeded, CollectedAt: at}
+		if !a.empty {
+			r.Balances = []adapters.Balance{{AssetSymbol: "BTC", Equity: "1"}, {AssetSymbol: "USDT", Equity: "10"}, {AssetSymbol: "MYSTERY", Equity: "2"}}
+			if kind == "earn" {
+				p := adapters.NewEarnPosition("multi", "flexible", "position", "total")
+				p.Assets = []adapters.EarnAmount{{AssetSymbol: "BTC", Amount: "1"}, {AssetSymbol: "USDT", Amount: "10"}}
+				p.AddReward("USDT", "1000", "pending")
+				q := adapters.NewEarnPosition("unknown", "fixed", "position", "principal")
+				q.Assets = []adapters.EarnAmount{{AssetSymbol: "MYSTERY", Amount: "2"}}
+				r.EarnPositions = []adapters.EarnPosition{p, q}
+			} else {
+				r.DualPositions = []adapters.DualPosition{
+					{PositionKey: "btc", PrincipalAssetSymbol: "BTC", Principal: "1", Status: "active", BaseAssetSymbol: new("BTC"), QuoteAssetSymbol: new("USDT"), AnnualizedRate: new("0.99"), RateKind: new("apr"), TargetPrice: new("100000")},
+					{PositionKey: "usdt", PrincipalAssetSymbol: "USDT", Principal: "10", Status: "active", BaseAssetSymbol: new("ETH"), QuoteAssetSymbol: new("USDT")},
+					{PositionKey: "unknown", PrincipalAssetSymbol: "MYSTERY", Principal: "2", Status: "active"},
+				}
+			}
+		}
+		out.Reports = append(out.Reports, r)
+	}
+	return out, nil
 }
