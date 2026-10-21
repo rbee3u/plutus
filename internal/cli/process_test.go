@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestRuntimeLoggingLifecycle(t *testing.T) {
+func TestProcessLoggingLifecycle(t *testing.T) {
 	if err := os.MkdirAll("/tmp/plutus", 0o750); err != nil {
 		t.Fatal(err)
 	}
@@ -41,14 +41,13 @@ func TestRuntimeLoggingLifecycle(t *testing.T) {
 	root = NewRootCommand("test")
 	root.SetOut(&output)
 	root.SetErr(&console)
-	var runtime *commandRuntime
+	var proc *process
 	failure := errors.New("runtime test failure")
-	cmd := &cobra.Command{Use: "probe", RunE: func(cmd *cobra.Command, _ []string) error {
-		runtime = runtimeFrom(cmd)
-		runtime.logs.App.Info("before failure")
+	cmd := &cobra.Command{Use: "probe", RunE: withProcess(func(_ *cobra.Command, received *process) error {
+		proc = received
+		received.logs.App.Info("before failure")
 		return failure
-	}}
-	withRuntime(cmd)
+	})}
 	root.AddCommand(cmd)
 	root.SetArgs([]string{"--config", "app.toml", "--env-file", "empty.env", "probe"})
 	err = root.Execute()
@@ -59,11 +58,11 @@ func TestRuntimeLoggingLifecycle(t *testing.T) {
 	if !errors.As(err, &reported) {
 		t.Fatal("terminal error not marked as reported")
 	}
+	if proc == nil {
+		t.Fatal("handler did not receive the process")
+	}
 	if strings.Count(console.String(), "runtime test failure") != 1 {
 		t.Fatalf("error duplication: %s", console.String())
-	}
-	if runtimeFrom(cmd) != nil {
-		t.Fatal("runtime leaked into reused command")
 	}
 	if _, err := os.Stat(filepath.Join(dir, "logs", "sql.log")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("SQL disabled config lost")
@@ -75,7 +74,7 @@ func TestRuntimeLoggingLifecycle(t *testing.T) {
 	if !bytes.Contains(raw, []byte("before failure")) || !bytes.Contains(raw, []byte("runtime test failure")) {
 		t.Fatal("command app log missing")
 	}
-	runtime.logs.App.Info("after close")
+	proc.logs.App.Info("after close")
 	after, err := os.ReadFile(filepath.Join(dir, "logs", "app.log"))
 	if err != nil {
 		t.Fatal(err)

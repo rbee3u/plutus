@@ -22,28 +22,22 @@ func newServeCommand() *cobra.Command {
 		Use:   "serve",
 		Short: "Run the HTTP API, the embedded web app, the scheduler, and the collection worker",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runServe(cmd)
-		},
+		RunE:  withProcess(runServe),
 	}
 }
 
-func runServe(cmd *cobra.Command) error {
-	runtime := runtimeFrom(cmd)
-	logger := runtime.logs.App
+func runServe(cmd *cobra.Command, proc *process) error {
+	cfg := proc.cfg
+	logger := proc.logs.App
 	restoreGin := httpserver.BridgeGinLogs(logger)
 	defer restoreGin()
-	cfg, err := loadProcessConfig(cmd)
-	if err != nil {
-		return err
-	}
 
 	ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	var db *sql.DB
 	if cfg.Database.DSN != "" {
-		opened, err := mysql.Open(cfg.Database.DSN, mysql.Loggers{App: logger, SQL: runtime.logs.SQL})
+		opened, err := mysql.Open(cfg.Database.DSN, mysql.Loggers{App: logger, SQL: proc.logs.SQL})
 		if err != nil {
 			return err
 		}
@@ -53,7 +47,7 @@ func runServe(cmd *cobra.Command) error {
 
 	options := httpserver.EngineOptions{
 		Logger:            logger,
-		AccessLogger:      runtime.logs.Access,
+		AccessLogger:      proc.logs.Access,
 		Ready:             httpserver.StaticReady{Err: errors.New("database DSN is not configured")},
 		SecureCookies:     cfg.Server.TLS.HTTPSEnabled(),
 		SessionCookieName: cfg.Auth.SessionCookieName(),

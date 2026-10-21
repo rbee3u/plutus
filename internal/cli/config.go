@@ -10,10 +10,8 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 )
 
+// loadProcessConfig reads the configuration selected by the persistent flags.
 func loadProcessConfig(cmd *cobra.Command) (config.Config, error) {
-	if runtime := runtimeFrom(cmd); runtime != nil {
-		return runtime.config, nil
-	}
 	configPath, err := flagString(cmd, "config")
 	if err != nil {
 		return config.Config{}, err
@@ -35,18 +33,11 @@ func flagString(cmd *cobra.Command, name string) (string, error) {
 	return cmd.Root().PersistentFlags().GetString(name)
 }
 
-func openConfiguredDB(cmd *cobra.Command) (*sql.DB, config.Config, error) {
-	cfg, err := loadProcessConfig(cmd)
-	if err != nil {
-		return nil, config.Config{}, err
+// openConfiguredDB opens the configured database for the command. The caller
+// owns the returned handle.
+func openConfiguredDB(proc *process) (*sql.DB, error) {
+	if proc.cfg.Database.DSN == "" {
+		return nil, errors.New("database DSN is required through PLUTUS_DSN or PLUTUS_DSN_FILE in the process environment or selected env file")
 	}
-	if cfg.Database.DSN == "" {
-		return nil, config.Config{}, errors.New("database DSN is required through PLUTUS_DSN or PLUTUS_DSN_FILE in the process environment or selected env file")
-	}
-	runtime := runtimeFrom(cmd)
-	db, err := mysql.Open(cfg.Database.DSN, mysql.Loggers{App: runtime.logs.App, SQL: runtime.logs.SQL})
-	if err != nil {
-		return nil, config.Config{}, err
-	}
-	return db, cfg, nil
+	return mysql.Open(proc.cfg.Database.DSN, mysql.Loggers{App: proc.logs.App, SQL: proc.logs.SQL})
 }

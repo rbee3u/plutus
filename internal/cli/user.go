@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/rbee3u/plutus/internal/app"
 	"github.com/rbee3u/plutus/internal/service/auth"
 )
 
@@ -24,8 +25,8 @@ func newUserCreateCommand() *cobra.Command {
 		Use:   "create",
 		Short: "Create an active user and default undeletable portfolio",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			svc, cleanup, err := newUserService(cmd)
+		RunE: withProcess(func(cmd *cobra.Command, proc *process) error {
+			svc, cleanup, err := newUserService(proc)
 			if err != nil {
 				return err
 			}
@@ -36,7 +37,7 @@ func newUserCreateCommand() *cobra.Command {
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created user %s (%s)\n", user.Username, user.ID)
 			return nil
-		},
+		}),
 	}
 	cmd.Flags().StringVar(&username, "username", "", "Login username")
 	cmd.Flags().StringVar(&password, "password", "", "Password of 8 to 128 characters")
@@ -51,8 +52,8 @@ func newUserDisableCommand() *cobra.Command {
 		Use:   "disable",
 		Short: "Disable a user and revoke every session",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			svc, cleanup, err := newUserService(cmd)
+		RunE: withProcess(func(cmd *cobra.Command, proc *process) error {
+			svc, cleanup, err := newUserService(proc)
 			if err != nil {
 				return err
 			}
@@ -62,7 +63,7 @@ func newUserDisableCommand() *cobra.Command {
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Disabled user %s\n", username)
 			return nil
-		},
+		}),
 	}
 	cmd.Flags().StringVar(&username, "username", "", "Login username")
 	_ = cmd.MarkFlagRequired("username")
@@ -75,8 +76,8 @@ func newUserResetPasswordCommand() *cobra.Command {
 		Use:   "reset-password",
 		Short: "Replace a user's password and revoke every session",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			svc, cleanup, err := newUserService(cmd)
+		RunE: withProcess(func(cmd *cobra.Command, proc *process) error {
+			svc, cleanup, err := newUserService(proc)
 			if err != nil {
 				return err
 			}
@@ -86,7 +87,7 @@ func newUserResetPasswordCommand() *cobra.Command {
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Reset password for %s\n", username)
 			return nil
-		},
+		}),
 	}
 	cmd.Flags().StringVar(&username, "username", "", "Login username")
 	cmd.Flags().StringVar(&password, "password", "", "Password of 8 to 128 characters")
@@ -95,11 +96,10 @@ func newUserResetPasswordCommand() *cobra.Command {
 	return cmd
 }
 
-func newUserService(cmd *cobra.Command) (*auth.Service, func(), error) {
-	db, cfg, err := openConfiguredDB(cmd)
+func newUserService(proc *process) (*auth.Service, func(), error) {
+	db, err := openConfiguredDB(proc)
 	if err != nil {
 		return nil, nil, err
 	}
-	svc := auth.NewService(db, cfg.Auth.SessionIdleLifetime, cfg.Auth.SessionAbsoluteLifetime)
-	return svc, func() { _ = db.Close() }, nil
+	return app.Auth(db, &proc.cfg), func() { _ = db.Close() }, nil
 }

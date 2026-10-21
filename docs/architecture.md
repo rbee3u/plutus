@@ -40,6 +40,12 @@ HTTP server, worker, and process lifecycle. Services share sqlc queries and
 transaction helpers without exclusive table ownership. HTTP maps generated wire
 types to application types; services do not depend on Gin or HTTP types.
 
+Every service is constructed in `internal/app` and nowhere else, through the
+aggregate (`app.New`) or a narrow constructor (`app.Auth`, `app.Identity`).
+Every other package receives its collaborators as parameters. Leaf CLI commands
+receive their configuration and log sinks as an explicit `*process` argument
+instead of looking them up. This is a review convention, not a lint gate.
+
 Use singular nouns or functional names for handwritten Go packages and source
 grouping directories, including `service`, `cycle`, `adapter`, and `seed`.
 Resource collections such as `db/migrations`, established terms, and generated
@@ -52,8 +58,8 @@ terms such as `credentials` and `holdings`, and generated filenames retain their
 natural form. Matching tests share the implementation's basename with
 `_test.go`; preserve operating-system and architecture build suffixes.
 
-Depguard enforces the [backend boundaries](./adr/0007-backend-architecture.md):
-application code uses the normalized adapter contract, `valuation` cannot import
+Import direction and the assembly convention are upheld by review: application
+code uses the normalized adapter contract, `valuation` cannot import
 `financial`, and HTTP cannot import SQL APIs. Runtime code cannot import
 `internal/testsupport`. Within-layer dependencies remain reviewed choices.
 

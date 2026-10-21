@@ -88,7 +88,7 @@ func newHarness(t *testing.T, databases ...*sql.DB) *harness {
 	// the assembly scenario below uses services.Collection without this override.
 	runner := collection.NewService(db, collection.Options{
 		Adapters: registry, Identities: services.Identities, Catalog: services.Catalog,
-		Manual: services.Manual, Valuation: services.Valuation,
+		Manual: services.Manual, Valuation: services.Valuation, Cycles: services.Cycles,
 		RetryDelays: []time.Duration{time.Millisecond, time.Millisecond},
 	})
 	return &harness{

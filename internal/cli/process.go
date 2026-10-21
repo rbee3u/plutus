@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 
@@ -12,24 +11,20 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 )
 
-type runtimeKey struct{}
-
-type commandRuntime struct {
-	config config.Config
-	logs   *logging.System
+// process is the per-command runtime: the configuration selected by the
+// persistent flags and the log sinks opened for this command. Leaf commands
+// receive it as a parameter instead of looking it up.
+type process struct {
+	cfg  config.Config
+	logs *logging.System
 }
 
-// withRuntime wraps each runtime leaf rather than relying on Cobra's post-run
-// hooks, which are skipped when a command fails.
-func withRuntime(cmd *cobra.Command) {
-	for _, child := range cmd.Commands() {
-		withRuntime(child)
-	}
-	if cmd.RunE == nil {
-		return
-	}
-	run := cmd.RunE
-	cmd.RunE = func(cmd *cobra.Command, args []string) (result error) {
+// withProcess wraps a leaf handler with the process lifecycle. It loads
+// configuration once, opens the log sinks, and closes them after the handler
+// returns. Cobra's post-run hooks are skipped when a command fails, so the
+// lifecycle lives in the handler rather than in those hooks.
+func withProcess(run func(*cobra.Command, *process) error) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, _ []string) (result error) {
 		cfg, err := loadProcessConfig(cmd)
 		if err != nil {
 			return err
@@ -46,13 +41,10 @@ func withRuntime(cmd *cobra.Command) {
 		if err != nil {
 			return err
 		}
-		previous := cmd.Context()
-		ctx := context.WithValue(previous, runtimeKey{}, &commandRuntime{config: cfg, logs: logs})
-		cmd.SetContext(ctx)
 		mysql.SetMigrationLogger(logs.App)
 		defer func() {
 			if result != nil {
-				logs.App.ErrorContext(ctx, "command failed", slog.String("command", cmd.CommandPath()), slog.Any("err", result))
+				logs.App.ErrorContext(cmd.Context(), "command failed", slog.String("command", cmd.CommandPath()), slog.Any("err", result))
 				result = &ReportedError{error: result}
 			}
 			mysql.SetMigrationLogger(nil)
@@ -60,15 +52,9 @@ func withRuntime(cmd *cobra.Command) {
 				logs.App.Error("close logs failed", slog.Any("err", err))
 				result = &ReportedError{error: errors.Join(result, err)}
 			}
-			cmd.SetContext(previous)
 		}()
-		return run(cmd, args)
+		return run(cmd, &process{cfg: cfg, logs: logs})
 	}
-}
-
-func runtimeFrom(cmd *cobra.Command) *commandRuntime {
-	runtime, _ := cmd.Context().Value(runtimeKey{}).(*commandRuntime)
-	return runtime
 }
 
 // ReportedError prevents main from printing an error already mirrored by app.

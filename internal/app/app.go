@@ -1,5 +1,7 @@
 // Package app is the composition root: it builds the application's services on
-// one database handle and hands them to the transport and CLI layers.
+// one database handle and hands them to the transport and CLI layers. Every
+// service is constructed here and nowhere else; other packages receive the
+// collaborators they need as parameters.
 package app
 
 import (
@@ -45,26 +47,38 @@ type Services struct {
 	Idempotency *idempotency.Store
 }
 
+// Auth builds the session service on db.
+func Auth(db *sql.DB, cfg *config.Config) *auth.Service {
+	return auth.NewService(db, cfg.Auth.SessionIdleLifetime, cfg.Auth.SessionAbsoluteLifetime)
+}
+
+// Identity builds the identity service on db and registry. A missing master key
+// disables credential writes.
+func Identity(db *sql.DB, cfg *config.Config, registry *adapter.Registry) (*identity.Service, error) {
+	return identity.NewService(db, identity.Options{
+		MasterKey:       cfg.Crypto.MasterKey,
+		Adapters:        registry,
+		ValidateTimeout: cfg.Collection.ConnectionValidationTimeout,
+	})
+}
+
 // New builds every service on db and shares one registry across its consumers.
 func New(db *sql.DB, cfg *config.Config, registry *adapter.Registry, logger *slog.Logger) (*Services, error) {
 	if registry == nil {
 		registry = adapter.NewRegistry()
 	}
-	identities, err := identity.NewService(db, identity.Options{
-		MasterKey:       cfg.Crypto.MasterKey,
-		Adapters:        registry,
-		ValidateTimeout: cfg.Collection.ConnectionValidationTimeout,
-	})
+	identities, err := Identity(db, cfg, registry)
 	if err != nil {
 		return nil, err
 	}
 	catalogSvc := catalog.NewService(db)
 	valuationSvc := valuation.NewService(db)
 	manualSvc := manual.NewService(db, catalogSvc)
+	cycleSvc := cycle.NewService(db)
 	return &Services{
 		DB:          db,
 		Adapters:    registry,
-		Auth:        auth.NewService(db, cfg.Auth.SessionIdleLifetime, cfg.Auth.SessionAbsoluteLifetime),
+		Auth:        Auth(db, cfg),
 		Portfolios:  portfolio.NewService(db),
 		Identities:  identities,
 		Catalog:     catalogSvc,
@@ -72,8 +86,8 @@ func New(db *sql.DB, cfg *config.Config, registry *adapter.Registry, logger *slo
 		Manual:      manualSvc,
 		Valuation:   valuationSvc,
 		Financial:   financial.NewService(db, valuationSvc),
-		Collection:  collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: catalogSvc, Manual: manualSvc, Valuation: valuationSvc, Stagger: collection.IdentityDelay, Logger: logger}),
-		Cycles:      cycle.NewService(db),
+		Collection:  collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: catalogSvc, Manual: manualSvc, Valuation: valuationSvc, Cycles: cycleSvc, Stagger: collection.IdentityDelay, Logger: logger}),
+		Cycles:      cycleSvc,
 		Retention:   retention.NewService(db),
 		Audit:       audit.NewService(db),
 		Idempotency: idempotency.NewStore(db),

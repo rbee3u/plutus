@@ -22,23 +22,24 @@ func newCollectCommand() *cobra.Command {
 		Use:   "collect",
 		Short: "Run one collection cycle for a portfolio synchronously and write its valuation point",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: withProcess(func(cmd *cobra.Command, proc *process) error {
 			portfolioID, err := uuid.Parse(portfolioFlag)
 			if err != nil {
 				return fmt.Errorf("--portfolio must be a UUID: %w", err)
 			}
-			db, cfg, err := openConfiguredDB(cmd)
+			db, err := openConfiguredDB(proc)
 			if err != nil {
 				return err
 			}
 			defer func() { _ = db.Close() }()
-			logger := runtimeFrom(cmd).logs.App
+			cfg := proc.cfg
+			logger := proc.logs.App
 			services, err := app.New(db, &cfg, buildAdapters(&cfg), logger)
 			if err != nil {
 				return err
 			}
 			return runCollect(cmd.Context(), services, portfolioID, cmd.OutOrStdout(), logger)
-		},
+		}),
 	}
 	cmd.Flags().StringVar(&portfolioFlag, "portfolio", "", "Portfolio UUID to collect")
 	_ = cmd.MarkFlagRequired("portfolio")

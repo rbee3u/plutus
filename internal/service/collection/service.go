@@ -38,6 +38,7 @@ type Options struct {
 	Catalog     *catalog.Service
 	Manual      *manual.Service
 	Valuation   *valuation.Service
+	Cycles      *cycle.Service
 	Stagger     time.Duration
 	RetryDelays []time.Duration
 	Logger      *slog.Logger
@@ -54,6 +55,7 @@ type Service struct {
 	manual      *manual.Service
 	catalog     *catalog.Service
 	valuation   *valuation.Service
+	cycles      *cycle.Service
 	stagger     time.Duration
 	retryDelays []time.Duration
 	logger      *slog.Logger
@@ -64,7 +66,7 @@ func NewService(db *sql.DB, opts Options) *Service {
 	s := &Service{
 		db: db, q: sqlcgen.New(db), now: time.Now, sleep: sleepCtx, manual: opts.Manual,
 		adapters: opts.Adapters, identities: opts.Identities, catalog: opts.Catalog, valuation: opts.Valuation,
-		stagger: opts.Stagger, retryDelays: opts.RetryDelays, logger: opts.Logger,
+		cycles: opts.Cycles, stagger: opts.Stagger, retryDelays: opts.RetryDelays, logger: opts.Logger,
 	}
 	if s.retryDelays == nil {
 		s.retryDelays = []time.Duration{2 * time.Second, 5 * time.Second}
@@ -124,7 +126,7 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, cycleID uuid.UUID, 
 			return Summary{}, err
 		}
 		if len(claim) > 0 && claim[0] != nil {
-			if err := cycle.NewService(s.db).Finish(ctx, claim[0], cycle.Result{OK: true}); err != nil {
+			if err := s.cycles.Finish(ctx, claim[0], cycle.Result{OK: true}); err != nil {
 				return Summary{}, err
 			}
 		}

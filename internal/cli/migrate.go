@@ -23,15 +23,17 @@ func newMigrateStatusCommand() *cobra.Command {
 		Use:   "status",
 		Short: "Show applied and pending Goose migrations",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			db, _, err := openConfiguredDB(cmd)
-			if err != nil {
-				return err
-			}
-			defer func() { _ = db.Close() }()
-			return mysql.Status(db, cmd.OutOrStdout())
-		},
+		RunE:  withProcess(runMigrateStatus),
 	}
+}
+
+func runMigrateStatus(cmd *cobra.Command, proc *process) error {
+	db, err := openConfiguredDB(proc)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	return mysql.Status(db, cmd.OutOrStdout())
 }
 
 func newMigrateUpCommand() *cobra.Command {
@@ -39,17 +41,19 @@ func newMigrateUpCommand() *cobra.Command {
 		Use:   "up",
 		Short: "Apply all pending Goose migrations",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			db, _, err := openConfiguredDB(cmd)
-			if err != nil {
-				return err
-			}
-			defer func() { _ = db.Close() }()
-			if err := mysql.Up(db); err != nil {
-				return err
-			}
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Migrations applied")
-			return nil
-		},
+		RunE:  withProcess(runMigrateUp),
 	}
+}
+
+func runMigrateUp(cmd *cobra.Command, proc *process) error {
+	db, err := openConfiguredDB(proc)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	if err := mysql.Up(db); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Migrations applied")
+	return nil
 }

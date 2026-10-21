@@ -39,7 +39,7 @@ func PlatformsCSV() string {
 // AccountsCSV preserves catalog account order within each immutable structure.
 func AccountsCSV() string {
 	codes := []string{}
-	for _, platform := range adapter.NewRegistry().Platforms() {
+	for _, platform := range adapter.PlatformCatalog() {
 		for _, structure := range platform.Structures {
 			for _, account := range structure.AccountTypes {
 				codes = append(codes, string(structure.ID)+":"+string(account.ID))

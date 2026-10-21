@@ -121,20 +121,30 @@ func OfferedPlatforms() []Platform {
 	return ids
 }
 
-// Platforms returns independent descriptions of offered products and runtime availability.
-func (r *Registry) Platforms() []PlatformInfo {
+// PlatformCatalog returns independent descriptions of offered products without runtime
+// availability.
+func PlatformCatalog() []PlatformInfo {
 	out := make([]PlatformInfo, 0, len(platformCatalog))
 	for _, spec := range platformCatalog {
 		if len(spec.structures) == 0 {
 			continue
 		}
-		info := PlatformInfo{ID: spec.id, Name: spec.name, AdapterAvailable: r.Available(spec.id), CredentialForm: spec.credentialForm.clone()}
+		info := PlatformInfo{ID: spec.id, Name: spec.name, CredentialForm: spec.credentialForm.clone()}
 		for _, structure := range spec.structures {
 			structure.AccountTypes = append([]AccountTypeInfo(nil), structure.AccountTypes...)
 			structure.MarginModes = append([]MarginModeInfo(nil), structure.MarginModes...)
 			info.Structures = append(info.Structures, structure)
 		}
 		out = append(out, info)
+	}
+	return out
+}
+
+// Platforms returns independent descriptions of offered products and runtime availability.
+func (r *Registry) Platforms() []PlatformInfo {
+	out := PlatformCatalog()
+	for i := range out {
+		out[i].AdapterAvailable = r.Available(out[i].ID)
 	}
 	return out
 }

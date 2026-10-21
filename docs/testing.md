@@ -24,10 +24,12 @@ encountered. For future CI, `make style` replaces `make format` with a
 non-mutating check. `make generate` regenerates sqlc and Go/TypeScript API
 bindings; unchanged sources must produce no diff.
 
-Lint prioritizes correctness, security, resource lifetimes, and coarse
-[backend](./adr/0007-backend-architecture.md) and
-[frontend](./adr/0013-frontend-architecture.md) import boundaries. The exact
-allowlist and exclusions live in [`.golangci.yml`](../.golangci.yml) and
+Lint prioritizes correctness, security, and resource lifetimes. Backend
+[import boundaries](./adr/0007-backend-architecture.md) and the
+[composition-root convention](./architecture.md#module-responsibilities) are
+upheld by review; frontend
+[module boundaries](./adr/0013-frontend-architecture.md) are checked by ESLint.
+Linter settings and exclusions live in [`.golangci.yml`](../.golangci.yml) and
 [`web/eslint.config.js`](../web/eslint.config.js); style preferences and
 speculative micro-optimizations are outside these gates. Rule-specific
 suppressions must explain their bounds or exception; unused suppressions fail.

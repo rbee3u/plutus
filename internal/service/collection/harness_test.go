@@ -76,7 +76,7 @@ func newHarness(t *testing.T, databases ...*sql.DB) *harness {
 	}
 	h.collection = NewService(db, Options{
 		Adapters: registry, Identities: identities, Catalog: catalogSvc, Manual: manual.NewService(db, catalogSvc), Valuation: valuationSvc,
-		Stagger: 0, RetryDelays: []time.Duration{time.Millisecond, time.Millisecond},
+		Cycles: h.cycles, Stagger: 0, RetryDelays: []time.Duration{time.Millisecond, time.Millisecond},
 	})
 	return h
 }

@@ -87,7 +87,7 @@ func TestWorkerStopsAfterLosingLeaseAndDoesNotRetryDuplicates(t *testing.T) {
 			}
 			value := valuation.NewService(db)
 			assets := catalog.NewService(db)
-			collect := collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: assets, Manual: manual.NewService(db, assets), Valuation: value, RetryDelays: []time.Duration{}})
+			collect := collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: assets, Manual: manual.NewService(db, assets), Valuation: value, Cycles: cycleService, RetryDelays: []time.Duration{}})
 			w := New(&Options{Cycles: cycleService, Collection: collect, Lease: 3 * time.Second})
 			if duplicate {
 				if ok, err := w.ProcessOnce(ctx); err != nil || !ok {

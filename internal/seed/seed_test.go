@@ -156,7 +156,7 @@ func TestSeedsApplyRetryAndCollect(t *testing.T) {
 	assertWalkthroughReads(ctx, t, db, anchor)
 	queue := cycle.NewService(db)
 	assets := catalog.NewService(db)
-	runner := collection.NewService(db, collection.Options{Adapters: registry, Identities: ids, Catalog: assets, Manual: manual.NewService(db, assets), Valuation: v, RetryDelays: []time.Duration{}})
+	runner := collection.NewService(db, collection.Options{Adapters: registry, Identities: ids, Catalog: assets, Manual: manual.NewService(db, assets), Valuation: v, Cycles: queue, RetryDelays: []time.Duration{}})
 	for _, p := range []uuid.UUID{PortfolioAliceMain, PortfolioAliceEdge} {
 		collectionCycle, _, err := queue.Enqueue(ctx, p, cycle.TriggerUser)
 		if err != nil {

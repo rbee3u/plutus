@@ -10,10 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/rbee3u/plutus/internal/app"
 	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/seed"
-	"github.com/rbee3u/plutus/internal/service/identity"
 )
 
 func newDatabaseCommand() *cobra.Command {
@@ -31,14 +31,15 @@ func newDBSeedCommand() *cobra.Command {
 		Use:   "seed",
 		Short: "Insert development data and initialize its valuation points",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			db, cfg, err := openConfiguredDB(cmd)
+		RunE: withProcess(func(cmd *cobra.Command, proc *process) error {
+			db, err := openConfiguredDB(proc)
 			if err != nil {
 				return err
 			}
 			defer func() { _ = db.Close() }()
+			cfg := proc.cfg
 			return seedDatabase(cmd.Context(), db, &cfg, cmd.OutOrStdout())
-		},
+		}),
 	}
 	return cmd
 }
@@ -53,12 +54,13 @@ func newDBResetCommand() *cobra.Command {
 			"the database is left empty and migrated, which is how the test environment is wiped before\n" +
 			"real read-only keys are configured through the UI. It refuses production-like database names.",
 		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			db, cfg, err := openConfiguredDB(cmd)
+		RunE: withProcess(func(cmd *cobra.Command, proc *process) error {
+			db, err := openConfiguredDB(proc)
 			if err != nil {
 				return err
 			}
 			defer func() { _ = db.Close() }()
+			cfg := proc.cfg
 			if !cfg.Database.AllowReset {
 				return errors.New("db reset requires [database].allow_reset = true in the selected config file")
 			}
@@ -84,7 +86,7 @@ func newDBResetCommand() *cobra.Command {
 				return nil
 			}
 			return seedDatabase(ctx, db, &cfg, cmd.OutOrStdout())
-		},
+		}),
 	}
 	cmd.Flags().BoolVar(&devSeed, "seed", false, "Load development data after migrating (omit to leave the database empty)")
 	return cmd
@@ -119,7 +121,7 @@ func seedDatabase(ctx context.Context, db *sql.DB, cfg *config.Config, out io.Wr
 // activateSeedIdentities seals deterministic credentials and enables each live identity through the
 // configured adapters, so the scheduler collects them like user-configured connections.
 func activateSeedIdentities(ctx context.Context, db *sql.DB, cfg *config.Config, live []seed.LiveIdentity, out io.Writer) error {
-	identities, err := identity.NewService(db, identity.Options{MasterKey: cfg.Crypto.MasterKey, Adapters: buildAdapters(cfg), ValidateTimeout: cfg.Collection.ConnectionValidationTimeout})
+	identities, err := app.Identity(db, cfg, buildAdapters(cfg))
 	if err != nil {
 		return err
 	}
