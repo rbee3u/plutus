@@ -89,7 +89,7 @@ func (c *loggingConn) BeginTx(ctx context.Context, opts driver.TxOptions) (drive
 		if opts.Isolation != 0 || opts.ReadOnly {
 			return nil, errors.New("driver does not support transaction options")
 		}
-		tx, err = c.Conn.Begin()
+		tx, err = c.Conn.Begin() //nolint:staticcheck // SA1019: preserve compatibility with legacy driver implementations.
 	}
 	recordSQL(ctx, c.logger, "begin", "BEGIN", nil, start, err)
 	if err != nil {
@@ -134,14 +134,14 @@ type loggingStmt struct {
 
 func (s *loggingStmt) Exec(args []driver.Value) (driver.Result, error) {
 	start := time.Now()
-	result, err := s.Stmt.Exec(args)
+	result, err := s.Stmt.Exec(args) //nolint:staticcheck // SA1019: preserve compatibility with legacy driver implementations.
 	recordSQL(context.Background(), s.logger, "exec", s.query, namedValues(args), start, err)
 	return result, err
 }
 
 func (s *loggingStmt) Query(args []driver.Value) (driver.Rows, error) {
 	start := time.Now()
-	rows, err := s.Stmt.Query(args)
+	rows, err := s.Stmt.Query(args) //nolint:staticcheck // SA1019: preserve compatibility with legacy driver implementations.
 	recordSQL(context.Background(), s.logger, "query", s.query, namedValues(args), start, err)
 	return rows, err
 }
@@ -157,7 +157,7 @@ func (s *loggingStmt) ExecContext(ctx context.Context, args []driver.NamedValue)
 		if conversionErr != nil {
 			return nil, conversionErr
 		}
-		result, err = s.Stmt.Exec(values)
+		result, err = s.Stmt.Exec(values) //nolint:staticcheck // SA1019: preserve compatibility with legacy driver implementations.
 	}
 	recordSQL(ctx, s.logger, "exec", s.query, args, start, err)
 	return result, err
@@ -174,7 +174,7 @@ func (s *loggingStmt) QueryContext(ctx context.Context, args []driver.NamedValue
 		if conversionErr != nil {
 			return nil, conversionErr
 		}
-		rows, err = s.Stmt.Query(values)
+		rows, err = s.Stmt.Query(values) //nolint:staticcheck // SA1019: preserve compatibility with legacy driver implementations.
 	}
 	recordSQL(ctx, s.logger, "query", s.query, args, start, err)
 	return rows, err
@@ -188,7 +188,7 @@ func (s *loggingStmt) CheckNamedValue(value *driver.NamedValue) error {
 }
 
 func (s *loggingStmt) ColumnConverter(index int) driver.ValueConverter {
-	if converter, ok := s.Stmt.(driver.ColumnConverter); ok {
+	if converter, ok := s.Stmt.(driver.ColumnConverter); ok { //nolint:staticcheck // SA1019: preserve compatibility with legacy driver implementations.
 		return converter.ColumnConverter(index)
 	}
 	return driver.DefaultParameterConverter

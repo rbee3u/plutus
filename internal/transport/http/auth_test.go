@@ -75,7 +75,7 @@ func TestAuthHTTPFlow(t *testing.T) {
 	okReq := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"`+password+`"}`))
 	okReq.Header.Set("Content-Type", "application/json")
 	okReq.Header.Set("X-Csrf-Token", csrfBody.Token)
-	okReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: csrfCookie})
+	okReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: csrfCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
 	engine.ServeHTTP(login, okReq)
 	if login.Code != http.StatusOK {
 		t.Fatalf("login %d %s", login.Code, login.Body.String())
@@ -91,7 +91,7 @@ func TestAuthHTTPFlow(t *testing.T) {
 
 	me := httptest.NewRecorder()
 	meReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/me", nil)
-	meReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
+	meReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
 	engine.ServeHTTP(me, meReq)
 	if me.Code != http.StatusOK {
 		t.Fatalf("me %d %s", me.Code, me.Body.String())
@@ -100,8 +100,8 @@ func TestAuthHTTPFlow(t *testing.T) {
 	logout := httptest.NewRecorder()
 	outReq := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/auth/logout", nil)
 	outReq.Header.Set("X-Csrf-Token", sessionCSRF)
-	outReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
-	outReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})
+	outReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
+	outReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})      //nolint:gosec // G124: request cookies carry no server-side security attributes.
 	engine.ServeHTTP(logout, outReq)
 	if logout.Code != http.StatusNoContent {
 		t.Fatalf("logout %d %s", logout.Code, logout.Body.String())
@@ -109,7 +109,7 @@ func TestAuthHTTPFlow(t *testing.T) {
 
 	after := httptest.NewRecorder()
 	afterReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/me", nil)
-	afterReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
+	afterReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
 	engine.ServeHTTP(after, afterReq)
 	if after.Code != http.StatusUnauthorized {
 		t.Fatalf("after logout %d %s", after.Code, after.Body.String())
@@ -139,7 +139,7 @@ func TestLoginRateLimit(t *testing.T) {
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"wrong password!!"}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-Csrf-Token", csrfBody.Token)
-		req.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: csrfCookie})
+		req.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: csrfCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
 		req.RemoteAddr = "10.20.30.40:1234"
 		engine.ServeHTTP(last, req)
 	}
@@ -185,7 +185,7 @@ func TestConfiguredCookieNames(t *testing.T) {
 	okReq := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"`+password+`"}`))
 	okReq.Header.Set("Content-Type", "application/json")
 	okReq.Header.Set("X-Csrf-Token", csrfBody.Token)
-	okReq.AddCookie(&http.Cookie{Name: "plutus_csrf_agent", Value: csrfCookie})
+	okReq.AddCookie(&http.Cookie{Name: "plutus_csrf_agent", Value: csrfCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
 	engine.ServeHTTP(login, okReq)
 	if login.Code != http.StatusOK {
 		t.Fatalf("login %d %s", login.Code, login.Body.String())
@@ -200,7 +200,7 @@ func TestConfiguredCookieNames(t *testing.T) {
 
 	me := httptest.NewRecorder()
 	meReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/me", nil)
-	meReq.AddCookie(&http.Cookie{Name: "plutus_session_agent", Value: sessionCookie})
+	meReq.AddCookie(&http.Cookie{Name: "plutus_session_agent", Value: sessionCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
 	engine.ServeHTTP(me, meReq)
 	if me.Code != http.StatusOK {
 		t.Fatalf("me %d %s", me.Code, me.Body.String())
@@ -248,7 +248,7 @@ func TestPutAuthPassword(t *testing.T) {
 	loginReq := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"username":"`+username+`","password":"`+oldPassword+`"}`))
 	loginReq.Header.Set("Content-Type", "application/json")
 	loginReq.Header.Set("X-Csrf-Token", csrfBody.Token)
-	loginReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: csrfCookie})
+	loginReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: csrfCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
 	engine.ServeHTTP(login, loginReq)
 	if login.Code != http.StatusOK {
 		t.Fatalf("login %d %s", login.Code, login.Body.String())
@@ -261,8 +261,8 @@ func TestPutAuthPassword(t *testing.T) {
 	weakReq := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/v1/auth/password", bytes.NewBufferString(`{"currentPassword":"`+oldPassword+`","newPassword":"simplepassword"}`))
 	weakReq.Header.Set("Content-Type", "application/json")
 	weakReq.Header.Set("X-Csrf-Token", sessionCSRF)
-	weakReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
-	weakReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})
+	weakReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
+	weakReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})      //nolint:gosec // G124: request cookies carry no server-side security attributes.
 	engine.ServeHTTP(weakRec, weakReq)
 	if weakRec.Code != http.StatusBadRequest {
 		t.Fatalf("weak password expected 400, got %d %s", weakRec.Code, weakRec.Body.String())
@@ -273,8 +273,8 @@ func TestPutAuthPassword(t *testing.T) {
 	sameReq := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/v1/auth/password", bytes.NewBufferString(`{"currentPassword":"`+oldPassword+`","newPassword":"`+oldPassword+`"}`))
 	sameReq.Header.Set("Content-Type", "application/json")
 	sameReq.Header.Set("X-Csrf-Token", sessionCSRF)
-	sameReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
-	sameReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})
+	sameReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
+	sameReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})      //nolint:gosec // G124: request cookies carry no server-side security attributes.
 	engine.ServeHTTP(sameRec, sameReq)
 	if sameRec.Code != http.StatusBadRequest {
 		t.Fatalf("same password expected 400, got %d %s", sameRec.Code, sameRec.Body.String())
@@ -285,8 +285,8 @@ func TestPutAuthPassword(t *testing.T) {
 	wrongReq := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/v1/auth/password", bytes.NewBufferString(`{"currentPassword":"wrong password","newPassword":"`+newPassword+`"}`))
 	wrongReq.Header.Set("Content-Type", "application/json")
 	wrongReq.Header.Set("X-Csrf-Token", sessionCSRF)
-	wrongReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
-	wrongReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})
+	wrongReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
+	wrongReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})      //nolint:gosec // G124: request cookies carry no server-side security attributes.
 	engine.ServeHTTP(wrongRec, wrongReq)
 	if wrongRec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("wrong password expected 422, got %d %s", wrongRec.Code, wrongRec.Body.String())
@@ -297,8 +297,8 @@ func TestPutAuthPassword(t *testing.T) {
 	okReq := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/v1/auth/password", bytes.NewBufferString(`{"currentPassword":"`+oldPassword+`","newPassword":"`+newPassword+`"}`))
 	okReq.Header.Set("Content-Type", "application/json")
 	okReq.Header.Set("X-Csrf-Token", sessionCSRF)
-	okReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
-	okReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})
+	okReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
+	okReq.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: sessionCSRF})      //nolint:gosec // G124: request cookies carry no server-side security attributes.
 	engine.ServeHTTP(okRec, okReq)
 	if okRec.Code != http.StatusNoContent {
 		t.Fatalf("change password expected 204, got %d %s", okRec.Code, okRec.Body.String())
@@ -313,7 +313,7 @@ func TestPutAuthPassword(t *testing.T) {
 	// Old session is now unauthenticated
 	meRec := httptest.NewRecorder()
 	meReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/auth/me", nil)
-	meReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie})
+	meReq.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: sessionCookie}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
 	engine.ServeHTTP(meRec, meReq)
 	if meRec.Code != http.StatusUnauthorized {
 		t.Fatalf("old session should be unauthorized, got %d %s", meRec.Code, meRec.Body.String())
@@ -346,7 +346,7 @@ func TestAuthenticationStorageFailureIsNotSessionExpiry(t *testing.T) {
 	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Services: &app.Services{Auth: auth.NewService(db, time.Hour, 24*time.Hour)}})
 	for _, path := range []string{"/api/v1/auth/me", "/api/v1/auth/csrf", "/api/v1/auth/sessions"} {
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
-		req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: "existing-session"})
+		req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: "existing-session"}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
 		response := httptest.NewRecorder()
 		engine.ServeHTTP(response, req)
 		if response.Code != http.StatusInternalServerError {
@@ -382,8 +382,8 @@ func TestPasswordHashFailureIsNotInvalidCredentials(t *testing.T) {
 			req := httptest.NewRequestWithContext(t.Context(), tc.method, tc.path, strings.NewReader(tc.body))
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-CSRF-Token", session.CSRF)
-			req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token})
-			req.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: session.CSRF})
+			req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
+			req.AddCookie(&http.Cookie{Name: auth.CSRFCookieName, Value: session.CSRF})     //nolint:gosec // G124: request cookies carry no server-side security attributes.
 			response := httptest.NewRecorder()
 			engine.ServeHTTP(response, req)
 			if response.Code != http.StatusInternalServerError || !strings.Contains(response.Body.String(), `"code":"internal_error"`) {
@@ -425,7 +425,7 @@ func TestIdempotentCreationTouchesSessionOnce(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Idempotency-Key", key)
 		req.Header.Set("X-Csrf-Token", csrf)
-		req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token})
+		req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
 		recorder := httptest.NewRecorder()
 		stats.Queries.Store(0)
 		stats.Writes.Store(0)
@@ -503,7 +503,7 @@ func TestIdentityAndCycleCreationTouchSessionOnce(t *testing.T) {
 				req.Header.Set("Content-Type", "application/json")
 				req.Header.Set("Idempotency-Key", "resource-once")
 				req.Header.Set("X-Csrf-Token", session.CSRF)
-				req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token})
+				req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
 				response := httptest.NewRecorder()
 				stats.Queries.Store(0)
 				stats.Writes.Store(0)
@@ -568,7 +568,7 @@ func TestCreationRevalidatesAfterWaitingForUserLock(t *testing.T) {
 				req.Header.Set("Content-Type", "application/json")
 				req.Header.Set("X-Csrf-Token", session.CSRF)
 				req.Header.Set("Idempotency-Key", "blocked-create")
-				req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token})
+				req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token}) //nolint:gosec // G124: request cookies carry no server-side security attributes.
 				response := httptest.NewRecorder()
 				done := make(chan struct{})
 				go func() { defer close(done); engine.ServeHTTP(response, req) }()

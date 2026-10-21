@@ -43,7 +43,7 @@ func TestForbiddenDefaultConnectionHelper(t *testing.T) {
 	ctx := context.Background()
 	switch target {
 	case "http", "https":
-		_, _ = http.Get(target + "://exchange.invalid/account") //nolint:bodyclose,noctx // The offline guard must reject this convenience entrypoint before returning a response.
+		_, _ = http.Get(target + "://exchange.invalid/account") //nolint:bodyclose,gosec,noctx // G704: the offline guard must reject this URL before returning a response.
 	case "websocket":
 		_, _, _ = websocket.Dial(ctx, "wss://exchange.invalid/ws", nil) //nolint:bodyclose // The offline guard rejects the handshake before returning a response.
 	case "binance":
