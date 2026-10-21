@@ -30,10 +30,10 @@ help:
 deps:
 	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
-	go install github.com/pressly/goose/v3/cmd/goose@v3.28.0
-	go install golang.org/x/tools/cmd/goimports@v0.50.0
+	go install github.com/pressly/goose/v3/cmd/goose@v3.29.0
+	go install golang.org/x/tools/cmd/goimports@v0.52.0
 	go install mvdan.cc/gofumpt@v0.12.0
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 	npm --prefix web install
 
 generate:

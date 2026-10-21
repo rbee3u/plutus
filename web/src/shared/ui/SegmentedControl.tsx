@@ -42,7 +42,7 @@ export function SegmentedControl<T extends string = string>({
     const currentIndex = enabledOptions.findIndex((opt) => opt.value === currentValue);
     if (currentIndex === -1) return;
 
-    let nextIndex = -1;
+    let nextIndex: number;
 
     switch (event.key) {
       case "ArrowRight":

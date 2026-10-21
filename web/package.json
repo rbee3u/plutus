@@ -17,27 +17,30 @@
     "test:chromium": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.90.2",
+    "@tanstack/react-query": "^5.104.5",
     "decimal.js": "^10.6.0",
     "echarts": "^6.1.0",
-    "lucide-react": "^0.544.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-router": "^8.4.0"
+    "lucide-react": "^1.61.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router": "^8.5.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.35.0",
+    "@eslint/js": "^10.0.1",
     "@hey-api/openapi-ts": "0.99.0",
-    "@playwright/test": "^1.62.1",
-    "@types/react": "^19.1.13",
-    "@types/react-dom": "^19.1.9",
-    "@vitejs/plugin-react": "^5.0.2",
-    "eslint": "^9.35.0",
+    "@playwright/test": "^1.64.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "eslint": "^10.13.0",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "prettier": "^3.6.2",
+    "prettier": "^3.9.10",
     "typescript": "6.0.3",
-    "typescript-eslint": "^8.43.0",
-    "vite": "^8.2.0",
-    "vitest": "^4.1.11"
+    "typescript-eslint": "^8.72.0",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "js-yaml": "4.3.2"
   }
 }

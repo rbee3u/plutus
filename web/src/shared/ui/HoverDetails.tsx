@@ -39,7 +39,7 @@ export function computePosition(
   const canFitBelow = anchorRect.bottom + 8 + panelHeight <= windowHeight - 8;
   const canFitRight = anchorRect.right + 8 + panelWidth <= windowWidth - 8;
 
-  let placement: "above" | "below" | "right" = preferred;
+  let placement: "above" | "below" | "right";
 
   if (preferred === "right") {
     if (canFitRight) {
