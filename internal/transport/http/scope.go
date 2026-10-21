@@ -11,9 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/auth"
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/portfolio"
+	"github.com/rbee3u/plutus/internal/service/auth"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/portfolio"
 )
 
 // scope is the authenticated user and the owned portfolio a request acts on.

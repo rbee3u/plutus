@@ -29,20 +29,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
 // Adapter is the deterministic fake.
 type Adapter struct {
-	platform adapters.Platform
+	platform adapter.Platform
 	now      func() time.Time
 	mu       sync.Mutex
 	flaky    map[string]int64
 }
 
 // New constructs a fake adapter for one platform.
-func New(platform adapters.Platform) *Adapter {
+func New(platform adapter.Platform) *Adapter {
 	return &Adapter{platform: platform, now: time.Now, flaky: map[string]int64{}}
 }
 
@@ -53,24 +53,24 @@ func (a *Adapter) WithClock(now func() time.Time) *Adapter {
 }
 
 // Validate checks the key prefix and returns a deterministic external ref and margin mode.
-func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure) (adapters.ValidationResult, error) {
+func (a *Adapter) Validate(ctx context.Context, creds adapter.Credentials, structure adapter.AccountStructure) (adapter.ValidationResult, error) {
 	if err := a.check(ctx, creds, structure); err != nil {
-		return adapters.ValidationResult{}, err
+		return adapter.ValidationResult{}, err
 	}
 	key := scenarioKey(creds)
 	if d, anchor, matched, err := parseDemoKey(key); matched {
 		if err != nil {
-			return adapters.ValidationResult{}, err
+			return adapter.ValidationResult{}, err
 		}
 		if d.Platform != a.platform || d.Structure != structure {
-			return adapters.ValidationResult{}, adapters.UnsupportedStructure(a.platform, structure)
+			return adapter.ValidationResult{}, adapter.UnsupportedStructure(a.platform, structure)
 		}
 		if err := demoValidate(d, anchor, a.now()); err != nil {
-			return adapters.ValidationResult{}, err
+			return adapter.ValidationResult{}, err
 		}
-		return adapters.ValidationResult{ExternalRef: ExternalRef(key), MarginMode: demoMode(d, anchor, a.now())}, nil
+		return adapter.ValidationResult{ExternalRef: ExternalRef(key), MarginMode: demoMode(d, anchor, a.now())}, nil
 	}
-	return adapters.ValidationResult{ExternalRef: ExternalRef(key), MarginMode: MarginMode(structure, key, a.now())}, nil
+	return adapter.ValidationResult{ExternalRef: ExternalRef(key), MarginMode: MarginMode(structure, key, a.now())}, nil
 }
 
 // behaviorPrefixes are the key prefixes that select a behavior rather than an account.
@@ -92,26 +92,26 @@ func ExternalRef(apiKey string) string {
 }
 
 // Collect produces one report per requested account type with drifting balances and prices.
-func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
+func (a *Adapter) Collect(ctx context.Context, creds adapter.Credentials, structure adapter.AccountStructure, accounts []adapter.AccountType) (adapter.Batch, error) {
 	if err := a.check(ctx, creds, structure); err != nil {
-		return adapters.Batch{}, err
+		return adapter.Batch{}, err
 	}
 	now := a.now().UTC().Truncate(time.Second)
 	key := scenarioKey(creds)
 	if d, anchor, matched, err := parseDemoKey(key); matched {
 		if err != nil {
-			return adapters.Batch{}, err
+			return adapter.Batch{}, err
 		}
 		if d.Platform != a.platform || d.Structure != structure {
-			return adapters.Batch{}, adapters.UnsupportedStructure(a.platform, structure)
+			return adapter.Batch{}, adapter.UnsupportedStructure(a.platform, structure)
 		}
 		return DemoBatch(d, anchor, now, accounts)
 	}
 	mode := MarginMode(structure, key, now)
-	batch := adapters.Batch{CollectedAt: now, MarginMode: mode}
+	batch := adapter.Batch{CollectedAt: now, MarginMode: mode}
 	scenario := Scenario(key, now)
 	for _, symbol := range []string{"BTC", "ETH", "SOL", "BNB"} {
-		batch.Prices = append(batch.Prices, adapters.Price{
+		batch.Prices = append(batch.Prices, adapter.Price{
 			CanonicalAssetSymbol:      symbol,
 			Price:                     scenario.Price(symbol),
 			QuoteCanonicalAssetSymbol: "USDT",
@@ -120,8 +120,8 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 		})
 	}
 	for _, accountType := range accounts {
-		if !adapters.ValidAccountType(structure, accountType) {
-			batch.Reports = append(batch.Reports, adapters.FailedReport(accountType, adapters.UnknownAccountType(a.platform, structure, accountType)))
+		if !adapter.ValidAccountType(structure, accountType) {
+			batch.Reports = append(batch.Reports, adapter.FailedReport(accountType, adapter.UnknownAccountType(a.platform, structure, accountType)))
 			continue
 		}
 		batch.Reports = append(batch.Reports, scenario.Report(mode, accountType, now, strings.HasPrefix(key, "empty-")))
@@ -131,18 +131,18 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 
 // check refuses a structure of another platform, reproduces a changed structure, and applies the
 // key's failure class.
-func (a *Adapter) check(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure) error {
+func (a *Adapter) check(ctx context.Context, creds adapter.Credentials, structure adapter.AccountStructure) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if !adapters.ValidStructure(a.platform, structure) {
-		return adapters.UnsupportedStructure(a.platform, structure)
+	if !adapter.ValidStructure(a.platform, structure) {
+		return adapter.UnsupportedStructure(a.platform, structure)
 	}
 	if err := a.credentialError(creds); err != nil {
 		return err
 	}
 	if strings.HasPrefix(scenarioKey(creds), "restructured-") {
-		return adapters.StructureMismatch(a.platform, "another account structure", structure)
+		return adapter.StructureMismatch(a.platform, "another account structure", structure)
 	}
 	return nil
 }
@@ -150,8 +150,8 @@ func (a *Adapter) check(ctx context.Context, creds adapters.Credentials, structu
 // MarginMode is the margin mode the fake reports for a key within an account structure: one of the
 // structure's modes picked by the key, a different one every minute for "switch-" keys, and empty
 // for structures that have none.
-func MarginMode(structure adapters.AccountStructure, apiKey string, at time.Time) adapters.MarginMode {
-	modes := adapters.MarginModes(structure)
+func MarginMode(structure adapter.AccountStructure, apiKey string, at time.Time) adapter.MarginMode {
+	modes := adapter.MarginModes(structure)
 	if len(modes) == 0 {
 		return ""
 	}
@@ -166,18 +166,18 @@ func MarginMode(structure adapters.AccountStructure, apiKey string, at time.Time
 func (a *Adapter) keyError(apiKey string) error {
 	switch {
 	case strings.HasPrefix(apiKey, "invalid-"):
-		return adapters.NewError(adapters.ClassAuthentication, "The platform rejected the API key.")
+		return adapter.NewError(adapter.ClassAuthentication, "The platform rejected the API key.")
 	case strings.HasPrefix(apiKey, "forbidden-"):
-		return adapters.NewError(adapters.ClassAuthorization, "The API key lacks read permission.")
+		return adapter.NewError(adapter.ClassAuthorization, "The API key lacks read permission.")
 	case strings.HasPrefix(apiKey, "ratelimit-"):
-		return adapters.NewError(adapters.ClassRateLimited, "The platform rate limit was exceeded.")
+		return adapter.NewError(adapter.ClassRateLimited, "The platform rate limit was exceeded.")
 	case strings.HasPrefix(apiKey, "flaky-"):
 		minute := a.now().UTC().Unix() / 60
 		a.mu.Lock()
 		defer a.mu.Unlock()
 		if a.flaky[apiKey] != minute {
 			a.flaky[apiKey] = minute
-			return adapters.NewError(adapters.ClassTemporary, "The platform returned a temporary error.")
+			return adapter.NewError(adapter.ClassTemporary, "The platform returned a temporary error.")
 		}
 	}
 	return nil
@@ -211,24 +211,24 @@ func (s ScenarioValues) Price(symbol string) string {
 // Report builds the deterministic report for one account type under a margin mode (empty for
 // structures without one). Like the live adapters, a margin mode that does not report a figure
 // leaves it unknown instead of zero.
-func (s ScenarioValues) Report(mode adapters.MarginMode, accountType adapters.AccountType, at time.Time, empty bool) adapters.AccountReport {
+func (s ScenarioValues) Report(mode adapter.MarginMode, accountType adapter.AccountType, at time.Time, empty bool) adapter.AccountReport {
 	report := s.report(accountType, at, empty)
-	if report.Status != adapters.StatusSucceeded || empty {
+	if report.Status != adapter.StatusSucceeded || empty {
 		return report
 	}
 	switch mode {
-	case adapters.MarginOKXFutures:
+	case adapter.MarginOKXFutures:
 		// Futures mode reports total equity but no account-level margin figures.
 		report.AdjustedEquity, report.AvailableEquity, report.ReportedInitialMarginRatio, report.ReportedMaintenanceMarginRatio, report.ReportedMarginRatio = nil, nil, nil, nil, nil
-	case adapters.MarginBybitIsolated:
+	case adapter.MarginBybitIsolated:
 		// Isolated margin has no account-wide figures; the value is calculated from balances.
 		report.Equity, report.AdjustedEquity, report.AvailableEquity, report.ReportedInitialMarginRatio, report.ReportedMaintenanceMarginRatio, report.ReportedMarginRatio = nil, nil, nil, nil, nil, nil
-	case adapters.MarginBybitPM, adapters.MarginOKXPM:
+	case adapter.MarginBybitPM, adapter.MarginOKXPM:
 		// Portfolio margin positions carry no leverage, position margin, or liquidation price.
 		for i := range report.Positions {
 			report.Positions[i].Leverage, report.Positions[i].Margin, report.Positions[i].LiquidationPrice = nil, nil, nil
 		}
-	case adapters.MarginOKXSpot, adapters.MarginOKXMCM, adapters.MarginBybitCross:
+	case adapter.MarginOKXSpot, adapter.MarginOKXMCM, adapter.MarginBybitCross:
 		// These margin modes report every figure.
 	default:
 		// Structures without a margin mode keep the base report.
@@ -240,18 +240,18 @@ func (s ScenarioValues) Report(mode adapters.MarginMode, accountType adapters.Ac
 			position.PositionMode = "hedged"
 		}
 		position.MarginSetting, position.MarginAssetSymbol, position.MarginBasis = "cross", position.FuturesContract.SettlementAssetSymbol, "initial"
-		if mode == adapters.MarginBybitIsolated {
+		if mode == adapter.MarginBybitIsolated {
 			position.MarginSetting = "isolated"
 		}
-		if accountType == "portfolio_margin" || mode == adapters.MarginOKXPM || mode == adapters.MarginBybitPM {
+		if accountType == "portfolio_margin" || mode == adapter.MarginOKXPM || mode == adapter.MarginBybitPM {
 			position.Margin = nil
 		}
 	}
 	return report
 }
 
-func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, empty bool) adapters.AccountReport {
-	report := adapters.AccountReport{AccountType: accountType, Status: adapters.StatusSucceeded, CollectedAt: at}
+func (s ScenarioValues) report(accountType adapter.AccountType, at time.Time, empty bool) adapter.AccountReport {
+	report := adapter.AccountReport{AccountType: accountType, Status: adapter.StatusSucceeded, CollectedAt: at}
 	if empty {
 		return report
 	}
@@ -273,19 +273,19 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 		report.ReportedInitialMarginRatio = amountPtr(round(4, 0.18+0.02*math.Sin(hours/7)))
 		report.ReportedMaintenanceMarginRatio = amountPtr(round(4, 0.09+0.01*math.Sin(hours/7)))
 		report.ReportedMarginRatio = amountPtr(round(4, 3.1+0.4*math.Sin(hours/13+f)))
-		report.Balances = []adapters.Balance{
+		report.Balances = []adapter.Balance{
 			{AssetSymbol: "USDT", Equity: amountString(usdt), AvailableToWithdraw: amountPtr(round(2, usdt*0.5)), AvailableToTrade: amountPtr(round(2, usdt*0.9))},
 			{AssetSymbol: "BTC", Equity: amountString(btc), AvailableToWithdraw: amountPtr(round(6, btc*0.5)), AvailableToTrade: amountPtr(btc)},
 			{AssetSymbol: "ETH", Equity: amountString(eth), AvailableToWithdraw: amountPtr(eth), AvailableToTrade: amountPtr(eth), Liability: amountPtr(round(4, 0.4*f)), Interest: amountPtr(round(6, 0.0012*f))},
 		}
 		short := round(3, 0.5*f)
 		entry := round(2, btcPrice*0.98)
-		report.Positions = []adapters.Position{{
+		report.Positions = []adapter.Position{{
 			PositionKey:        "BTCUSDT-perp-short",
-			FuturesContract:    adapters.FuturesContract{Symbol: "BTCUSDT", Kind: adapters.KindLinearPerpetual, BaseAssetSymbol: "BTC", QuoteAssetSymbol: "USDT", SettlementAssetSymbol: "USDT", ContractSize: amountPtr(1)},
-			Side:               adapters.SideShort,
+			FuturesContract:    adapter.FuturesContract{Symbol: "BTCUSDT", Kind: adapter.KindLinearPerpetual, BaseAssetSymbol: "BTC", QuoteAssetSymbol: "USDT", SettlementAssetSymbol: "USDT", ContractSize: amountPtr(1)},
+			Side:               adapter.SideShort,
 			SourceQuantity:     amountString(short),
-			SourceQuantityUnit: adapters.UnitBase,
+			SourceQuantityUnit: adapter.UnitBase,
 			EntryPrice:         amountPtr(entry),
 			MarkPrice:          amountPtr(btcPrice),
 			LiquidationPrice:   amountPtr(round(2, btcPrice*1.35)),
@@ -294,10 +294,10 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 			Margin:             amountPtr(round(2, short*btcPrice/3)),
 		}, {
 			PositionKey:        "ETHUSDT-perp-long",
-			FuturesContract:    adapters.FuturesContract{Symbol: "ETHUSDT", Kind: adapters.KindLinearPerpetual, BaseAssetSymbol: "ETH", QuoteAssetSymbol: "USDT", SettlementAssetSymbol: "USDT", ContractSize: amountPtr(1)},
-			Side:               adapters.SideLong,
+			FuturesContract:    adapter.FuturesContract{Symbol: "ETHUSDT", Kind: adapter.KindLinearPerpetual, BaseAssetSymbol: "ETH", QuoteAssetSymbol: "USDT", SettlementAssetSymbol: "USDT", ContractSize: amountPtr(1)},
+			Side:               adapter.SideLong,
 			SourceQuantity:     amountString(round(2, 4*f)),
-			SourceQuantityUnit: adapters.UnitBase,
+			SourceQuantityUnit: adapter.UnitBase,
 			EntryPrice:         amountPtr(round(2, ethPrice*1.02)),
 			MarkPrice:          amountPtr(ethPrice),
 			LiquidationPrice:   amountPtr(round(2, ethPrice*0.6)),
@@ -308,13 +308,13 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 	case "cross_margin":
 		// Binance classic cross margin: net assets per coin, a BTC loan, and the margin level.
 		report.ReportedMarginRatio = amountPtr(round(4, 4.2+0.5*math.Sin(hours/9+f)))
-		report.Balances = []adapters.Balance{
+		report.Balances = []adapter.Balance{
 			{AssetSymbol: "USDT", Equity: amountString(round(2, 3000*f*wave)), AvailableToWithdraw: amountPtr(round(2, 2000*f)), AvailableToTrade: amountPtr(round(2, 3000*f))},
 			{AssetSymbol: "BTC", Equity: amountString(round(6, 0.02*f)), Liability: amountPtr(round(6, 0.01*f)), Interest: amountPtr(round(8, 0.00001*f))},
 		}
 	case "isolated_margin":
 		// Binance classic isolated margin: coins summed across pairs, with the pair's loan.
-		report.Balances = []adapters.Balance{
+		report.Balances = []adapter.Balance{
 			{AssetSymbol: "SOL", Equity: amountString(round(3, 8*f)), Liability: amountPtr(round(3, 2*f)), Interest: amountPtr(round(6, 0.001*f))},
 			{AssetSymbol: "USDT", Equity: amountString(round(2, 400*f))},
 		}
@@ -327,15 +327,15 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 		report.AvailableEquity = amountPtr(round(2, margin*0.7))
 		report.ReportedInitialMarginRatio = amountPtr(round(4, 0.12+0.02*math.Sin(hours/7)))
 		report.ReportedMaintenanceMarginRatio = amountPtr(round(4, 0.04+0.01*math.Sin(hours/7)))
-		report.Balances = []adapters.Balance{
+		report.Balances = []adapter.Balance{
 			{AssetSymbol: "USDT", Equity: amountString(margin), AvailableToWithdraw: amountPtr(round(2, margin*0.6)), AvailableToTrade: amountPtr(round(2, margin*0.7)), UnrealizedPnl: amountPtr(round(2, (entry-btcPrice)*short))},
 		}
-		report.Positions = []adapters.Position{{
+		report.Positions = []adapter.Position{{
 			PositionKey:        "BTCUSDT-BOTH",
-			FuturesContract:    adapters.FuturesContract{Symbol: "BTCUSDT", Kind: adapters.KindLinearPerpetual, BaseAssetSymbol: "BTC", QuoteAssetSymbol: "USDT", SettlementAssetSymbol: "USDT", ContractSize: amountPtr(1)},
-			Side:               adapters.SideShort,
+			FuturesContract:    adapter.FuturesContract{Symbol: "BTCUSDT", Kind: adapter.KindLinearPerpetual, BaseAssetSymbol: "BTC", QuoteAssetSymbol: "USDT", SettlementAssetSymbol: "USDT", ContractSize: amountPtr(1)},
+			Side:               adapter.SideShort,
 			SourceQuantity:     amountString(short),
-			SourceQuantityUnit: adapters.UnitBase,
+			SourceQuantityUnit: adapter.UnitBase,
 			EntryPrice:         amountPtr(entry),
 			MarkPrice:          amountPtr(btcPrice),
 			LiquidationPrice:   amountPtr(round(2, btcPrice*1.6)),
@@ -347,15 +347,15 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 		// Binance classic COIN-M futures: BTC margin and an inverse perpetual in contracts.
 		contracts := math.Round(20 * f)
 		entry := round(1, btcPrice*0.99)
-		report.Balances = []adapters.Balance{
+		report.Balances = []adapter.Balance{
 			{AssetSymbol: "BTC", Equity: amountString(round(6, 0.05*f*wave)), AvailableToWithdraw: amountPtr(round(6, 0.03*f)), UnrealizedPnl: amountPtr(round(8, contracts*100*(1/entry-1/btcPrice)))},
 		}
-		report.Positions = []adapters.Position{{
+		report.Positions = []adapter.Position{{
 			PositionKey:        "BTCUSD_PERP-BOTH",
-			FuturesContract:    adapters.FuturesContract{Symbol: "BTCUSD_PERP", Kind: adapters.KindInversePerpetual, BaseAssetSymbol: "BTC", QuoteAssetSymbol: "USD", SettlementAssetSymbol: "BTC", ContractSize: amountPtr(100)},
-			Side:               adapters.SideLong,
+			FuturesContract:    adapter.FuturesContract{Symbol: "BTCUSD_PERP", Kind: adapter.KindInversePerpetual, BaseAssetSymbol: "BTC", QuoteAssetSymbol: "USD", SettlementAssetSymbol: "BTC", ContractSize: amountPtr(100)},
+			Side:               adapter.SideLong,
 			SourceQuantity:     amountString(contracts),
-			SourceQuantityUnit: adapters.UnitContracts,
+			SourceQuantityUnit: adapter.UnitContracts,
 			EntryPrice:         amountPtr(entry),
 			MarkPrice:          amountPtr(btcPrice),
 			LiquidationPrice:   amountPtr(round(1, btcPrice*0.55)),
@@ -363,7 +363,7 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 			Leverage:           amountPtr(2),
 		}}
 	case "spot":
-		report.Balances = []adapters.Balance{
+		report.Balances = []adapter.Balance{
 			{AssetSymbol: "USDC", Equity: amountString(round(2, 800*f)), AvailableToWithdraw: amountPtr(round(2, 800*f)), AvailableToTrade: amountPtr(round(2, 800*f))},
 			{AssetSymbol: "SOL", Equity: amountString(round(3, 12*f)), AvailableToWithdraw: amountPtr(round(3, 12*f)), AvailableToTrade: amountPtr(round(3, 12*f))},
 		}
@@ -371,12 +371,12 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 			report.Balances = append(report.Balances, UnpricedBalance(f))
 		}
 	case "funding", "derivatives_holding":
-		report.Balances = []adapters.Balance{
+		report.Balances = []adapter.Balance{
 			{AssetSymbol: "USDT", Equity: amountString(round(2, 1200*f)), AvailableToWithdraw: amountPtr(round(2, 1200*f)), AvailableToTrade: amountPtr(0)},
 			{AssetSymbol: "BNB", Equity: amountString(round(3, 3*f)), AvailableToWithdraw: amountPtr(round(3, 3*f)), AvailableToTrade: amountPtr(0)},
 		}
-	case adapters.TypeDualInvestment:
-		report.Balances = []adapters.Balance{{AssetSymbol: "USDT", Equity: "1000"}, {AssetSymbol: "BTC", Equity: "0.02"}}
+	case adapter.TypeDualInvestment:
+		report.Balances = []adapter.Balance{{AssetSymbol: "USDT", Equity: "1000"}, {AssetSymbol: "BTC", Equity: "0.02"}}
 		expiry := at.UTC().Truncate(24 * time.Hour).Add(56 * time.Hour)
 		for i, spec := range []struct{ base, invest, amount, direction, strike string }{
 			{"BTC", "USDT", "400", "buy_low", "62000"},
@@ -387,20 +387,20 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 		} {
 			maturity := expiry.Add(time.Duration([]int{0, 1, 0, 2, 1}[i]) * 24 * time.Hour)
 			subscribed := maturity.Add(-72 * time.Hour)
-			report.DualPositions = append(report.DualPositions, adapters.DualPosition{PositionKey: fmt.Sprintf("dual-%d", i+1), ProductRef: adapters.OptionalText(spec.base + "-" + spec.strike), OrderRef: adapters.OptionalText(fmt.Sprintf("order-%d", i+1)), BaseAssetSymbol: adapters.OptionalText(spec.base), QuoteAssetSymbol: adapters.OptionalText("USDT"), PrincipalAssetSymbol: spec.invest, Principal: spec.amount, Direction: adapters.OptionalText(spec.direction), TargetPrice: adapters.OptionalText(spec.strike), ExpiryAt: &maturity, SubscribedAt: &subscribed, AnnualizedRate: adapters.OptionalText("0.18"), RateKind: adapters.OptionalText("apr"), Status: "active"})
+			report.DualPositions = append(report.DualPositions, adapter.DualPosition{PositionKey: fmt.Sprintf("dual-%d", i+1), ProductRef: adapter.OptionalText(spec.base + "-" + spec.strike), OrderRef: adapter.OptionalText(fmt.Sprintf("order-%d", i+1)), BaseAssetSymbol: adapter.OptionalText(spec.base), QuoteAssetSymbol: adapter.OptionalText("USDT"), PrincipalAssetSymbol: spec.invest, Principal: spec.amount, Direction: adapter.OptionalText(spec.direction), TargetPrice: adapter.OptionalText(spec.strike), ExpiryAt: &maturity, SubscribedAt: &subscribed, AnnualizedRate: adapter.OptionalText("0.18"), RateKind: adapter.OptionalText("apr"), Status: "active"})
 		}
 	case "earn":
-		report.Balances = []adapters.Balance{
+		report.Balances = []adapter.Balance{
 			{AssetSymbol: "ETH", Equity: amountString(round(4, 1.5*f)), AvailableToWithdraw: amountPtr(0), AvailableToTrade: amountPtr(0), Interest: amountPtr(round(6, 0.0031*f))},
 		}
 		for i, kind := range []string{"flexible", "fixed"} {
-			p := adapters.NewEarnPosition(fmt.Sprintf("earn-%d", i+1), kind, "position", "principal")
-			p.ProductRef = adapters.OptionalText(fmt.Sprintf("ETH-%s", kind))
-			p.ProductName = adapters.OptionalText("Demo earn " + kind)
-			p.Assets = append(p.Assets, adapters.EarnAmount{AssetSymbol: "ETH", Amount: decimal.Format(new(big.Rat).Quo(decimal.ParseOrZero(report.Balances[0].Equity), big.NewRat(2, 1)))})
+			p := adapter.NewEarnPosition(fmt.Sprintf("earn-%d", i+1), kind, "position", "principal")
+			p.ProductRef = adapter.OptionalText(fmt.Sprintf("ETH-%s", kind))
+			p.ProductName = adapter.OptionalText("Demo earn " + kind)
+			p.Assets = append(p.Assets, adapter.EarnAmount{AssetSymbol: "ETH", Amount: decimal.Format(new(big.Rat).Quo(decimal.ParseOrZero(report.Balances[0].Equity), big.NewRat(2, 1)))})
 			p.AddRate("0.045", "apr", "estimated", "Estimated APR", nil)
 			p.AddReward("ETH", amountString(round(6, 0.00155*f)), "cumulative")
-			p.Status = adapters.OptionalText("Active")
+			p.Status = adapter.OptionalText("Active")
 			if kind == "fixed" {
 				subscribed := at.UTC().Truncate(24 * time.Hour).Add(-72 * time.Hour)
 				maturity := subscribed.Add(30 * 24 * time.Hour)
@@ -412,19 +412,19 @@ func (s ScenarioValues) report(accountType adapters.AccountType, at time.Time, e
 			report.EarnPositions = append(report.EarnPositions, p)
 		}
 	default:
-		report.Status = adapters.StatusFailed
-		report.ErrorClass = adapters.ClassUnsupported
+		report.Status = adapter.StatusFailed
+		report.ErrorClass = adapter.ClassUnsupported
 		report.ErrorDetail = "The platform reports this account type as not enabled."
 	}
 	return report
 }
 
 // UnpricedBalance is the TOKENX balance the fake never prices; seeds use it for the no-price case.
-func UnpricedBalance(factor float64) adapters.Balance {
-	return adapters.Balance{AssetSymbol: "TOKENX", Equity: amountString(round(2, 1500*factor))}
+func UnpricedBalance(factor float64) adapter.Balance {
+	return adapter.Balance{AssetSymbol: "TOKENX", Equity: amountString(round(2, 1500*factor))}
 }
 
-func (s ScenarioValues) factor(accountType adapters.AccountType) float64 {
+func (s ScenarioValues) factor(accountType adapter.AccountType) float64 {
 	h := sha256.Sum256([]byte(fmt.Sprintf("%d:%s", s.seed, accountType)))
 	return 0.5 + float64(binary.BigEndian.Uint16(h[:2]))/65535*1.5
 }
@@ -453,19 +453,19 @@ func floatValue(value string) float64 {
 	return f
 }
 
-func (a *Adapter) credentialError(creds adapters.Credentials) error {
+func (a *Adapter) credentialError(creds adapter.Credentials) error {
 	if creds.APIKey != "" {
 		if err := a.keyError(creds.APIKey); err != nil {
 			return err
 		}
 	}
-	if a.platform == adapters.PlatformKraken && creds.FuturesKey() != "" {
+	if a.platform == adapter.PlatformKraken && creds.FuturesKey() != "" {
 		return a.keyError(creds.FuturesKey())
 	}
 	return nil
 }
 
-func scenarioKey(creds adapters.Credentials) string {
+func scenarioKey(creds adapter.Credentials) string {
 	if creds.APIKey != "" {
 		return creds.APIKey
 	}

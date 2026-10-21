@@ -17,7 +17,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 )
 
 // Hosts are the Binance API base URLs. Paths never collide across hosts (/api, /sapi, /papi,
@@ -138,7 +138,7 @@ type client struct {
 	http  *http.Client
 	hosts Hosts
 	clock *clock
-	creds adapters.Credentials
+	creds adapter.Credentials
 }
 
 // response is one raw HTTP exchange. Only the recorder keeps the body beyond decoding.
@@ -206,7 +206,7 @@ func (c *client) syncClock(ctx context.Context) error {
 		return err
 	}
 	if body.ServerTime <= 0 {
-		return adapters.NewError(adapters.ClassNormalization, "Binance returned no server time.")
+		return adapter.NewError(adapter.ClassNormalization, "Binance returned no server time.")
 	}
 	c.clock.set(body.ServerTime, sent, c.clock.now())
 	return nil
@@ -237,7 +237,7 @@ func (c *client) send(ctx context.Context, ep endpoint, params url.Values, key, 
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, ep.method, target, http.NoBody)
 	if err != nil {
-		return response{}, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: the request could not be built.", ep))
+		return response{}, adapter.NewError(adapter.ClassNormalization, fmt.Sprintf("%s: the request could not be built.", ep))
 	}
 	if ep.signed {
 		req.Header.Set("X-Mbx-Apikey", key)
@@ -247,12 +247,12 @@ func (c *client) send(ctx context.Context, ep endpoint, params url.Values, key, 
 		if ctx.Err() != nil {
 			return response{}, ctx.Err()
 		}
-		return response{}, adapters.NewError(adapters.ClassTemporary, fmt.Sprintf("%s: Binance could not be reached.", ep))
+		return response{}, adapter.NewError(adapter.ClassTemporary, fmt.Sprintf("%s: Binance could not be reached.", ep))
 	}
 	defer func() { _ = res.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(res.Body, maxResponseBytes))
 	if err != nil {
-		return response{}, adapters.NewError(adapters.ClassTemporary, fmt.Sprintf("%s: the Binance response was cut off.", ep))
+		return response{}, adapter.NewError(adapter.ClassTemporary, fmt.Sprintf("%s: the Binance response was cut off.", ep))
 	}
 	return response{status: res.StatusCode, body: body}, nil
 }
@@ -260,7 +260,7 @@ func (c *client) send(ctx context.Context, ep endpoint, params url.Values, key, 
 // sign signs the exact encoded query that will be sent. Binance expects Ed25519 signatures in
 // Base64, percent-encoded as a query parameter; the existing HMAC representation is hexadecimal.
 func sign(secret, payload string) (string, error) {
-	key, ed, err := adapters.BinancePrivateKey(secret)
+	key, ed, err := adapter.BinancePrivateKey(secret)
 	if err != nil {
 		return "", err
 	}
@@ -278,7 +278,7 @@ func decode(ep endpoint, resp response, out any) error {
 		return classify(ep, resp)
 	}
 	if err := json.Unmarshal(resp.body, out); err != nil {
-		return adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: the Binance response has an unexpected shape.", ep))
+		return adapter.NewError(adapter.ClassNormalization, fmt.Sprintf("%s: the Binance response has an unexpected shape.", ep))
 	}
 	return nil
 }
@@ -303,7 +303,7 @@ func classify(ep endpoint, resp response) error {
 	if body.Code != 0 || body.Msg != "" {
 		detail = fmt.Sprintf("%s: Binance %d %s", ep, body.Code, truncate(body.Msg, 200))
 	}
-	return adapters.NewError(classOf(resp.status, body.Code), detail)
+	return adapter.NewError(classOf(resp.status, body.Code), detail)
 }
 
 func classOf(status, code int) string {
@@ -311,19 +311,19 @@ func classOf(status, code int) string {
 	// The key, its IP whitelist, or its permissions refused; a malformed key; a key Binance does
 	// not know, which /sapi/v1/account/info answers for a deleted key; a wrong signature.
 	case -2015, -2014, -2008, -1022:
-		return adapters.ClassAuthentication
+		return adapter.ClassAuthentication
 	case -1003:
-		return adapters.ClassRateLimited
+		return adapter.ClassRateLimited
 	case -1001, errTimestampOutside:
-		return adapters.ClassTemporary
+		return adapter.ClassTemporary
 	}
 	switch status {
 	case http.StatusUnauthorized:
-		return adapters.ClassAuthentication
+		return adapter.ClassAuthentication
 	case http.StatusTooManyRequests, http.StatusTeapot, http.StatusForbidden:
-		return adapters.ClassRateLimited
+		return adapter.ClassRateLimited
 	default:
-		return adapters.ClassTemporary
+		return adapter.ClassTemporary
 	}
 }
 

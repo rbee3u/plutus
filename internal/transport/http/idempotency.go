@@ -6,8 +6,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/rbee3u/plutus/internal/application/auth"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
+	"github.com/rbee3u/plutus/internal/service/auth"
 )
 
 // createIdempotent authenticates before replay and looks up resources only for a

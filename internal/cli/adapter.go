@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -15,10 +16,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rbee3u/plutus/internal/config"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/binance"
 	"github.com/rbee3u/plutus/internal/platform/bybit"
+	"github.com/rbee3u/plutus/internal/platform/fake"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
+	"github.com/rbee3u/plutus/internal/platform/httpclient"
 	"github.com/rbee3u/plutus/internal/platform/kraken"
 	"github.com/rbee3u/plutus/internal/platform/okx"
 	"github.com/rbee3u/plutus/internal/platform/recording"
@@ -26,24 +29,24 @@ import (
 
 // Raw responses are available only to this explicit developer command.
 type recorder interface {
-	RecordRequest(context.Context, adapters.Credentials, fixture.Request, ...recording.Options) (*fixture.File, error)
+	RecordRequest(context.Context, adapter.Credentials, fixture.Request, ...recording.Options) (*fixture.File, error)
 }
 
-var recorders = map[adapters.Platform]struct {
+var recorders = map[adapter.Platform]struct {
 	adapter        func(func(time.Duration) *http.Client) recorder
 	needPassphrase bool
 	requests       func() recording.Catalogue
 }{
-	adapters.PlatformBinance: {adapter: func(factory func(time.Duration) *http.Client) recorder {
+	adapter.PlatformBinance: {adapter: func(factory func(time.Duration) *http.Client) recorder {
 		return binance.New(&binance.Options{HTTPFactory: factory})
 	}, requests: binance.RecordingRequests},
-	adapters.PlatformOKX: {adapter: func(factory func(time.Duration) *http.Client) recorder {
+	adapter.PlatformOKX: {adapter: func(factory func(time.Duration) *http.Client) recorder {
 		return okx.New(&okx.Options{HTTPFactory: factory})
 	}, needPassphrase: true, requests: okx.RecordingRequests},
-	adapters.PlatformBybit: {adapter: func(factory func(time.Duration) *http.Client) recorder {
+	adapter.PlatformBybit: {adapter: func(factory func(time.Duration) *http.Client) recorder {
 		return bybit.New(&bybit.Options{HTTPFactory: factory})
 	}, requests: bybit.RecordingRequests},
-	adapters.PlatformKraken: {adapter: func(factory func(time.Duration) *http.Client) recorder {
+	adapter.PlatformKraken: {adapter: func(factory func(time.Duration) *http.Client) recorder {
 		return kraken.New(&kraken.Options{HTTPFactory: factory})
 	}, requests: kraken.RecordingRequests},
 }
@@ -52,7 +55,7 @@ const recordingDirectory = "/tmp/plutus"
 
 func recordablePlatforms() string {
 	var names []string
-	for _, platform := range adapters.OfferedPlatforms() {
+	for _, platform := range adapter.OfferedPlatforms() {
 		if _, ok := recorders[platform]; ok {
 			names = append(names, string(platform))
 		}
@@ -71,7 +74,7 @@ func newAdapterRecordCommand() *cobra.Command {
 	var only, query, form, keepSymbols []string
 	var list, dryRun bool
 	cmd := &cobra.Command{Use: "record", Short: "Record one explicit read-only interface response into /tmp/plutus", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		platform := adapters.Platform(strings.ToLower(platformFlag))
+		platform := adapter.Platform(strings.ToLower(platformFlag))
 		spec, ok := recorders[platform]
 		if !ok {
 			return fmt.Errorf("unsupported recording platform %q; choose %s", platformFlag, recordablePlatforms())
@@ -212,16 +215,16 @@ func checkRecordingDirectory(path string) error {
 
 // recorderCredentials reads the recording key set from config/record.env or PLUTUS_RECORD_*.
 // It never reads gotest or runtime env files; public requests need no credentials.
-func recorderCredentials(platform adapters.Platform, needPassphrase bool, catalogue recording.Catalogue, request fixture.Request) (adapters.Credentials, error) {
+func recorderCredentials(platform adapter.Platform, needPassphrase bool, catalogue recording.Catalogue, request fixture.Request) (adapter.Credentials, error) {
 	prefix := "PLUTUS_RECORD_" + strings.ToUpper(string(platform)) + "_"
-	var creds adapters.Credentials
+	var creds adapter.Credentials
 	spot, futures := false, false
 	for _, request := range []fixture.Request{request} {
 		ep, ok := catalogue.Find(request)
 		if !ok || !ep.Signed {
 			continue
 		}
-		if platform == adapters.PlatformKraken && request.Service != "spot" {
+		if platform == adapter.PlatformKraken && request.Service != "spot" {
 			futures = true
 		} else {
 			spot = true
@@ -239,13 +242,13 @@ func recorderCredentials(platform adapters.Platform, needPassphrase bool, catalo
 	if spot {
 		fields = []variable{{"APIKEY", &creds.APIKey}, {"SECRET", &creds.APISecret}}
 	}
-	if platform == adapters.PlatformKraken {
+	if platform == adapter.PlatformKraken {
 		fields = nil
 		if spot {
 			fields = append(fields, variable{"SPOT_APIKEY", &creds.APIKey}, variable{"SPOT_SECRET", &creds.APISecret})
 		}
 		if futures {
-			creds.Futures = &adapters.KeyPair{}
+			creds.Futures = &adapter.KeyPair{}
 			fields = append(fields, variable{"FUTURES_APIKEY", &creds.Futures.APIKey}, variable{"FUTURES_SECRET", &creds.Futures.APISecret})
 		}
 	}
@@ -255,7 +258,7 @@ func recorderCredentials(platform adapters.Platform, needPassphrase bool, catalo
 	for _, field := range fields {
 		value, err := config.LookupRecording(prefix + field.suffix)
 		if err != nil {
-			return adapters.Credentials{}, err
+			return adapter.Credentials{}, err
 		}
 		*field.dst = strings.TrimSpace(value)
 		if *field.dst == "" {
@@ -263,7 +266,36 @@ func recorderCredentials(platform adapters.Platform, needPassphrase bool, catalo
 		}
 	}
 	if len(missing) > 0 {
-		return adapters.Credentials{}, fmt.Errorf("%s not set in the environment or config/record.env (copy config/record-example.env)", strings.Join(missing, ", "))
+		return adapter.Credentials{}, fmt.Errorf("%s not set in the environment or config/record.env (copy config/record-example.env)", strings.Join(missing, ", "))
 	}
 	return creds, nil
+}
+
+func buildAdapters(cfg *config.Config) *adapter.Registry {
+	registry := adapter.NewRegistry()
+	if cfg.Collection.FakeAdapter {
+		for _, platform := range adapter.OfferedPlatforms() {
+			registry.Register(platform, fake.New(platform))
+		}
+		return registry
+	}
+	factory := platformHTTPFactory(cfg.Collection.Proxy)
+	registry.Register(adapter.PlatformBinance, binance.New(&binance.Options{HTTPFactory: factory}))
+	registry.Register(adapter.PlatformOKX, okx.New(&okx.Options{HTTPFactory: factory}))
+	registry.Register(adapter.PlatformBybit, bybit.New(&bybit.Options{HTTPFactory: factory}))
+	registry.Register(adapter.PlatformKraken, kraken.New(&kraken.Options{HTTPFactory: factory}))
+	return registry
+}
+
+// The runtime or recording loader must have validated the proxy policy.
+func platformHTTPFactory(policy config.Proxy) func(time.Duration) *http.Client {
+	var proxy func(*http.Request) (*url.URL, error)
+	if policy.Mode == "proxy" {
+		// Config validation has already checked the scheme, authority, and absence of credentials.
+		target, _ := url.Parse(policy.URL)
+		proxy = http.ProxyURL(target)
+	}
+	return func(timeout time.Duration) *http.Client {
+		return httpclient.NewIPv4WithProxy(timeout, proxy)
+	}
 }

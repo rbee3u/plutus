@@ -13,11 +13,11 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/application/auth"
-	"github.com/rbee3u/plutus/internal/application/catalog"
-	"github.com/rbee3u/plutus/internal/application/portfolio"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/auth"
+	"github.com/rbee3u/plutus/internal/service/catalog"
+	"github.com/rbee3u/plutus/internal/service/portfolio"
 	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -39,7 +39,7 @@ func TestCatalogHTTPStatusFilter(t *testing.T) {
 	portfolioID := owned[0].ID
 	service := catalog.NewService(db)
 	for _, symbol := range []string{"BTC", "ETH", "SOL"} {
-		id, _, err := service.EnsureAsset(ctx, sqlcgen.New(db), portfolioID, adapters.PlatformBinance, symbol, time.Now())
+		id, _, err := service.EnsureAsset(ctx, sqlcgen.New(db), portfolioID, adapter.PlatformBinance, symbol, time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}

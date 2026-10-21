@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 )
 
 func TestSyntheticDualInvestmentMapsBothDirections(t *testing.T) {
 	t.Parallel()
 	r, a := newReplay(t, "")
-	batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeDualInvestment)
+	batch := collect(t, a, adapter.StructureBinancePM, TypeEarn, TypeDualInvestment)
 	dual := reportOf(t, batch, TypeDualInvestment)
-	if dual.Status != adapters.StatusSucceeded || len(dual.DualPositions) != 2 || len(dual.Balances) != 2 {
+	if dual.Status != adapter.StatusSucceeded || len(dual.DualPositions) != 2 || len(dual.Balances) != 2 {
 		t.Fatalf("synthetic dual report: %+v", dual)
 	}
 	page := body[dualInvestmentPage](t, r, epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1))
@@ -49,7 +49,7 @@ func TestSyntheticDualInvestmentMapsBothDirections(t *testing.T) {
 		t.Fatalf("synthetic principal must remain in each invested currency: %+v", dual.Balances)
 	}
 	earn := reportOf(t, batch, TypeEarn)
-	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 2 ||
+	if earn.Status != adapter.StatusSucceeded || len(earn.Balances) != 2 ||
 		balanceOf(t, earn, "USDT").Equity != "2" || balanceOf(t, earn, "ETH").Equity != "0.01" {
 		t.Fatalf("Dual principal must not enter ordinary earn: %+v", earn)
 	}
@@ -59,10 +59,10 @@ func TestDualAggregateMismatchFailsDependentReports(t *testing.T) {
 	t.Parallel()
 	r, a := newReplay(t, "")
 	r.always(epWalletValue, status(http.StatusOK, `[{"walletName":"Earn","balance":"40"}]`))
-	batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeDualInvestment)
-	for _, kind := range []adapters.AccountType{TypeEarn, TypeDualInvestment} {
+	batch := collect(t, a, adapter.StructureBinancePM, TypeEarn, TypeDualInvestment)
+	for _, kind := range []adapter.AccountType{TypeEarn, TypeDualInvestment} {
 		report := reportOf(t, batch, kind)
-		if report.Status != adapters.StatusFailed || report.ErrorClass != adapters.ClassUnsupported ||
+		if report.Status != adapter.StatusFailed || report.ErrorClass != adapter.ClassUnsupported ||
 			!strings.Contains(report.ErrorDetail, "40.00") || !strings.Contains(report.ErrorDetail, "34.00") {
 			t.Fatalf("inconsistent sample combination must fail completeness: %+v", report)
 		}
@@ -71,10 +71,10 @@ func TestDualAggregateMismatchFailsDependentReports(t *testing.T) {
 
 func TestDualAccountSelectionAndTerms(t *testing.T) {
 	t.Parallel()
-	for _, types := range [][]adapters.AccountType{{TypeSpot}, {TypeEarn}, {TypeDualInvestment}, {TypeEarn, TypeDualInvestment}} {
+	for _, types := range [][]adapter.AccountType{{TypeSpot}, {TypeEarn}, {TypeDualInvestment}, {TypeEarn, TypeDualInvestment}} {
 		t.Run(selectionName(types), func(t *testing.T) {
 			r, a := newReplay(t, dualOnlySamples)
-			batch := collect(t, a, adapters.StructureBinancePM, types...)
+			batch := collect(t, a, adapter.StructureBinancePM, types...)
 			if len(batch.Reports) != len(types) {
 				t.Fatal("auxiliary report escaped the adapter")
 			}
@@ -90,7 +90,7 @@ func TestDualAccountSelectionAndTerms(t *testing.T) {
 				t.Fatalf("dual endpoint calls %d, want %d", r.count(epDualInvest), calls)
 			}
 			for _, report := range batch.Reports {
-				if report.Status != adapters.StatusSucceeded {
+				if report.Status != adapter.StatusSucceeded {
 					t.Fatalf("report: %+v", report)
 				}
 				if report.AccountType == TypeEarn && len(report.Balances) != 0 {
@@ -114,7 +114,7 @@ func TestDualAccountSelectionAndTerms(t *testing.T) {
 	}
 }
 
-func selectionName(types []adapters.AccountType) string {
+func selectionName(types []adapter.AccountType) string {
 	out := ""
 	for _, v := range types {
 		out += string(v) + "-"
@@ -126,8 +126,8 @@ func TestDualOnlyDependsOnAuxiliarySavings(t *testing.T) {
 	t.Parallel()
 	r, a := newReplay(t, dualOnlySamples)
 	r.always(epFlexibleEarn, status(http.StatusOK, `{"total":1,"rows":[{"asset":"USDT","totalAmount":""}]}`))
-	batch := collect(t, a, adapters.StructureBinancePM, TypeDualInvestment, TypeSpot)
-	if reportOf(t, batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded {
+	batch := collect(t, a, adapter.StructureBinancePM, TypeDualInvestment, TypeSpot)
+	if reportOf(t, batch, TypeDualInvestment).ErrorClass != adapter.ClassNormalization || reportOf(t, batch, TypeSpot).Status != adapter.StatusSucceeded {
 		t.Fatalf("auxiliary failure: %+v", batch)
 	}
 }
@@ -140,12 +140,12 @@ func TestRepeatedDualSubscriptionCannotChangePrincipal(t *testing.T) {
 			r.alwaysAt(epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1), status(http.StatusOK, `{"total":1,"list":[{"id":"1","investCoin":"USDT","subscriptionAmount":"0.5","purchaseStatus":"PURCHASE_SUCCESS"}]}`))
 			r.alwaysAt(epDualInvest, dualInvestmentQuery("SETTLING", 1), status(http.StatusOK, `{"total":1,"list":[{"id":"1","investCoin":"USDT","subscriptionAmount":"`+amount+`","purchaseStatus":"SETTLING"}]}`))
 			r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"22.5","walletName":"Earn"}]`))
-			report := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
+			report := reportOf(t, collect(t, a, adapter.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
 			if amount == "0.5" {
-				if report.Status != adapters.StatusSucceeded || len(report.DualPositions) != 1 || report.Balances[0].Equity != "0.5" {
+				if report.Status != adapter.StatusSucceeded || len(report.DualPositions) != 1 || report.Balances[0].Equity != "0.5" {
 					t.Fatalf("moving subscription counted twice: %+v", report)
 				}
-			} else if report.ErrorClass != adapters.ClassNormalization {
+			} else if report.ErrorClass != adapter.ClassNormalization {
 				t.Fatalf("conflicting principal accepted: %+v", report)
 			}
 		})

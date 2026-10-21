@@ -10,25 +10,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/httpclient"
 )
 
 // Account types of the okx_unified account structure, the same in every margin mode.
 const (
-	TypeDualInvestment                      = adapters.TypeDualInvestment
-	TypeTrading        adapters.AccountType = "trading"
-	TypeFunding        adapters.AccountType = "funding"
-	TypeEarn           adapters.AccountType = "earn"
+	TypeDualInvestment                     = adapter.TypeDualInvestment
+	TypeTrading        adapter.AccountType = "trading"
+	TypeFunding        adapter.AccountType = "funding"
+	TypeEarn           adapter.AccountType = "earn"
 )
 
 // marginModes maps OKX's account level, the acctLv of account/config, to its margin mode. OKX
 // calls the levels account modes; all four are the same unified account with the same accounts.
-var marginModes = map[string]adapters.MarginMode{
-	"1": adapters.MarginOKXSpot,
-	"2": adapters.MarginOKXFutures,
-	"3": adapters.MarginOKXMCM,
-	"4": adapters.MarginOKXPM,
+var marginModes = map[string]adapter.MarginMode{
+	"1": adapter.MarginOKXSpot,
+	"2": adapter.MarginOKXFutures,
+	"3": adapter.MarginOKXMCM,
+	"4": adapter.MarginOKXPM,
 }
 
 // pageInterval spaces two pages of an endpoint OKX limits to one request per second.
@@ -80,7 +80,7 @@ func New(in *Options) *Adapter {
 	}
 }
 
-func (a *Adapter) client(creds adapters.Credentials) *client {
+func (a *Adapter) client(creds adapter.Credentials) *client {
 	return &client{http: a.http, host: a.host, clock: a.clock, creds: creds}
 }
 
@@ -110,13 +110,13 @@ type accountConfig struct {
 // readAccountConfig reads the account configuration: the account's own UID and its margin
 // mode. The user can switch the level inside OKX at any time, so every
 // validation and every collection run reads it afresh (ADR 0001).
-func readAccountConfig(ctx context.Context, c *client) (accountConfig, adapters.MarginMode, error) {
+func readAccountConfig(ctx context.Context, c *client) (accountConfig, adapter.MarginMode, error) {
 	var rows []accountConfig
 	if err := c.call(ctx, epConfig, &rows); err != nil {
 		return accountConfig{}, "", err
 	}
 	if len(rows) == 0 {
-		return accountConfig{}, "", adapters.Malformed(epConfig.String(), "the account configuration")
+		return accountConfig{}, "", adapter.Malformed(epConfig.String(), "the account configuration")
 	}
 	mode, err := marginModeOf(rows[0].AcctLv)
 	if err != nil {
@@ -127,55 +127,55 @@ func readAccountConfig(ctx context.Context, c *client) (accountConfig, adapters.
 
 // marginModeOf maps an account level. A level OKX adds later is refused by name instead of being
 // collected with a mapping written for another level.
-func marginModeOf(level string) (adapters.MarginMode, error) {
+func marginModeOf(level string) (adapter.MarginMode, error) {
 	level = strings.TrimSpace(level)
 	if level == "" {
-		return "", adapters.Malformed(epConfig.String(), "acctLv")
+		return "", adapter.Malformed(epConfig.String(), "acctLv")
 	}
 	mode, ok := marginModes[level]
 	if !ok {
-		return "", adapters.UnknownMarginMode(adapters.PlatformOKX, "acctLv "+level)
+		return "", adapter.UnknownMarginMode(adapter.PlatformOKX, "acctLv "+level)
 	}
 	return mode, nil
 }
 
 // Validate accepts sub-account keys and returns their own UID and margin mode.
-func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure) (adapters.ValidationResult, error) {
-	if structure != adapters.StructureOKXUnified {
-		return adapters.ValidationResult{}, adapters.UnsupportedStructure(adapters.PlatformOKX, structure)
+func (a *Adapter) Validate(ctx context.Context, creds adapter.Credentials, structure adapter.AccountStructure) (adapter.ValidationResult, error) {
+	if structure != adapter.StructureOKXUnified {
+		return adapter.ValidationResult{}, adapter.UnsupportedStructure(adapter.PlatformOKX, structure)
 	}
 	cfg, mode, err := readAccountConfig(ctx, a.client(creds))
 	if err != nil {
-		return adapters.ValidationResult{}, err
+		return adapter.ValidationResult{}, err
 	}
 	uid := strings.TrimSpace(cfg.UID)
 	if uid == "" {
-		return adapters.ValidationResult{}, adapters.Malformed(epConfig.String(), "uid")
+		return adapter.ValidationResult{}, adapter.Malformed(epConfig.String(), "uid")
 	}
-	return adapters.ValidationResult{ExternalRef: uid, MarginMode: mode}, nil
+	return adapter.ValidationResult{ExternalRef: uid, MarginMode: mode}, nil
 }
 
-func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
+func (a *Adapter) Collect(ctx context.Context, creds adapter.Credentials, structure adapter.AccountStructure, accounts []adapter.AccountType) (adapter.Batch, error) {
 	// Market terms are reused only within this collection run.
 	run := *a
 	run.futuresContracts = newFuturesContractCache(a.now)
 	a = &run
 
-	if structure != adapters.StructureOKXUnified {
-		return adapters.Batch{}, adapters.UnsupportedStructure(adapters.PlatformOKX, structure)
+	if structure != adapter.StructureOKXUnified {
+		return adapter.Batch{}, adapter.UnsupportedStructure(adapter.PlatformOKX, structure)
 	}
 	c := a.client(creds)
 	_, mode, err := readAccountConfig(ctx, c)
 	if err != nil {
-		return adapters.Batch{}, err
+		return adapter.Batch{}, err
 	}
 	// Read prices before reports to satisfy at-or-before valuation lookup.
 	lookup, pricedAt := a.tickers(ctx, c)
-	usdPrice := func(symbol string) (*big.Rat, bool) { return adapters.USDPrice(symbol, quotes, lookup) }
-	earnPair := adapters.CollectEarnPair(func(ctx context.Context) (adapters.AccountReport, adapters.AccountReport, error) {
+	usdPrice := func(symbol string) (*big.Rat, bool) { return adapter.USDPrice(symbol, quotes, lookup) }
+	earnPair := adapter.CollectEarnPair(func(ctx context.Context) (adapter.AccountReport, adapter.AccountReport, error) {
 		return a.earn(ctx, c, usdPrice)
 	})
-	reports, err := adapters.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
+	reports, err := adapter.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapter.AccountType) (adapter.AccountReport, error) {
 		//nolint:exhaustive // manual is application-owned and outside the private adapter report fixture.
 		switch accountType {
 		case TypeTrading:
@@ -185,16 +185,16 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 		case TypeEarn, TypeDualInvestment:
 			return earnPair(ctx, accountType)
 		default:
-			return adapters.AccountReport{}, adapters.UnknownAccountType(adapters.PlatformOKX, structure, accountType)
+			return adapter.AccountReport{}, adapter.UnknownAccountType(adapter.PlatformOKX, structure, accountType)
 		}
 	})
 	if err != nil {
-		return adapters.Batch{}, err
+		return adapter.Batch{}, err
 	}
-	return adapters.Batch{
+	return adapter.Batch{
 		CollectedAt: a.now(),
 		MarginMode:  mode,
 		Reports:     reports,
-		Prices:      adapters.QuotePrices(reports, quotes, lookup, pricedAt),
+		Prices:      adapter.QuotePrices(reports, quotes, lookup, pricedAt),
 	}, nil
 }

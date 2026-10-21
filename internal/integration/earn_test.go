@@ -8,37 +8,37 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/valuation"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 )
 
 type earnScenario struct{ failed, empty bool }
 
-func (a *earnScenario) Validate(context.Context, adapters.Credentials, adapters.AccountStructure) (adapters.ValidationResult, error) {
-	return adapters.ValidationResult{ExternalRef: "earn-test", MarginMode: adapters.MarginOKXPM}, nil
+func (a *earnScenario) Validate(context.Context, adapter.Credentials, adapter.AccountStructure) (adapter.ValidationResult, error) {
+	return adapter.ValidationResult{ExternalRef: "earn-test", MarginMode: adapter.MarginOKXPM}, nil
 }
 
-func (a *earnScenario) Collect(_ context.Context, _ adapters.Credentials, _ adapters.AccountStructure, types []adapters.AccountType) (adapters.Batch, error) {
+func (a *earnScenario) Collect(_ context.Context, _ adapter.Credentials, _ adapter.AccountStructure, types []adapter.AccountType) (adapter.Batch, error) {
 	at := time.Now().UTC()
-	out := adapters.Batch{CollectedAt: at, MarginMode: adapters.MarginOKXPM}
+	out := adapter.Batch{CollectedAt: at, MarginMode: adapter.MarginOKXPM}
 	for _, kind := range types {
 		if a.failed {
-			out.Reports = append(out.Reports, adapters.FailedReport(kind, adapters.NewError(adapters.ClassTemporary, "Synthetic refusal")))
+			out.Reports = append(out.Reports, adapter.FailedReport(kind, adapter.NewError(adapter.ClassTemporary, "Synthetic refusal")))
 			continue
 		}
-		r := adapters.AccountReport{AccountType: kind, Status: adapters.StatusSucceeded, CollectedAt: at}
+		r := adapter.AccountReport{AccountType: kind, Status: adapter.StatusSucceeded, CollectedAt: at}
 		if !a.empty {
-			r.Balances = []adapters.Balance{{AssetSymbol: "USDT", Equity: "40"}, {AssetSymbol: "USDC", Equity: "10"}}
+			r.Balances = []adapter.Balance{{AssetSymbol: "USDT", Equity: "40"}, {AssetSymbol: "USDC", Equity: "10"}}
 			{
-				p := adapters.NewEarnPosition("multi", "on_chain", "position", "principal")
-				p.Assets = []adapters.EarnAmount{{AssetSymbol: "USDT", Amount: "15"}, {AssetSymbol: "USDC", Amount: "10"}}
+				p := adapter.NewEarnPosition("multi", "on_chain", "position", "principal")
+				p.Assets = []adapter.EarnAmount{{AssetSymbol: "USDT", Amount: "15"}, {AssetSymbol: "USDC", Amount: "10"}}
 				p.AddReward("USDT", "100", "estimated")
 				p.Problems = append(p.Problems, "Estimated APR could not be read.")
-				q := adapters.NewEarnPosition("fixed", "fixed", "position", "principal")
-				q.Assets = []adapters.EarnAmount{{AssetSymbol: "USDT", Amount: "25"}}
-				r.EarnPositions = []adapters.EarnPosition{p, q}
+				q := adapter.NewEarnPosition("fixed", "fixed", "position", "principal")
+				q.Assets = []adapter.EarnAmount{{AssetSymbol: "USDT", Amount: "25"}}
+				r.EarnPositions = []adapter.EarnPosition{p, q}
 			}
 		}
 		out.Reports = append(out.Reports, r)
@@ -49,8 +49,8 @@ func (a *earnScenario) Collect(_ context.Context, _ adapters.Credentials, _ adap
 func TestEarnDetailsStaleEmptyAndIsolation(t *testing.T) {
 	h := newHarness(t)
 	a := &earnScenario{}
-	h.registry.Register(adapters.PlatformOKX, a)
-	id := h.createIdentity("Earn details", adapters.PlatformOKX, adapters.StructureOKXUnified, "earn")
+	h.registry.Register(adapter.PlatformOKX, a)
+	id := h.createIdentity("Earn details", adapter.PlatformOKX, adapter.StructureOKXUnified, "earn")
 	id = h.storeCredentials(id, "test")
 	if _, _, err := h.identities.Enable(h.ctx, h.portfolioID, id.ID, id.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil {
 		t.Fatal(err)

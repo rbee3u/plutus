@@ -8,15 +8,15 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/audit"
-	"github.com/rbee3u/plutus/internal/application/catalog"
-	"github.com/rbee3u/plutus/internal/application/cycles"
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/manual"
-	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/audit"
+	"github.com/rbee3u/plutus/internal/service/catalog"
+	"github.com/rbee3u/plutus/internal/service/cycle"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/manual"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 	"github.com/rbee3u/plutus/internal/shared/apperr"
 )
 
@@ -30,48 +30,48 @@ type manualTestAdapter struct {
 	onPrices  func()
 }
 
-func (a *manualTestAdapter) Validate(context.Context, adapters.Credentials, adapters.AccountStructure) (adapters.ValidationResult, error) {
-	return adapters.ValidationResult{ExternalRef: "manual-test", MarginMode: adapters.MarginOKXPM}, nil
+func (a *manualTestAdapter) Validate(context.Context, adapter.Credentials, adapter.AccountStructure) (adapter.ValidationResult, error) {
+	return adapter.ValidationResult{ExternalRef: "manual-test", MarginMode: adapter.MarginOKXPM}, nil
 }
 
-func (a *manualTestAdapter) Collect(_ context.Context, _ adapters.Credentials, _ adapters.AccountStructure, types []adapters.AccountType) (adapters.Batch, error) {
+func (a *manualTestAdapter) Collect(_ context.Context, _ adapter.Credentials, _ adapter.AccountStructure, types []adapter.AccountType) (adapter.Batch, error) {
 	at := time.Now().UTC()
 	if a.failed {
-		return adapters.Batch{}, adapters.NewError(adapters.ClassTemporary, "Synthetic private failure.")
+		return adapter.Batch{}, adapter.NewError(adapter.ClassTemporary, "Synthetic private failure.")
 	}
-	batch := adapters.Batch{CollectedAt: at, MarginMode: adapters.MarginOKXPM}
+	batch := adapter.Batch{CollectedAt: at, MarginMode: adapter.MarginOKXPM}
 	for _, typ := range types {
-		if typ == adapters.TypeManual {
+		if typ == adapter.TypeManual {
 			panic("Manual must not reach a private Adapter")
 		}
-		report := adapters.AccountReport{AccountType: typ, Status: adapters.StatusSucceeded, CollectedAt: at, Equity: a.reported}
+		report := adapter.AccountReport{AccountType: typ, Status: adapter.StatusSucceeded, CollectedAt: at, Equity: a.reported}
 		if a.usd != "0" {
-			report.Balances = []adapters.Balance{{AssetSymbol: "USD", Equity: a.usd}}
+			report.Balances = []adapter.Balance{{AssetSymbol: "USD", Equity: a.usd}}
 		}
 		if a.unpriced {
-			report.Balances = append(report.Balances, adapters.Balance{AssetSymbol: "MYSTERY", Equity: "2"})
+			report.Balances = append(report.Balances, adapter.Balance{AssetSymbol: "MYSTERY", Equity: "2"})
 		}
 		if a.positions {
-			report.Positions = []adapters.Position{{PositionKey: "manual-test-position", FuturesContract: adapters.FuturesContract{Symbol: "BTC-USD", Kind: "linear_perpetual", BaseAssetSymbol: "BTC", QuoteAssetSymbol: "USD", SettlementAssetSymbol: "USD"}, Side: "long", PositionMode: "one_way", SourceQuantity: "1", SourceQuantityUnit: "base"}}
+			report.Positions = []adapter.Position{{PositionKey: "manual-test-position", FuturesContract: adapter.FuturesContract{Symbol: "BTC-USD", Kind: "linear_perpetual", BaseAssetSymbol: "BTC", QuoteAssetSymbol: "USD", SettlementAssetSymbol: "USD"}, Side: "long", PositionMode: "one_way", SourceQuantity: "1", SourceQuantityUnit: "base"}}
 		}
 		batch.Reports = append(batch.Reports, report)
 	}
 	return batch, nil
 }
 
-func (a *manualTestAdapter) CollectPrices(_ context.Context, symbols []string) ([]adapters.Price, error) {
+func (a *manualTestAdapter) CollectPrices(_ context.Context, symbols []string) ([]adapter.Price, error) {
 	if a.onPrices != nil {
 		a.onPrices()
 	}
-	return adapters.SymbolPrices(symbols, []string{"USD"}, func(symbol, _ string) (adapters.Quote, bool) {
-		return adapters.Quote{Price: a.btc, SourceMarketRef: "BTCUSD"}, symbol == "BTC" && a.btc != ""
+	return adapter.SymbolPrices(symbols, []string{"USD"}, func(symbol, _ string) (adapter.Quote, bool) {
+		return adapter.Quote{Price: a.btc, SourceMarketRef: "BTCUSD"}, symbol == "BTC" && a.btc != ""
 	}, time.Now().UTC()), nil
 }
 
 func manualEnabled(t *testing.T, h *harness, a *manualTestAdapter) identity.Identity {
 	t.Helper()
-	h.registry.Register(adapters.PlatformOKX, a)
-	item := h.createIdentity("Manual tests", adapters.PlatformOKX, adapters.StructureOKXUnified, "trading")
+	h.registry.Register(adapter.PlatformOKX, a)
+	item := h.createIdentity("Manual tests", adapter.PlatformOKX, adapter.StructureOKXUnified, "trading")
 	item = h.storeCredentials(item, "manual-key")
 	enabled, _, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID})
 	if err != nil {
@@ -117,7 +117,7 @@ func hasManualBalanceChange(point valuation.Point) bool {
 
 func TestManualCRUDVersionsAndCycleInputs(t *testing.T) {
 	h := newHarness(t)
-	item := h.createIdentity("No credentials", adapters.PlatformOKX, adapters.StructureOKXUnified, "trading")
+	item := h.createIdentity("No credentials", adapter.PlatformOKX, adapter.StructureOKXUnified, "trading")
 	s := h.manual
 	initial, err := s.Get(h.ctx, h.portfolioID, item.ID)
 	if err != nil || initial.Pending || len(initial.Items) != 0 {
@@ -159,7 +159,7 @@ func TestManualCRUDVersionsAndCycleInputs(t *testing.T) {
 			}
 		}
 	}
-	cycle, _, err := h.cycles.Enqueue(h.ctx, h.portfolioID, cycles.TriggerUser)
+	collectionCycle, _, err := h.cycles.Enqueue(h.ctx, h.portfolioID, cycle.TriggerUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,9 +168,9 @@ func TestManualCRUDVersionsAndCycleInputs(t *testing.T) {
 		t.Fatalf("cycle inputs %v %v", inputs, err)
 	}
 	t.Cleanup(func() {
-		_, _ = h.db.ExecContext(context.Background(), "UPDATE collection_cycles SET status='failed', finished_at=UTC_TIMESTAMP(6) WHERE portfolio_id=? AND id=? AND status='queued'", h.portfolioID[:], cycle.ID[:])
+		_, _ = h.db.ExecContext(context.Background(), "UPDATE collection_cycles SET status='failed', finished_at=UTC_TIMESTAMP(6) WHERE portfolio_id=? AND id=? AND status='queued'", h.portfolioID[:], collectionCycle.ID[:])
 	})
-	summary, err := h.collection.RunCycle(h.ctx, h.portfolioID, cycle.ID)
+	summary, err := h.collection.RunCycle(h.ctx, h.portfolioID, collectionCycle.ID)
 	if err != nil || summary.Point.TotalUSD != "100" || summary.IdentityCount != 0 || summary.ReportFailed != 1 {
 		t.Fatalf("unconfigured %+v %v", summary, err)
 	}
@@ -350,7 +350,7 @@ func TestManualNewIdentityArchiveAndDuringCollectionEdits(t *testing.T) {
 	a := &manualTestAdapter{usd: "0", btc: "20000"}
 	first := manualEnabled(t, h, a)
 	h.runCycle()
-	item := h.createIdentity("Manual only", adapters.PlatformOKX, adapters.StructureOKXUnified)
+	item := h.createIdentity("Manual only", adapter.PlatformOKX, adapter.StructureOKXUnified)
 	manualSave(t, h, item, "USD", "-100")
 	entered, _ := h.runCycle()
 	if entered.Point.TotalUSD != "-100" || entered.Point.BoundaryContributionUSD != "-100" || hasManualBalanceChange(entered.Point) {
@@ -400,7 +400,7 @@ func TestManualStrictPlatformPricingAndConcurrentUpdates(t *testing.T) {
 		platform string
 		at       time.Time
 	}{{"binance", now}, {"okx", now.Add(-25 * time.Hour)}, {"okx", now.Add(time.Hour)}} {
-		if err := h.catalog.RecordPrice(h.ctx, sqlcgen.New(h.db), h.portfolioID, adapters.Platform(row.platform), adapters.Price{CanonicalAssetSymbol: symbol, Price: "20000", QuoteCanonicalAssetSymbol: "USD", SourceMarketRef: "BTCUSD", RetrievedAt: row.at}); err != nil {
+		if err := h.catalog.RecordPrice(h.ctx, sqlcgen.New(h.db), h.portfolioID, adapter.Platform(row.platform), adapter.Price{CanonicalAssetSymbol: symbol, Price: "20000", QuoteCanonicalAssetSymbol: "USD", SourceMarketRef: "BTCUSD", RetrievedAt: row.at}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -555,7 +555,7 @@ func TestManualMappingAffectsNextPointAndPreservesHistory(t *testing.T) {
 	h := newHarness(t)
 	item := manualEnabled(t, h, &manualTestAdapter{usd: "0", btc: "30000"})
 	state := manualSave(t, h, item, "BTC", "2")
-	before, cycle := h.runCycle()
+	before, collectionCycle := h.runCycle()
 	asset, err := h.catalog.GetAsset(h.ctx, h.portfolioID, state.Items[0].AssetID)
 	if err != nil {
 		t.Fatal(err)
@@ -563,7 +563,7 @@ func TestManualMappingAffectsNextPointAndPreservesHistory(t *testing.T) {
 	if _, err := h.catalog.PutMapping(h.ctx, asset.ID, catalog.MappingInput{ActorUserID: h.userID, PortfolioID: h.portfolioID, MappingVersion: asset.MappingVersion, CanonicalAssetSymbol: "ETH"}); err != nil {
 		t.Fatal(err)
 	}
-	after, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, cycle)
+	after, err := h.valuation.PointByCycle(h.ctx, h.portfolioID, collectionCycle)
 	if err != nil || after.TotalUSD != before.Point.TotalUSD || after.TotalUSD != "60000" {
 		t.Fatalf("historical point changed: %+v %v", after, err)
 	}
@@ -597,7 +597,7 @@ func TestPendingNewManualAccountDoesNotQualifyCollectedTotal(t *testing.T) {
 	}
 	manualSave(t, h, item, "USD", "100")
 	_, point := h.runCycle()
-	pending := h.createIdentity("Pending identity", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
+	pending := h.createIdentity("Pending identity", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	state := manualSave(t, h, pending, "USD", "200")
 	p := financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"}
 	out, err := h.financial.FlatBalances(h.ctx, p, &financial.ListFilter{CycleID: &point, IncludePendingManual: true, IdentityID: &pending.ID})

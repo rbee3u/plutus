@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/valuation"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 )
 
 type dualScenario struct {
@@ -17,27 +17,27 @@ type dualScenario struct {
 	failEarn, failDual, empty bool
 }
 
-func (a *dualScenario) Validate(context.Context, adapters.Credentials, adapters.AccountStructure) (adapters.ValidationResult, error) {
-	return adapters.ValidationResult{ExternalRef: "dual-test", MarginMode: adapters.MarginOKXPM}, nil
+func (a *dualScenario) Validate(context.Context, adapter.Credentials, adapter.AccountStructure) (adapter.ValidationResult, error) {
+	return adapter.ValidationResult{ExternalRef: "dual-test", MarginMode: adapter.MarginOKXPM}, nil
 }
 
-func (a *dualScenario) Collect(_ context.Context, _ adapters.Credentials, _ adapters.AccountStructure, types []adapters.AccountType) (adapters.Batch, error) {
+func (a *dualScenario) Collect(_ context.Context, _ adapter.Credentials, _ adapter.AccountStructure, types []adapter.AccountType) (adapter.Batch, error) {
 	now := time.Now().UTC()
-	batch := adapters.Batch{CollectedAt: now, MarginMode: adapters.MarginOKXPM}
+	batch := adapter.Batch{CollectedAt: now, MarginMode: adapter.MarginOKXPM}
 	for _, kind := range types {
-		if (kind == "earn" && a.failEarn) || (kind == adapters.TypeDualInvestment && a.failDual) {
-			batch.Reports = append(batch.Reports, adapters.FailedReport(kind, adapters.NewError(adapters.ClassTemporary, "test failure")))
+		if (kind == "earn" && a.failEarn) || (kind == adapter.TypeDualInvestment && a.failDual) {
+			batch.Reports = append(batch.Reports, adapter.FailedReport(kind, adapter.NewError(adapter.ClassTemporary, "test failure")))
 			continue
 		}
-		r := adapters.AccountReport{AccountType: kind, Status: adapters.StatusSucceeded, CollectedAt: now}
+		r := adapter.AccountReport{AccountType: kind, Status: adapter.StatusSucceeded, CollectedAt: now}
 		if kind == "earn" {
-			r.Balances = []adapters.Balance{{AssetSymbol: "USDT", Equity: a.earn}}
-			p := adapters.NewEarnPosition("earn", "flexible", "position", "principal")
-			p.Assets = []adapters.EarnAmount{{AssetSymbol: "USDT", Amount: r.Balances[0].Equity}}
-			r.EarnPositions = []adapters.EarnPosition{p}
+			r.Balances = []adapter.Balance{{AssetSymbol: "USDT", Equity: a.earn}}
+			p := adapter.NewEarnPosition("earn", "flexible", "position", "principal")
+			p.Assets = []adapter.EarnAmount{{AssetSymbol: "USDT", Amount: r.Balances[0].Equity}}
+			r.EarnPositions = []adapter.EarnPosition{p}
 		} else if !a.empty {
-			r.Balances = []adapters.Balance{{AssetSymbol: "USDT", Equity: "40"}}
-			r.DualPositions = []adapters.DualPosition{{PositionKey: "one", PrincipalAssetSymbol: "USDT", Principal: "15", Status: "active"}, {PositionKey: "two", PrincipalAssetSymbol: "USDT", Principal: "25", Status: "active"}}
+			r.Balances = []adapter.Balance{{AssetSymbol: "USDT", Equity: "40"}}
+			r.DualPositions = []adapter.DualPosition{{PositionKey: "one", PrincipalAssetSymbol: "USDT", Principal: "15", Status: "active"}, {PositionKey: "two", PrincipalAssetSymbol: "USDT", Principal: "25", Status: "active"}}
 			expiry := now.Add(24 * time.Hour)
 			r.DualPositions[1].ExpiryAt = &expiry
 		}
@@ -50,16 +50,16 @@ func TestDualSeparateAccountsStaleAndRetry(t *testing.T) {
 	for _, firstFail := range []bool{false, true} {
 		t.Run(map[bool]string{false: "fresh Earn", true: "stale Earn"}[firstFail], func(t *testing.T) {
 			h := newHarness(t)
-			adapter := &dualScenario{earn: "60"}
-			h.registry.Register(adapters.PlatformOKX, adapter)
-			item := h.createIdentity("Dual accounts", adapters.PlatformOKX, adapters.StructureOKXUnified, "earn", "dual_investment")
+			platformAdapter := &dualScenario{earn: "60"}
+			h.registry.Register(adapter.PlatformOKX, platformAdapter)
+			item := h.createIdentity("Dual accounts", adapter.PlatformOKX, adapter.StructureOKXUnified, "earn", "dual_investment")
 			item = h.storeCredentials(item, "test")
 			if _, _, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil {
 				t.Fatal(err)
 			}
 			first, firstCycle := h.runCycle()
-			adapter.earn = "60"
-			adapter.failEarn = firstFail
+			platformAdapter.earn = "60"
+			platformAdapter.failEarn = firstFail
 			second, secondCycle := h.runCycle()
 			want := "100"
 			if second.Point.TotalUSD != want || second.Point.BoundaryContributionUSD != "0" {
@@ -92,11 +92,11 @@ func TestDualSeparateAccountsStaleAndRetry(t *testing.T) {
 			if err != nil || flat.Total != 2 || flat.TotalUSD == nil || *flat.TotalUSD != "40" || flat.TotalCompleteness != "complete" || len(flat.Items) != 1 || flat.Items[0].PositionKey != "one" {
 				t.Fatalf("pagination: %+v %v", flat, err)
 			}
-			adapter.failEarn = false
+			platformAdapter.failEarn = false
 			third, thirdCycle := h.runCycle()
 			thirdAccounts := h.accountsByType(thirdCycle, item.ID)
-			adapter.failEarn = true
-			adapter.failDual = true
+			platformAdapter.failEarn = true
+			platformAdapter.failDual = true
 			fourth, fourthCycle := h.runCycle()
 			fourthAccounts := h.accountsByType(fourthCycle, item.ID)
 			change, err = h.financial.CustomValueChange(h.ctx, pctx, third.Point.EvaluatedAt, fourth.Point.EvaluatedAt)
@@ -122,9 +122,9 @@ func TestDualSeparateAccountsStaleAndRetry(t *testing.T) {
 			if old.ValueUSD == nil || *old.ValueUSD != "60" {
 				t.Fatalf("old scope was reinterpreted: %+v", old)
 			}
-			adapter.failEarn = false
-			adapter.failDual = false
-			adapter.empty = true
+			platformAdapter.failEarn = false
+			platformAdapter.failDual = false
+			platformAdapter.empty = true
 			_, lastCycle := h.runCycle()
 			last := h.accountsByType(lastCycle, item.ID)["dual_investment"]
 			complete, err := h.financial.AccountDualPositions(h.ctx, pctx, last.AccountID)

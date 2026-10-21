@@ -6,16 +6,16 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/catalog"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/catalog"
+	"github.com/rbee3u/plutus/internal/service/identity"
 	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 )
 
 func TestCapitalAndCatalogQueryBudgets(t *testing.T) {
 	db, stats := mysqltest.ObserveQueries(t)
 	h := newHarness(t, db)
-	item := h.createIdentity("Original", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
+	item := h.createIdentity("Original", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	var account uuid.UUID
 	for _, a := range item.Accounts {
 		if a.AccountType == "spot" {
@@ -75,7 +75,7 @@ func TestCapitalAndCatalogQueryBudgets(t *testing.T) {
 func TestManualAppliedRevisionReusesBalances(t *testing.T) {
 	db, stats := mysqltest.ObserveQueries(t)
 	h := newHarness(t, db)
-	item := h.createIdentity("Manual query budget", adapters.PlatformOKX, adapters.StructureOKXUnified, "trading")
+	item := h.createIdentity("Manual query budget", adapter.PlatformOKX, adapter.StructureOKXUnified, "trading")
 	state := manualSave(t, h, item, "USD", "10")
 	// The normal collection workflow establishes an applied manual revision.
 	h.runCycle()

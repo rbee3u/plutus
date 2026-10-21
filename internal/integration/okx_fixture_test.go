@@ -8,13 +8,13 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/catalog"
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/valuation"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 	"github.com/rbee3u/plutus/internal/platform/okx"
+	"github.com/rbee3u/plutus/internal/service/catalog"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
@@ -24,7 +24,7 @@ import (
 // catalog and the database and valued without omissions.
 func TestOKXFixturesStoreAndValue(t *testing.T) {
 	h := newHarness(t)
-	files := loadAdapterSamples(t, adapters.PlatformOKX, "")
+	files := loadAdapterSamples(t, adapter.PlatformOKX, "")
 	answers := map[string]fixture.File{}
 	for _, f := range files {
 		answers[f.Request.Endpoint()] = f
@@ -49,9 +49,9 @@ func TestOKXFixturesStoreAndValue(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 	// The harness registry is shared by the identity and collection services.
-	h.registry.Register(adapters.PlatformOKX, okx.New(&okx.Options{Host: server.URL, HTTP: offline.Client(t, server)}))
+	h.registry.Register(adapter.PlatformOKX, okx.New(&okx.Options{Host: server.URL, HTTP: offline.Client(t, server)}))
 
-	item := h.createIdentity("OKX fixtures", adapters.PlatformOKX, adapters.StructureOKXUnified, okx.TypeTrading, okx.TypeFunding, okx.TypeEarn)
+	item := h.createIdentity("OKX fixtures", adapter.PlatformOKX, adapter.StructureOKXUnified, okx.TypeTrading, okx.TypeFunding, okx.TypeEarn)
 	item = h.storeCredentials(item, "fixture-key")
 	enabled, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID})
 	if err != nil || !outcome.OK || enabled.ExternalRef == nil || *enabled.ExternalRef != source.Data[0].UID {
@@ -73,7 +73,7 @@ func TestOKXFixturesStoreAndValue(t *testing.T) {
 	if summary.Point.TotalUSD != "10320" {
 		t.Fatalf("Portfolio total = %s, want 10320", summary.Point.TotalUSD)
 	}
-	futuresContracts, err := h.catalog.ListFuturesContracts(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: string(adapters.PlatformOKX), Limit: 50})
+	futuresContracts, err := h.catalog.ListFuturesContracts(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: string(adapter.PlatformOKX), Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,8 +94,8 @@ func assertOKXTradingPosition(t *testing.T, h *harness, accountID uuid.UUID) {
 		t.Fatalf("stored positions %+v, want one synthetic swap", view.Positions)
 	}
 	position := view.Positions[0]
-	if position.PositionKey != "BTC-USDT-SWAP:net" || position.Kind != adapters.KindLinearPerpetual || position.Side != adapters.SideLong ||
-		position.SourceQuantityUnit != adapters.UnitContracts || decimal.Compact(position.SourceQuantity) != "1" ||
+	if position.PositionKey != "BTC-USDT-SWAP:net" || position.Kind != adapter.KindLinearPerpetual || position.Side != adapter.SideLong ||
+		position.SourceQuantityUnit != adapter.UnitContracts || decimal.Compact(position.SourceQuantity) != "1" ||
 		position.ContractSize == nil || decimal.Compact(*position.ContractSize) != "0.01" ||
 		position.MarkPrice == nil || decimal.Compact(*position.MarkPrice) != "50000" ||
 		position.NotionalUSD == nil || decimal.Compact(*position.NotionalUSD) != "500" {

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
@@ -62,9 +62,9 @@ func TestExtraRequestsFailEvenWhenTheirErrorsAreSwallowed(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { calls++; _, _ = io.WriteString(w, `{"balance":"1"}`) }))
 			defer server.Close()
 			request := fixture.Request{Service: "spot", Method: "GET", Path: "/account"}
-			s := New(adapters.PlatformBinance, request)
+			s := New(adapter.PlatformBinance, request)
 			client := s.Client(offline.Client(t, server))
-			f, err := s.Run(context.Background(), adapters.Credentials{}, func(ctx context.Context) error {
+			f, err := s.Run(context.Background(), adapter.Credentials{}, func(ctx context.Context) error {
 				req, e := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/account", nil)
 				if e != nil {
 					return e
@@ -97,9 +97,9 @@ func TestRedirectIsSavedWithoutFollowingIt(t *testing.T) {
 		http.Redirect(w, r, "/additional", http.StatusFound)
 	}))
 	defer server.Close()
-	s := New(adapters.PlatformBinance, fixture.Request{Service: "spot", Method: "GET", Path: "/account"})
+	s := New(adapter.PlatformBinance, fixture.Request{Service: "spot", Method: "GET", Path: "/account"})
 	client := s.Client(offline.Client(t, server))
-	f, err := s.Run(context.Background(), adapters.Credentials{}, func(ctx context.Context) error {
+	f, err := s.Run(context.Background(), adapter.Credentials{}, func(ctx context.Context) error {
 		req, e := http.NewRequestWithContext(ctx, http.MethodGet, server.URL+"/account", nil)
 		if e != nil {
 			return e
@@ -117,9 +117,9 @@ func TestRedirectIsSavedWithoutFollowingIt(t *testing.T) {
 }
 
 func TestSanitizationPreservesBusinessPrecisionAndFailureEvidence(t *testing.T) {
-	s := New(adapters.PlatformOKX, fixture.Request{Service: "v5", Method: "GET", Path: "/api/v5/account/config"})
+	s := New(adapter.PlatformOKX, fixture.Request{Service: "v5", Method: "GET", Path: "/api/v5/account/config"})
 	secret := "private-key-value"
-	f, err := s.Run(context.Background(), adapters.Credentials{APIKey: secret}, func(context.Context) error {
+	f, err := s.Run(context.Background(), adapter.Credentials{APIKey: secret}, func(context.Context) error {
 		s.Add(s.request, 400, []byte(`{"uid":"987654321012345678","mainUid":"987654321012345678","balance":"987654321012345678","price":1.234567890123456789,"msg":"private-key-value 198.51.100.2"}`))
 		return errors.New("failed for " + secret)
 	})
@@ -142,8 +142,8 @@ func TestRedactionFailureCannotReturnWritableEvidence(t *testing.T) {
 			if requestLeak {
 				request.Query = url.Values{"symbol": {"12345678"}}
 			}
-			s := New(adapters.PlatformBinance, request)
-			f, err := s.Run(context.Background(), adapters.Credentials{APIKey: "12345678"}, func(context.Context) error { s.Add(request, 200, []byte(`{"amount":"12345678.001"}`)); return nil })
+			s := New(adapter.PlatformBinance, request)
+			f, err := s.Run(context.Background(), adapter.Credentials{APIKey: "12345678"}, func(context.Context) error { s.Add(request, 200, []byte(`{"amount":"12345678.001"}`)); return nil })
 			if f != nil || err == nil {
 				t.Fatal("unsafe response returned for writing")
 			}
@@ -153,8 +153,8 @@ func TestRedactionFailureCannotReturnWritableEvidence(t *testing.T) {
 
 func TestFundingMemberIdentityIsRedactedWithoutChangingBalances(t *testing.T) {
 	request := fixture.Request{Service: "v5", Method: "GET", Path: "/v5/asset/transfer/query-account-coins-balance"}
-	s := New(adapters.PlatformBybit, request)
-	f, err := s.Run(context.Background(), adapters.Credentials{}, func(context.Context) error {
+	s := New(adapter.PlatformBybit, request)
+	f, err := s.Run(context.Background(), adapter.Credentials{}, func(context.Context) error {
 		s.Add(request, 200, []byte(`{"retCode":0,"result":{"memberId":"987654321","userID":"987654321","balance":[{"coin":"USDT","walletBalance":"987654321.00000001","transferBalance":"4.0193"}]},"retMsg":"member 987654321"}`))
 		return nil
 	})
@@ -185,8 +185,8 @@ func TestFundingMemberIdentityIsRedactedWithoutChangingBalances(t *testing.T) {
 
 func TestLogicalSnapshotAndEmptyStates(t *testing.T) {
 	request := fixture.Request{Service: "futures-ws", Method: "WS", Path: "/ws/v1/balances_snapshot"}
-	s := New(adapters.PlatformKraken, request)
-	f, err := s.Run(context.Background(), adapters.Credentials{}, func(context.Context) error {
+	s := New(adapter.PlatformKraken, request)
+	f, err := s.Run(context.Background(), adapter.Credentials{}, func(context.Context) error {
 		s.Add(request, 0, []byte(`{"feed":"balances_snapshot","account":"customer-123456789","holding":{}}`))
 		return nil
 	})

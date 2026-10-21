@@ -3,8 +3,8 @@ package httpserver
 import (
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/valuation"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

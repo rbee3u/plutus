@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
@@ -17,20 +17,20 @@ import (
 // held in the trading or funding account. Last, the earn check compares the
 // balances with OKX's own valuation of earn (ADR 0005), so unitemized value
 // fails selected earn and dual accounts instead of vanishing.
-func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol string) (*big.Rat, bool)) (adapters.AccountReport, adapters.AccountReport, error) {
-	totals := adapters.Totals{}
-	earnPositions := []adapters.EarnPosition{}
+func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol string) (*big.Rat, bool)) (adapter.AccountReport, adapter.AccountReport, error) {
+	totals := adapter.Totals{}
+	earnPositions := []adapter.EarnPosition{}
 	var savings []savingsBalance
 	if err := c.call(ctx, epSavings, &savings); err != nil {
-		return adapters.AccountReport{}, adapters.AccountReport{}, err
+		return adapter.AccountReport{}, adapter.AccountReport{}, err
 	}
 	for i := range savings {
-		amount, err := adapters.Decimal(epSavings.String(), "amt of "+savings[i].Ccy, savings[i].Amt)
+		amount, err := adapter.Decimal(epSavings.String(), "amt of "+savings[i].Ccy, savings[i].Amt)
 		if err != nil {
-			return adapters.AccountReport{}, adapters.AccountReport{}, err
+			return adapter.AccountReport{}, adapter.AccountReport{}, err
 		}
 		if err := totals.Add(epSavings.String(), savings[i].Ccy, amount); err != nil {
-			return adapters.AccountReport{}, adapters.AccountReport{}, err
+			return adapter.AccountReport{}, adapter.AccountReport{}, err
 		}
 		if amount.Sign() != 0 {
 			earnPositions = append(earnPositions, savings[i].position(decimal.Format(amount)))
@@ -38,20 +38,20 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 	}
 	var staking []stakingOrder
 	if err := c.call(ctx, epStaking, &staking); err != nil {
-		return adapters.AccountReport{}, adapters.AccountReport{}, err
+		return adapter.AccountReport{}, adapter.AccountReport{}, err
 	}
 	for i := range staking {
 		p := staking[i].position()
 		for _, invested := range staking[i].InvestData {
-			amount, err := adapters.Decimal(epStaking.String(), "investData.amt of "+invested.Ccy, invested.Amt)
+			amount, err := adapter.Decimal(epStaking.String(), "investData.amt of "+invested.Ccy, invested.Amt)
 			if err != nil {
-				return adapters.AccountReport{}, adapters.AccountReport{}, err
+				return adapter.AccountReport{}, adapter.AccountReport{}, err
 			}
 			if err := totals.Add(epStaking.String(), invested.Ccy, amount); err != nil {
-				return adapters.AccountReport{}, adapters.AccountReport{}, err
+				return adapter.AccountReport{}, adapter.AccountReport{}, err
 			}
 			if amount.Sign() != 0 {
-				p.Assets = append(p.Assets, adapters.EarnAmount{AssetSymbol: invested.Ccy, Amount: decimal.Format(amount)})
+				p.Assets = append(p.Assets, adapter.EarnAmount{AssetSymbol: invested.Ccy, Amount: decimal.Format(amount)})
 			}
 		}
 		if len(p.Assets) > 0 {
@@ -60,33 +60,33 @@ func (a *Adapter) earn(ctx context.Context, c *client, usdPrice func(symbol stri
 	}
 	orders, err := a.dualInvestmentOrders(ctx, c)
 	if err != nil {
-		return adapters.AccountReport{}, adapters.AccountReport{}, err
+		return adapter.AccountReport{}, adapter.AccountReport{}, err
 	}
 	positions, err := dualPositions(orders)
 	if err != nil {
-		return adapters.AccountReport{}, adapters.AccountReport{}, err
+		return adapter.AccountReport{}, adapter.AccountReport{}, err
 	}
 	balances := totals.Balances()
-	if err := adapters.CheckEarnPositions(earnPositions, balances); err != nil {
-		return adapters.AccountReport{}, adapters.AccountReport{}, err
+	if err := adapter.CheckEarnPositions(earnPositions, balances); err != nil {
+		return adapter.AccountReport{}, adapter.AccountReport{}, err
 	}
-	dualTotals := adapters.Totals{}
+	dualTotals := adapter.Totals{}
 	for i := range positions {
 		p := &positions[i]
 		if err := dualTotals.Add("Dual investment", p.PrincipalAssetSymbol, decimal.ParseOrZero(p.Principal)); err != nil {
-			return adapters.AccountReport{}, adapters.AccountReport{}, err
+			return adapter.AccountReport{}, adapter.AccountReport{}, err
 		}
 	}
 	dualBalances := dualTotals.Balances()
-	combined := append(append([]adapters.Balance{}, balances...), dualBalances...)
+	combined := append(append([]adapter.Balance{}, balances...), dualBalances...)
 	valuation, err := readEarnValuation(ctx, c)
 	if err != nil {
-		return adapters.AccountReport{}, adapters.AccountReport{}, err
+		return adapter.AccountReport{}, adapter.AccountReport{}, err
 	}
-	if err := adapters.CheckEarnComplete(adapters.PlatformOKX, valuation, combined, usdPrice); err != nil {
-		return adapters.AccountReport{}, adapters.AccountReport{}, err
+	if err := adapter.CheckEarnComplete(adapter.PlatformOKX, valuation, combined, usdPrice); err != nil {
+		return adapter.AccountReport{}, adapter.AccountReport{}, err
 	}
-	return adapters.AccountReport{AccountType: TypeEarn, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: balances, EarnPositions: earnPositions}, adapters.AccountReport{AccountType: TypeDualInvestment, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
+	return adapter.AccountReport{AccountType: TypeEarn, Status: adapter.StatusSucceeded, CollectedAt: a.now(), Balances: balances, EarnPositions: earnPositions}, adapter.AccountReport{AccountType: TypeDualInvestment, Status: adapter.StatusSucceeded, CollectedAt: a.now(), Balances: dualBalances, DualPositions: positions}, nil
 }
 
 // readEarnValuation reads OKX's own valuation of the earn bucket in USDT, which Plutus counts as USD.
@@ -100,7 +100,7 @@ func readEarnValuation(ctx context.Context, c *client) (*big.Rat, error) {
 		return nil, err
 	}
 	if len(rows) == 0 || strings.TrimSpace(rows[0].Details.Earn) == "" {
-		return nil, adapters.Malformed(epValuation.String(), "the earn valuation")
+		return nil, adapter.Malformed(epValuation.String(), "the earn valuation")
 	}
-	return adapters.Decimal(epValuation.String(), "details.earn", rows[0].Details.Earn)
+	return adapter.Decimal(epValuation.String(), "details.earn", rows[0].Details.Earn)
 }

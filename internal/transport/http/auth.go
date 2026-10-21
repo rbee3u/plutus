@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/rbee3u/plutus/internal/application/auth"
+	"github.com/rbee3u/plutus/internal/service/auth"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

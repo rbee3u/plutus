@@ -9,11 +9,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/valuation"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/identity"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
@@ -21,7 +21,7 @@ func TestHoldingsSubstringFiltersBeforePagination(t *testing.T) {
 	h := newHarness(t)
 	// Exercise the production composition root through collection and reads.
 	h.collection = h.services.Collection
-	item := h.createIdentity("Search", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot", "um_futures", "cm_futures", "dual_investment")
+	item := h.createIdentity("Search", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot", "um_futures", "cm_futures", "dual_investment")
 	item = h.storeCredentials(item, "search-filters")
 	if _, result, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !result.OK {
 		t.Fatalf("enable: %+v %v", result, err)
@@ -81,7 +81,7 @@ func TestHoldingsSubstringFiltersBeforePagination(t *testing.T) {
 func TestAccountHoldingsRemainPinnedAfterNewCollection(t *testing.T) {
 	h := newHarness(t)
 	h.collection = h.services.Collection
-	item := h.createIdentity("Pinned", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot", "um_futures", "earn", "dual_investment")
+	item := h.createIdentity("Pinned", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot", "um_futures", "earn", "dual_investment")
 	item = h.storeCredentials(item, "pinned-holdings")
 	if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
 		t.Fatalf("enable: %+v %v", outcome, err)
@@ -207,7 +207,7 @@ func TestReportedEquityDoesNotQualifyFilteredBalanceTotals(t *testing.T) {
 	if !stale.Coverage.Complete || stale.TotalCompleteness != valuation.CompletenessIncomplete || stale.TotalFreshness != valuation.FreshnessStale || len(stale.Items) == 0 || stale.Items[0].Freshness != valuation.FreshnessStale {
 		t.Fatalf("stale report coverage: %+v", stale)
 	}
-	missing := h.createIdentity("No report", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
+	missing := h.createIdentity("No report", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	h.runCycle()
 	known = read("usd")
 	if known.Completeness != valuation.CompletenessIncomplete || known.TotalCompleteness != valuation.CompletenessComplete {
@@ -224,8 +224,8 @@ func TestReportedEquityDoesNotQualifyFilteredBalanceTotals(t *testing.T) {
 func TestProductTotalsUseMatchingHoldingsAndAdoptedPrices(t *testing.T) {
 	h := newHarness(t)
 	a := &summaryScenario{price: "50000"}
-	h.registry.Register(adapters.PlatformOKX, a)
-	item := h.createIdentity("Product totals", adapters.PlatformOKX, adapters.StructureOKXUnified, "earn", "dual_investment")
+	h.registry.Register(adapter.PlatformOKX, a)
+	item := h.createIdentity("Product totals", adapter.PlatformOKX, adapter.StructureOKXUnified, "earn", "dual_investment")
 	item = h.storeCredentials(item, "summary")
 	if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
 		t.Fatalf("enable: %+v %v", outcome, err)
@@ -251,7 +251,7 @@ func TestProductTotalsUseMatchingHoldingsAndAdoptedPrices(t *testing.T) {
 	check("MYSTERY", nil, nil, nil, "incomplete", "fresh")
 	check("no-match", nil, new("0"), new("0"), "complete", "fresh")
 	// A missing unrelated identity affects the portfolio, not these totals.
-	missing := h.createIdentity("Missing products", adapters.PlatformBinance, adapters.StructureBinanceClassic, "earn", "dual_investment")
+	missing := h.createIdentity("Missing products", adapter.PlatformBinance, adapter.StructureBinanceClassic, "earn", "dual_investment")
 	a.failed, a.price = true, "90000"
 	h.runCycle()
 	check("BTC", nil, new("50010"), new("50000"), "complete", "stale")
@@ -289,30 +289,30 @@ type summaryScenario struct {
 	failed, empty bool
 }
 
-func (a *summaryScenario) Validate(context.Context, adapters.Credentials, adapters.AccountStructure) (adapters.ValidationResult, error) {
-	return adapters.ValidationResult{ExternalRef: "summary", MarginMode: adapters.MarginOKXPM}, nil
+func (a *summaryScenario) Validate(context.Context, adapter.Credentials, adapter.AccountStructure) (adapter.ValidationResult, error) {
+	return adapter.ValidationResult{ExternalRef: "summary", MarginMode: adapter.MarginOKXPM}, nil
 }
 
-func (a *summaryScenario) Collect(_ context.Context, _ adapters.Credentials, _ adapters.AccountStructure, kinds []adapters.AccountType) (adapters.Batch, error) {
+func (a *summaryScenario) Collect(_ context.Context, _ adapter.Credentials, _ adapter.AccountStructure, kinds []adapter.AccountType) (adapter.Batch, error) {
 	at := time.Now().UTC()
-	out := adapters.Batch{CollectedAt: at, MarginMode: adapters.MarginOKXPM, Prices: []adapters.Price{{CanonicalAssetSymbol: "BTC", QuoteCanonicalAssetSymbol: "USD", Price: a.price, SourceMarketRef: "BTCUSD", RetrievedAt: at}}}
+	out := adapter.Batch{CollectedAt: at, MarginMode: adapter.MarginOKXPM, Prices: []adapter.Price{{CanonicalAssetSymbol: "BTC", QuoteCanonicalAssetSymbol: "USD", Price: a.price, SourceMarketRef: "BTCUSD", RetrievedAt: at}}}
 	for _, kind := range kinds {
 		if a.failed {
-			out.Reports = append(out.Reports, adapters.FailedReport(kind, adapters.NewError(adapters.ClassTemporary, "Synthetic product failure.")))
+			out.Reports = append(out.Reports, adapter.FailedReport(kind, adapter.NewError(adapter.ClassTemporary, "Synthetic product failure.")))
 			continue
 		}
-		r := adapters.AccountReport{AccountType: kind, Status: adapters.StatusSucceeded, CollectedAt: at}
+		r := adapter.AccountReport{AccountType: kind, Status: adapter.StatusSucceeded, CollectedAt: at}
 		if !a.empty {
-			r.Balances = []adapters.Balance{{AssetSymbol: "BTC", Equity: "1"}, {AssetSymbol: "USDT", Equity: "10"}, {AssetSymbol: "MYSTERY", Equity: "2"}}
+			r.Balances = []adapter.Balance{{AssetSymbol: "BTC", Equity: "1"}, {AssetSymbol: "USDT", Equity: "10"}, {AssetSymbol: "MYSTERY", Equity: "2"}}
 			if kind == "earn" {
-				p := adapters.NewEarnPosition("multi", "flexible", "position", "total")
-				p.Assets = []adapters.EarnAmount{{AssetSymbol: "BTC", Amount: "1"}, {AssetSymbol: "USDT", Amount: "10"}}
+				p := adapter.NewEarnPosition("multi", "flexible", "position", "total")
+				p.Assets = []adapter.EarnAmount{{AssetSymbol: "BTC", Amount: "1"}, {AssetSymbol: "USDT", Amount: "10"}}
 				p.AddReward("USDT", "1000", "pending")
-				q := adapters.NewEarnPosition("unknown", "fixed", "position", "principal")
-				q.Assets = []adapters.EarnAmount{{AssetSymbol: "MYSTERY", Amount: "2"}}
-				r.EarnPositions = []adapters.EarnPosition{p, q}
+				q := adapter.NewEarnPosition("unknown", "fixed", "position", "principal")
+				q.Assets = []adapter.EarnAmount{{AssetSymbol: "MYSTERY", Amount: "2"}}
+				r.EarnPositions = []adapter.EarnPosition{p, q}
 			} else {
-				r.DualPositions = []adapters.DualPosition{
+				r.DualPositions = []adapter.DualPosition{
 					{PositionKey: "btc", PrincipalAssetSymbol: "BTC", Principal: "1", Status: "active", BaseAssetSymbol: new("BTC"), QuoteAssetSymbol: new("USDT"), AnnualizedRate: new("0.99"), RateKind: new("apr"), TargetPrice: new("100000")},
 					{PositionKey: "usdt", PrincipalAssetSymbol: "USDT", Principal: "10", Status: "active", BaseAssetSymbol: new("ETH"), QuoteAssetSymbol: new("USDT")},
 					{PositionKey: "unknown", PrincipalAssetSymbol: "MYSTERY", Principal: "2", Status: "active"},

@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/application/cycles"
+	"github.com/rbee3u/plutus/internal/service/cycle"
 	"github.com/rbee3u/plutus/internal/worker"
 )
 
@@ -46,15 +46,15 @@ func newCollectCommand() *cobra.Command {
 }
 
 func runCollect(ctx context.Context, services *app.Services, portfolioID uuid.UUID, out io.Writer, logger *slog.Logger) error {
-	cycle, created, err := services.Cycles.Enqueue(ctx, portfolioID, cycles.TriggerUser)
+	collectionCycle, created, err := services.Cycles.Enqueue(ctx, portfolioID, cycle.TriggerUser)
 	if err != nil {
-		if errors.Is(err, cycles.ErrNotFound) {
+		if errors.Is(err, cycle.ErrNotFound) {
 			return fmt.Errorf("portfolio %s not found", portfolioID)
 		}
 		return err
 	}
 	if !created {
-		_, _ = fmt.Fprintf(out, "Reusing active cycle %s (%s)\n", cycle.ID, cycle.Status)
+		_, _ = fmt.Fprintf(out, "Reusing active cycle %s (%s)\n", collectionCycle.ID, collectionCycle.Status)
 	}
 	loop := worker.New(&worker.Options{Cycles: services.Cycles, Collection: services.Collection, Logger: logger, Poll: 200 * time.Millisecond, Lease: 2 * time.Minute, ID: "collect-cli"})
 	deadline := time.Now().Add(10 * time.Minute)
@@ -62,13 +62,13 @@ func runCollect(ctx context.Context, services *app.Services, portfolioID uuid.UU
 		if _, err := loop.ProcessOnce(ctx); err != nil {
 			return err
 		}
-		current, err := services.Cycles.Get(ctx, portfolioID, cycle.ID)
+		current, err := services.Cycles.Get(ctx, portfolioID, collectionCycle.ID)
 		if err != nil {
 			return err
 		}
 		if !current.Active() {
 			_, _ = fmt.Fprintf(out, "Cycle %s %s", current.ID, current.Status)
-			if current.Status != cycles.StatusSucceeded {
+			if current.Status != cycle.StatusSucceeded {
 				if current.ErrorDetail != nil {
 					_, _ = fmt.Fprintf(out, ": %s", *current.ErrorDetail)
 				}

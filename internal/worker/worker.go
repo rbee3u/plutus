@@ -15,14 +15,14 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/auth"
-	"github.com/rbee3u/plutus/internal/application/collection"
-	"github.com/rbee3u/plutus/internal/application/cycles"
-	"github.com/rbee3u/plutus/internal/application/portfolio"
-	"github.com/rbee3u/plutus/internal/application/retention"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/infra/logging"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
+	"github.com/rbee3u/plutus/internal/service/auth"
+	"github.com/rbee3u/plutus/internal/service/collection"
+	"github.com/rbee3u/plutus/internal/service/cycle"
+	"github.com/rbee3u/plutus/internal/service/portfolio"
+	"github.com/rbee3u/plutus/internal/service/retention"
 )
 
 const (
@@ -41,7 +41,7 @@ var ErrUnavailable = errors.New("worker_unavailable")
 type Worker struct {
 	auth        *auth.Service
 	idempotency *idempotency.Store
-	cycles      *cycles.Service
+	cycles      *cycle.Service
 	collection  *collection.Service
 	portfolios  *portfolio.Service
 	maintenance *retention.Service
@@ -57,7 +57,7 @@ type Worker struct {
 type Options struct {
 	Auth        *auth.Service
 	Idempotency *idempotency.Store
-	Cycles      *cycles.Service
+	Cycles      *cycle.Service
 	Collection  *collection.Service
 	Portfolios  *portfolio.Service
 	Maintenance *retention.Service
@@ -152,7 +152,7 @@ func (w *Worker) Schedule(ctx context.Context) error {
 		if row.LastCycleAt != nil && now.Sub(*row.LastCycleAt) < row.Interval {
 			continue
 		}
-		if _, created, err := w.cycles.Enqueue(ctx, row.PortfolioID, cycles.TriggerSchedule); err != nil {
+		if _, created, err := w.cycles.Enqueue(ctx, row.PortfolioID, cycle.TriggerSchedule); err != nil {
 			return err
 		} else if created {
 			w.logger.Info("collection cycle scheduled", slog.String("portfolio_id", row.PortfolioID.String()))
@@ -211,7 +211,7 @@ func (w *Worker) ProcessOnce(ctx context.Context) (bool, error) {
 	return w.portfolios.DeleteBatch(ctx)
 }
 
-func (w *Worker) runCycle(ctx context.Context, claimed *cycles.Claim) error {
+func (w *Worker) runCycle(ctx context.Context, claimed *cycle.Claim) error {
 	ctx = logging.WithFields(ctx, slog.String("portfolio_id", claimed.PortfolioID.String()), slog.String("cycle_id", claimed.ID.String()))
 	result := w.attempt(ctx, claimed)
 	// Point persistence completes a successful cycle atomically.
@@ -221,28 +221,28 @@ func (w *Worker) runCycle(ctx context.Context, claimed *cycles.Claim) error {
 	return w.cycles.Finish(ctx, claimed, result)
 }
 
-func (w *Worker) attempt(ctx context.Context, claimed *cycles.Claim) cycles.Result {
+func (w *Worker) attempt(ctx context.Context, claimed *cycle.Claim) cycle.Result {
 	ctx, cancel := context.WithCancel(ctx)
 	renewDone := make(chan struct{})
 	go func() { defer close(renewDone); w.renewLoop(ctx, claimed, cancel) }()
 	defer func() { cancel(); <-renewDone }()
 
 	if w.collection == nil {
-		return cycles.Result{ErrorClass: "unsupported", ErrorDetail: "Collection is not configured."}
+		return cycle.Result{ErrorClass: "unsupported", ErrorDetail: "Collection is not configured."}
 	}
 	summary, err := w.collection.RunCycle(ctx, claimed.PortfolioID, claimed.ID, claimed)
 	if err != nil {
 		w.logger.ErrorContext(ctx, "collection cycle failed", slog.Any("err", err))
 		if mysql.IsDuplicate(err) {
-			return cycles.Result{ErrorClass: "persistence", ErrorDetail: safeDetail(err)}
+			return cycle.Result{ErrorClass: "persistence", ErrorDetail: safeDetail(err)}
 		}
-		return cycles.Result{Retry: true, RetryAt: retryTime(claimed.AttemptCount, time.Now().UTC()), ErrorClass: "temporary", ErrorDetail: safeDetail(err)}
+		return cycle.Result{Retry: true, RetryAt: retryTime(claimed.AttemptCount, time.Now().UTC()), ErrorClass: "temporary", ErrorDetail: safeDetail(err)}
 	}
 	w.logger.InfoContext(ctx, "collection cycle succeeded", slog.String("summary", summary.String()))
-	return cycles.Result{OK: true}
+	return cycle.Result{OK: true}
 }
 
-func (w *Worker) renewLoop(ctx context.Context, claimed *cycles.Claim, cancel context.CancelFunc) {
+func (w *Worker) renewLoop(ctx context.Context, claimed *cycle.Claim, cancel context.CancelFunc) {
 	interval := w.lease / 3
 	if interval < time.Second {
 		interval = time.Second
@@ -257,7 +257,7 @@ func (w *Worker) renewLoop(ctx context.Context, claimed *cycles.Claim, cancel co
 			if err := w.cycles.RenewLease(ctx, claimed, w.lease); err != nil {
 				// Point persistence may already have completed this cycle atomically.
 				current, readErr := w.cycles.Get(ctx, claimed.PortfolioID, claimed.ID)
-				if readErr == nil && current.Status == cycles.StatusSucceeded {
+				if readErr == nil && current.Status == cycle.StatusSucceeded {
 					return
 				}
 				w.logger.ErrorContext(ctx, "cycle lease renewal failed", slog.Any("err", err))

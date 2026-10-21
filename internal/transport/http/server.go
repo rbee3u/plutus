@@ -14,8 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/application/auth"
 	"github.com/rbee3u/plutus/internal/config"
+	"github.com/rbee3u/plutus/internal/service/auth"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 )
 
 // dcdOrder is one order of the dual investment (DCD) order history.
@@ -91,7 +91,7 @@ func (a *Adapter) dualInvestmentOrders(ctx context.Context, c *client) ([]dcdOrd
 		}
 		before = oldest
 	}
-	return nil, adapters.NewError(adapters.ClassUnsupported, fmt.Sprintf(
+	return nil, adapter.NewError(adapter.ClassUnsupported, fmt.Sprintf(
 		"The OKX dual investment order history reaches the %d orders Plutus reads, so selected earn and dual accounts are kept stale instead of missing an older order that is still invested.",
 		dcdMaxPages*dcdPageSize))
 }
@@ -109,10 +109,10 @@ func dcdCursor(rows []dcdOrder, before string) (string, error) {
 		id := strings.TrimSpace(rows[i].OrdID)
 		value, ok := new(big.Int).SetString(id, 10)
 		if !ok || value.Sign() <= 0 {
-			return "", adapters.Malformed(epDCD.String(), "ordId")
+			return "", adapter.Malformed(epDCD.String(), "ordId")
 		}
 		if previous != nil && value.Cmp(previous) >= 0 {
-			return "", adapters.NewError(adapters.ClassNormalization,
+			return "", adapter.NewError(adapter.ClassNormalization,
 				epDCD.String()+": the dual investment order history is not ordered newest first.")
 		}
 		previous, oldest = value, id
@@ -123,14 +123,14 @@ func dcdCursor(rows []dcdOrder, before string) (string, error) {
 // dualPositions preserves every order that is still invested: notionalSz of
 // notionalCcy, the amount and coin the user put in. The yield is counted only once OKX pays it out
 // at settlement. A state OKX has not documented fails selected earn and dual accounts instead of being guessed.
-func dualPositions(orders []dcdOrder) ([]adapters.DualPosition, error) {
+func dualPositions(orders []dcdOrder) ([]adapter.DualPosition, error) {
 	where := epDCD.String()
-	var out []adapters.DualPosition
+	var out []adapter.DualPosition
 	for i := range orders {
 		row := &orders[i]
 		invested, known := dcdPrincipalInvested(row.State)
 		if !known {
-			return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: dual investment order state %q is not documented.", where, truncate(strings.TrimSpace(row.State), 40)))
+			return nil, adapter.NewError(adapter.ClassNormalization, fmt.Sprintf("%s: dual investment order state %q is not documented.", where, truncate(strings.TrimSpace(row.State), 40)))
 		}
 		if !invested {
 			continue
@@ -141,16 +141,16 @@ func dualPositions(orders []dcdOrder) ([]adapters.DualPosition, error) {
 		if strings.TrimSpace(expiryTime) == "" {
 			expiryTime = row.ExpTime
 		}
-		expiry, err := adapters.DualExpiry(where, expiryTime)
+		expiry, err := adapter.DualExpiry(where, expiryTime)
 		if err != nil {
 			return nil, err
 		}
-		subscribed, err := adapters.OptionalMillis(where, "dual subscription time", row.CTime)
+		subscribed, err := adapter.OptionalMillis(where, "dual subscription time", row.CTime)
 		if err != nil {
 			return nil, err
 		}
 		state := map[string]string{"initial": "pending", "pending_book": "pending", "live": "active", "pending_settle": "settling", "pending_redeem_booking": "redeeming", "pending_redeem": "redeeming", "redeeming": "redeeming"}[strings.ToLower(strings.TrimSpace(row.State))]
-		p, err := adapters.NormalizeDualPosition(where, &adapters.DualPosition{PositionKey: row.OrdID, OrderRef: adapters.OptionalText(row.OrdID), ProductRef: adapters.OptionalText(row.ProductID), BaseAssetSymbol: adapters.OptionalText(row.BaseCcy), QuoteAssetSymbol: adapters.OptionalText(row.QuoteCcy), PrincipalAssetSymbol: row.NotionalCcy, Principal: row.NotionalSz, TargetPrice: adapters.OptionalText(row.Strike), ExpiryAt: expiry, SubscribedAt: subscribed, AnnualizedRate: adapters.OptionalText(row.AnnualizedYield), RateKind: adapters.OptionalText("annualized_yield"), Status: state})
+		p, err := adapter.NormalizeDualPosition(where, &adapter.DualPosition{PositionKey: row.OrdID, OrderRef: adapter.OptionalText(row.OrdID), ProductRef: adapter.OptionalText(row.ProductID), BaseAssetSymbol: adapter.OptionalText(row.BaseCcy), QuoteAssetSymbol: adapter.OptionalText(row.QuoteCcy), PrincipalAssetSymbol: row.NotionalCcy, Principal: row.NotionalSz, TargetPrice: adapter.OptionalText(row.Strike), ExpiryAt: expiry, SubscribedAt: subscribed, AnnualizedRate: adapter.OptionalText(row.AnnualizedYield), RateKind: adapter.OptionalText("annualized_yield"), Status: state})
 		if err != nil {
 			return nil, err
 		}

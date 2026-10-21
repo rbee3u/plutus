@@ -12,15 +12,15 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/retention"
-	"github.com/rbee3u/plutus/internal/application/valuation"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/retention"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 )
 
 func TestRetentionPreservesSummariesSourcesAndDailyFallback(t *testing.T) {
 	h := newHarness(t)
-	item := h.createIdentity("archive", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
+	item := h.createIdentity("archive", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	account := item.Accounts[0].ID
 	for _, a := range item.Accounts {
 		if a.AccountType == "spot" {
@@ -208,7 +208,7 @@ func TestRetentionPreservesSummariesSourcesAndDailyFallback(t *testing.T) {
 
 func TestRetentionResumesManualRevisionsAfterCutoffAndReportRelease(t *testing.T) {
 	h := newHarness(t)
-	item := h.createIdentity("manual retention", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
+	item := h.createIdentity("manual retention", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	var account uuid.UUID
 	for _, a := range item.Accounts {
 		if a.AccountType == "manual" {
@@ -279,7 +279,7 @@ func TestRetentionResumesManualRevisionsAfterCutoffAndReportRelease(t *testing.T
 
 func TestRetentionBatchesReportsAndResumesOversizedChildren(t *testing.T) {
 	h := newHarness(t)
-	item := h.createIdentity("retention pages", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
+	item := h.createIdentity("retention pages", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	var account uuid.UUID
 	for _, a := range item.Accounts {
 		if a.AccountType == "spot" {

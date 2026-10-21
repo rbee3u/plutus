@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 )
 
 // DefaultHost is the OKX REST host. Accounts registered in the United States or Australia must
@@ -128,7 +128,7 @@ type client struct {
 	http  *http.Client
 	host  string
 	clock *clock
-	creds adapters.Credentials
+	creds adapter.Credentials
 }
 
 // response is one raw HTTP exchange. Only the recorder keeps the body beyond decoding.
@@ -169,7 +169,7 @@ func (c *client) fetch(ctx context.Context, ep endpoint) (response, error) {
 
 func (c *client) syncClock(ctx context.Context) error {
 	sent := c.clock.now()
-	resp, err := c.send(ctx, epTime, adapters.Credentials{})
+	resp, err := c.send(ctx, epTime, adapter.Credentials{})
 	if err != nil {
 		return err
 	}
@@ -180,22 +180,22 @@ func (c *client) syncClock(ctx context.Context) error {
 		return err
 	}
 	if len(rows) == 0 {
-		return adapters.NewError(adapters.ClassNormalization, "OKX returned no server time.")
+		return adapter.NewError(adapter.ClassNormalization, "OKX returned no server time.")
 	}
 	millis, err := strconv.ParseInt(strings.TrimSpace(rows[0].TS), 10, 64)
 	if err != nil || millis <= 0 {
-		return adapters.NewError(adapters.ClassNormalization, "OKX returned no server time.")
+		return adapter.NewError(adapter.ClassNormalization, "OKX returned no server time.")
 	}
 	c.clock.set(millis, sent, c.clock.now())
 	return nil
 }
 
-func (c *client) send(ctx context.Context, ep endpoint, creds adapters.Credentials) (response, error) {
+func (c *client) send(ctx context.Context, ep endpoint, creds adapter.Credentials) (response, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, ep.method, c.host+ep.request(), http.NoBody)
 	if err != nil {
-		return response{}, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: the request could not be built.", ep))
+		return response{}, adapter.NewError(adapter.ClassNormalization, fmt.Sprintf("%s: the request could not be built.", ep))
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if ep.signed {
@@ -212,12 +212,12 @@ func (c *client) send(ctx context.Context, ep endpoint, creds adapters.Credentia
 		if ctx.Err() != nil {
 			return response{}, ctx.Err()
 		}
-		return response{}, adapters.NewError(adapters.ClassTemporary, fmt.Sprintf("%s: OKX could not be reached.", ep))
+		return response{}, adapter.NewError(adapter.ClassTemporary, fmt.Sprintf("%s: OKX could not be reached.", ep))
 	}
 	defer func() { _ = res.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(res.Body, maxResponseBytes))
 	if err != nil {
-		return response{}, adapters.NewError(adapters.ClassTemporary, fmt.Sprintf("%s: the OKX response was cut off.", ep))
+		return response{}, adapter.NewError(adapter.ClassTemporary, fmt.Sprintf("%s: the OKX response was cut off.", ep))
 	}
 	return response{status: res.StatusCode, body: body}, nil
 }
@@ -228,18 +228,18 @@ func decode(ep endpoint, resp response, out any) error {
 	env, ok := parse(resp)
 	if !ok {
 		if resp.status != http.StatusOK {
-			return adapters.NewError(classOf(resp.status, ""), fmt.Sprintf("%s: HTTP %d", ep, resp.status))
+			return adapter.NewError(classOf(resp.status, ""), fmt.Sprintf("%s: HTTP %d", ep, resp.status))
 		}
-		return adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: the OKX response has an unexpected shape.", ep))
+		return adapter.NewError(adapter.ClassNormalization, fmt.Sprintf("%s: the OKX response has an unexpected shape.", ep))
 	}
 	if env.Code != codeOK || resp.status != http.StatusOK {
 		return classify(ep, resp.status, env)
 	}
 	if len(env.Data) == 0 {
-		return adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: the OKX response carries no data.", ep))
+		return adapter.NewError(adapter.ClassNormalization, fmt.Sprintf("%s: the OKX response carries no data.", ep))
 	}
 	if err := json.Unmarshal(env.Data, out); err != nil {
-		return adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: the OKX response has an unexpected shape.", ep))
+		return adapter.NewError(adapter.ClassNormalization, fmt.Sprintf("%s: the OKX response has an unexpected shape.", ep))
 	}
 	return nil
 }
@@ -270,7 +270,7 @@ func classify(ep endpoint, status int, env envelope) error {
 	if code != "" && code != codeOK {
 		detail = fmt.Sprintf("%s: OKX %s %s", ep, env.Code, truncate(env.Msg, 200))
 	}
-	return adapters.NewError(classOf(status, code), strings.TrimSpace(detail))
+	return adapter.NewError(classOf(status, code), strings.TrimSpace(detail))
 }
 
 // mainCode drops the sub-code of a compound answer such as "51008_1000".
@@ -283,23 +283,23 @@ func classOf(status int, code string) string {
 	switch code {
 	case "50101", "50103", "50104", "50105", "50106", "50107", "50110", "50111", "50113", "50114", "50119", "50121", "50035", "50100":
 		// Wrong key, secret, passphrase, environment, or an IP the key does not allow.
-		return adapters.ClassAuthentication
+		return adapter.ClassAuthentication
 	case "50030", "50120", "59500":
 		// The key reaches OKX but is not allowed to use this endpoint.
-		return adapters.ClassAuthorization
+		return adapter.ClassAuthorization
 	case "50011", "50013", "50040":
-		return adapters.ClassRateLimited
+		return adapter.ClassRateLimited
 	case codeExpiredTS, codeInvalidTS, "50001", "50004", "50026", "50046", "51767":
 		// 50004 means OKX does not know whether the request succeeded; a read is safe to retry.
-		return adapters.ClassTemporary
+		return adapter.ClassTemporary
 	}
 	switch status {
 	case http.StatusUnauthorized:
-		return adapters.ClassAuthentication
+		return adapter.ClassAuthentication
 	case http.StatusTooManyRequests:
-		return adapters.ClassRateLimited
+		return adapter.ClassRateLimited
 	default:
-		return adapters.ClassTemporary
+		return adapter.ClassTemporary
 	}
 }
 

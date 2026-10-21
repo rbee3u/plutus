@@ -28,7 +28,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 	"github.com/rbee3u/plutus/internal/testsupport/offline"
@@ -39,9 +39,9 @@ const (
 	testSecret = "test-api-secret"
 )
 
-var testCreds = adapters.Credentials{APIKey: testKey, APISecret: testSecret}
+var testCreds = adapter.Credentials{APIKey: testKey, APISecret: testSecret}
 
-var testEdCreds = adapters.Credentials{APIKey: testKey, APISecret: testEdPEM()}
+var testEdCreds = adapter.Credentials{APIKey: testKey, APISecret: testEdPEM()}
 
 func testEdPEM() string {
 	key := ed25519.NewKeyFromSeed([]byte("plutus-binance-ed25519-test-seed"))
@@ -53,8 +53,8 @@ func testEdPEM() string {
 }
 
 var (
-	pmTypes      = adapters.AccountTypeIDs(adapters.StructureBinancePM)
-	classicTypes = adapters.AccountTypeIDs(adapters.StructureBinanceClassic)
+	pmTypes      = adapter.AccountTypeIDs(adapter.StructureBinancePM)
+	classicTypes = adapter.AccountTypeIDs(adapter.StructureBinanceClassic)
 )
 
 // Explicit flat sample selections; provenance belongs to each selected response.
@@ -142,7 +142,7 @@ func newReplay(t *testing.T, selection string) (*replay, *Adapter) {
 }
 
 // earnUSD values coin amounts with the synthetic tickers, as Binance values its earn wallet.
-func (r *replay) earnUSD(amounts adapters.Totals) string {
+func (r *replay) earnUSD(amounts adapter.Totals) string {
 	r.t.Helper()
 	var rows []struct {
 		Symbol string `json:"symbol"`
@@ -325,7 +325,7 @@ func (r *replay) checkSigned(req *http.Request) (scenario, msg string) {
 	if idx < 0 {
 		return "bad_signature", "signature is not the last parameter"
 	}
-	key, ed, err := adapters.BinancePrivateKey(r.secret)
+	key, ed, err := adapter.BinancePrivateKey(r.secret)
 	if err != nil {
 		return "bad_signature", "test signing key is invalid"
 	}
@@ -381,7 +381,7 @@ func deref(p *string) string {
 	return *p
 }
 
-func reportOf(t *testing.T, batch adapters.Batch, accountType adapters.AccountType) adapters.AccountReport {
+func reportOf(t *testing.T, batch adapter.Batch, accountType adapter.AccountType) adapter.AccountReport {
 	t.Helper()
 	for _, report := range batch.Reports {
 		if report.AccountType == accountType {
@@ -389,10 +389,10 @@ func reportOf(t *testing.T, batch adapters.Batch, accountType adapters.AccountTy
 		}
 	}
 	t.Fatalf("no %s report in %+v", accountType, batch.Reports)
-	return adapters.AccountReport{}
+	return adapter.AccountReport{}
 }
 
-func balanceOf(t *testing.T, report adapters.AccountReport, symbol string) adapters.Balance {
+func balanceOf(t *testing.T, report adapter.AccountReport, symbol string) adapter.Balance {
 	t.Helper()
 	for _, b := range report.Balances {
 		if b.AssetSymbol == symbol {
@@ -400,19 +400,19 @@ func balanceOf(t *testing.T, report adapters.AccountReport, symbol string) adapt
 		}
 	}
 	t.Fatalf("no %s balance in %s: %+v", symbol, report.AccountType, report.Balances)
-	return adapters.Balance{}
+	return adapter.Balance{}
 }
 
 func classOfErr(t *testing.T, err error) string {
 	t.Helper()
-	var adapterErr *adapters.Error
+	var adapterErr *adapter.Error
 	if !errors.As(err, &adapterErr) {
 		t.Fatalf("error %v is not an adapter error", err)
 	}
 	return adapterErr.Class
 }
 
-func collect(t *testing.T, a *Adapter, structure adapters.AccountStructure, accounts ...adapters.AccountType) adapters.Batch {
+func collect(t *testing.T, a *Adapter, structure adapter.AccountStructure, accounts ...adapter.AccountType) adapter.Batch {
 	t.Helper()
 	batch, err := a.Collect(context.Background(), testCreds, structure, accounts)
 	if err != nil {
@@ -459,9 +459,9 @@ func TestValidateReturnsTheUIDInBothStructures(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
-		structure adapters.AccountStructure
+		structure adapter.AccountStructure
 		selection string
-	}{{adapters.StructureBinancePM, ""}, {adapters.StructureBinanceClassic, classicSamples}} {
+	}{{adapter.StructureBinancePM, ""}, {adapter.StructureBinanceClassic, classicSamples}} {
 		t.Run(string(tc.structure), func(t *testing.T) {
 			t.Parallel()
 			r, a := newReplay(t, tc.selection)
@@ -483,20 +483,20 @@ func TestValidateReturnsTheUIDInBothStructures(t *testing.T) {
 // every signed endpoint in both structures; it does not establish live Ed25519 access.
 func TestEd25519ValidateAndCollectBothStructures(t *testing.T) {
 	for _, tc := range []struct {
-		structure adapters.AccountStructure
+		structure adapter.AccountStructure
 		selection string
-	}{{adapters.StructureBinancePM, ""}, {adapters.StructureBinanceClassic, classicSamples}} {
+	}{{adapter.StructureBinancePM, ""}, {adapter.StructureBinanceClassic, classicSamples}} {
 		t.Run(string(tc.structure), func(t *testing.T) {
 			r, a := newReplay(t, tc.selection)
 			r.secret = testEdCreds.APISecret
 			if _, err := a.Validate(context.Background(), testEdCreds, tc.structure); err != nil {
 				t.Fatal(err)
 			}
-			batch, err := a.Collect(context.Background(), testEdCreds, tc.structure, adapters.AccountTypeIDs(tc.structure))
+			batch, err := a.Collect(context.Background(), testEdCreds, tc.structure, adapter.AccountTypeIDs(tc.structure))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(batch.Reports) != len(adapters.AccountTypeIDs(tc.structure)) {
+			if len(batch.Reports) != len(adapter.AccountTypeIDs(tc.structure)) {
 				t.Fatalf("got %d account reports", len(batch.Reports))
 			}
 			if r.count(epAccountInfo) != 2 || r.count(epSpotAccount) != 1 {
@@ -511,20 +511,20 @@ func TestStructureMismatchStopsBeforeAnyAccountRead(t *testing.T) {
 
 	for _, tc := range []struct {
 		selection  string
-		configured adapters.AccountStructure
+		configured adapter.AccountStructure
 		reported   string
 	}{
-		{"", adapters.StructureBinanceClassic, "Portfolio margin"},
-		{classicSamples, adapters.StructureBinancePM, "Classic trading"},
+		{"", adapter.StructureBinanceClassic, "Portfolio margin"},
+		{classicSamples, adapter.StructureBinancePM, "Classic trading"},
 	} {
 		t.Run(string(tc.configured), func(t *testing.T) {
 			t.Parallel()
 			r, a := newReplay(t, tc.selection)
 			_, validateErr := a.Validate(context.Background(), testCreds, tc.configured)
-			_, collectErr := a.Collect(context.Background(), testCreds, tc.configured, adapters.AccountTypeIDs(tc.configured))
+			_, collectErr := a.Collect(context.Background(), testCreds, tc.configured, adapter.AccountTypeIDs(tc.configured))
 			for _, err := range []error{validateErr, collectErr} {
-				if classOfErr(t, err) != adapters.ClassUnsupported || !strings.Contains(err.Error(), tc.reported) ||
-					!strings.Contains(err.Error(), adapters.StructureName(tc.configured)) {
+				if classOfErr(t, err) != adapter.ClassUnsupported || !strings.Contains(err.Error(), tc.reported) ||
+					!strings.Contains(err.Error(), adapter.StructureName(tc.configured)) {
 					t.Fatalf("mismatch error %v", err)
 				}
 			}
@@ -541,10 +541,10 @@ func TestAnotherPlatformsStructureIsUnsupported(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
-	_, validateErr := a.Validate(context.Background(), testCreds, adapters.StructureOKXUnified)
-	_, collectErr := a.Collect(context.Background(), testCreds, adapters.StructureOKXUnified, []adapters.AccountType{TypeSpot})
+	_, validateErr := a.Validate(context.Background(), testCreds, adapter.StructureOKXUnified)
+	_, collectErr := a.Collect(context.Background(), testCreds, adapter.StructureOKXUnified, []adapter.AccountType{TypeSpot})
 	for _, err := range []error{validateErr, collectErr} {
-		if classOfErr(t, err) != adapters.ClassUnsupported {
+		if classOfErr(t, err) != adapter.ClassUnsupported {
 			t.Fatalf("foreign structure error %v", err)
 		}
 	}
@@ -558,8 +558,8 @@ func TestMissingStructureFlagIsNormalization(t *testing.T) {
 
 	r, a := newReplay(t, "")
 	r.always(epAccountInfo, status(http.StatusOK, `{"vipLevel":0,"isMarginEnabled":true,"isFutureEnabled":true}`))
-	_, err := a.Validate(context.Background(), testCreds, adapters.StructureBinancePM)
-	if classOfErr(t, err) != adapters.ClassNormalization || !strings.Contains(err.Error(), "isPortfolioMarginRetailEnabled") {
+	_, err := a.Validate(context.Background(), testCreds, adapter.StructureBinancePM)
+	if classOfErr(t, err) != adapter.ClassNormalization || !strings.Contains(err.Error(), "isPortfolioMarginRetailEnabled") {
 		t.Fatalf("error %v", err)
 	}
 }
@@ -568,12 +568,12 @@ func TestCollectMapsPortfolioMarginAccount(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
-	batch := collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin)
+	batch := collect(t, a, adapter.StructureBinancePM, TypePortfolioMargin)
 	if batch.MarginMode != "" {
 		t.Fatalf("Binance has no margin mode, got %q", batch.MarginMode)
 	}
 	report := reportOf(t, batch, TypePortfolioMargin)
-	if report.Status != adapters.StatusSucceeded || report.CollectedAt.IsZero() {
+	if report.Status != adapter.StatusSucceeded || report.CollectedAt.IsZero() {
 		t.Fatalf("report %+v", report)
 	}
 	account := body[pmAccount](t, r, epPMAccount, nil)
@@ -591,7 +591,7 @@ func TestCollectMapsPortfolioMarginAccount(t *testing.T) {
 		}
 	}
 
-	wantBalances := map[string]adapters.Balance{
+	wantBalances := map[string]adapter.Balance{
 		"USDT": {AssetSymbol: "USDT", Equity: "999", Liability: new("10"), Interest: new("1"), UnrealizedPnl: new("10")},
 		"BTC":  {AssetSymbol: "BTC", Equity: "-0.001", Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("-0.002")},
 	}
@@ -613,8 +613,8 @@ func TestCollectPMBorrowingAndInterest(t *testing.T) {
 	r, a := newReplay(t, "")
 	// Exercise debt and interest without subtracting negativeBalance twice.
 	r.always(epPMBalance, status(http.StatusOK, `[{"asset":"USDT","totalWalletBalance":"-5","umUnrealizedPNL":"2","cmUnrealizedPNL":"-3","crossMarginBorrowed":"10","crossMarginInterest":"0.5","negativeBalance":"-5"}]`))
-	report := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin), TypePortfolioMargin)
-	if report.Status != adapters.StatusSucceeded || len(report.Balances) != 1 {
+	report := reportOf(t, collect(t, a, adapter.StructureBinancePM, TypePortfolioMargin), TypePortfolioMargin)
+	if report.Status != adapter.StatusSucceeded || len(report.Balances) != 1 {
 		t.Fatalf("synthetic borrowing report %+v", report)
 	}
 	b := balanceOf(t, report, "USDT")
@@ -627,17 +627,17 @@ func TestCollectMapsPortfolioMarginPositionsAndFuturesContracts(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
-	batch := collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin)
+	batch := collect(t, a, adapter.StructureBinancePM, TypePortfolioMargin)
 	report := reportOf(t, batch, TypePortfolioMargin)
 	// Fixed synthetic expectations are independent of the production response decoder.
 	want := map[string]struct {
 		symbol, side, quantity, unit, kind, quote, settlement, contractSize string
 		entry, mark, pnl, leverage                                          string
 	}{
-		"um:BTCUSDT:BOTH":     {"BTCUSDT", adapters.SideLong, "0.01", adapters.UnitBase, adapters.KindLinearPerpetual, "USDT", "USDT", "", "29000", "30000", "10", "5"},
-		"cm:BTCUSD_PERP:BOTH": {"BTCUSD_PERP", adapters.SideShort, "2", adapters.UnitContracts, adapters.KindInversePerpetual, "USD", "BTC", "100", "20000", "25000", "-0.002", "3"},
+		"um:BTCUSDT:BOTH":     {"BTCUSDT", adapter.SideLong, "0.01", adapter.UnitBase, adapter.KindLinearPerpetual, "USDT", "USDT", "", "29000", "30000", "10", "5"},
+		"cm:BTCUSD_PERP:BOTH": {"BTCUSD_PERP", adapter.SideShort, "2", adapter.UnitContracts, adapter.KindInversePerpetual, "USD", "BTC", "100", "20000", "25000", "-0.002", "3"},
 	}
-	if report.Status != adapters.StatusSucceeded || len(report.Positions) != len(want) {
+	if report.Status != adapter.StatusSucceeded || len(report.Positions) != len(want) {
 		t.Fatalf("PM positions: %+v", report)
 	}
 	for _, got := range report.Positions {
@@ -660,7 +660,7 @@ func TestCollectMapsPortfolioMarginPositionsAndFuturesContracts(t *testing.T) {
 	if r.count(epUMExchangeInfo) != 1 || r.count(epCMExchangeInfo) != 1 {
 		t.Fatalf("exchangeInfo fetched UM %d / CM %d times", r.count(epUMExchangeInfo), r.count(epCMExchangeInfo))
 	}
-	collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin)
+	collect(t, a, adapter.StructureBinancePM, TypePortfolioMargin)
 	if r.count(epUMExchangeInfo) != 2 || r.count(epCMExchangeInfo) != 2 {
 		t.Fatal("contract observations must be refreshed for each collection run")
 	}
@@ -684,7 +684,7 @@ func TestContractKinds(t *testing.T) {
 	for _, set := range []*futuresContractSet{um, cm} {
 		for symbol, in := range set.bySymbol {
 			kinds[in.Kind]++
-			delivery := in.Kind == adapters.KindLinearDelivery || in.Kind == adapters.KindInverseDelivery
+			delivery := in.Kind == adapter.KindLinearDelivery || in.Kind == adapter.KindInverseDelivery
 			if delivery != (in.ExpiryAt != nil) {
 				t.Errorf("%s %s expiry %v", symbol, in.Kind, in.ExpiryAt)
 			}
@@ -693,13 +693,13 @@ func TestContractKinds(t *testing.T) {
 			}
 		}
 	}
-	for _, kind := range []string{adapters.KindLinearPerpetual, adapters.KindLinearDelivery, adapters.KindInversePerpetual, adapters.KindInverseDelivery} {
+	for _, kind := range []string{adapter.KindLinearPerpetual, adapter.KindLinearDelivery, adapter.KindInversePerpetual, adapter.KindInverseDelivery} {
 		if kinds[kind] == 0 {
 			t.Errorf("fixtures cover no %s contract; re-record with the coverage sample", kind)
 		}
 	}
 	for symbol, in := range um.bySymbol {
-		if strings.HasSuffix(symbol, "USDT") && in.Kind != adapters.KindLinearPerpetual {
+		if strings.HasSuffix(symbol, "USDT") && in.Kind != adapter.KindLinearPerpetual {
 			t.Errorf("%s (including TRADIFI_PERPETUAL) should be linear_perpetual, got %s", symbol, in.Kind)
 		}
 	}
@@ -711,16 +711,16 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 	r, a := newReplay(t, "")
 	// The synthetic aggregate matches the selected savings, dual principal and prices.
 	r.always(epWalletValue, status(http.StatusOK, mappingEarnWallet))
-	batch := collect(t, a, adapters.StructureBinancePM, TypeSpot, TypeFunding, TypeEarn)
+	batch := collect(t, a, adapter.StructureBinancePM, TypeSpot, TypeFunding, TypeEarn)
 	for _, tc := range []struct {
-		accountType adapters.AccountType
+		accountType adapter.AccountType
 		balances    map[string]struct{ equity, available string }
 	}{
 		{TypeSpot, map[string]struct{ equity, available string }{"USDT": {"110", "100"}, "ETH": {"0.2", "0.2"}}},
 		{TypeFunding, map[string]struct{ equity, available string }{"USDT": {"16", "10"}}},
 	} {
 		report := reportOf(t, batch, tc.accountType)
-		if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.AdjustedEquity != nil || report.ReportedMarginRatio != nil || len(report.Balances) != len(tc.balances) {
+		if report.Status != adapter.StatusSucceeded || report.Equity != nil || report.AdjustedEquity != nil || report.ReportedMarginRatio != nil || len(report.Balances) != len(tc.balances) {
 			t.Fatalf("%s wallet report: %+v", tc.accountType, report)
 		}
 		for _, got := range report.Balances {
@@ -753,7 +753,7 @@ func TestCollectMapsWalletsAndEarn(t *testing.T) {
 		t.Fatal("synthetic api/v3/account response must retain its LDUSDT receipt")
 	}
 	earn := reportOf(t, batch, TypeEarn)
-	if earn.Status != adapters.StatusSucceeded {
+	if earn.Status != adapter.StatusSucceeded {
 		t.Fatalf("earn report %+v", earn)
 	}
 	want := map[string]string{"USDT": "2", "ETH": "0.01"}
@@ -790,23 +790,23 @@ func TestEarnSeparatesSimpleEarnAndDualInvestment(t *testing.T) {
 	r.alwaysAt(epDualInvest, dualInvestmentQuery("SETTLING", 1), status(http.StatusOK,
 		`{"total":1,"list":[{"id":"2","investCoin":"ETH","subscriptionAmount":"0.5","purchaseStatus":"SETTLING"}]}`))
 	want := map[string]string{"USDT": "111.5", "SOL": "0.2", "ETH": "0.51", "USDC": "20"}
-	value := adapters.Totals{}
+	value := adapter.Totals{}
 	for symbol, amount := range want {
 		if err := value.Add("test", symbol, rat(t, amount)); err != nil {
 			t.Fatal(err)
 		}
 	}
 	r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"0","walletName":"Spot"},{"activate":true,"balance":"`+r.earnUSD(value)+`","walletName":"Earn"}]`))
-	batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeDualInvestment)
+	batch := collect(t, a, adapter.StructureBinancePM, TypeEarn, TypeDualInvestment)
 	earn := reportOf(t, batch, TypeEarn)
 	dual := reportOf(t, batch, TypeDualInvestment)
-	if dual.Status != adapters.StatusSucceeded || len(dual.DualPositions) != 3 {
+	if dual.Status != adapter.StatusSucceeded || len(dual.DualPositions) != 3 {
 		t.Fatalf("dual report %+v", dual)
 	}
 	if balanceOf(t, earn, "USDT").Equity != "11.5" || balanceOf(t, dual, "USDT").Equity != "100" {
 		t.Fatal("principal must be separated from savings")
 	}
-	if earn.Status != adapters.StatusSucceeded {
+	if earn.Status != adapter.StatusSucceeded {
 		t.Fatalf("earn report %+v", earn)
 	}
 	got := map[string]string{}
@@ -830,7 +830,7 @@ func TestDualInvestmentQueriesOnlyRunningStates(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
-	collect(t, a, adapters.StructureBinancePM, TypeEarn)
+	collect(t, a, adapter.StructureBinancePM, TypeEarn)
 	var queried []string
 	for request := range r.called() {
 		path, query, _ := strings.Cut(request, "?")
@@ -866,8 +866,8 @@ func TestDualInvestmentStatuses(t *testing.T) {
 			}
 			r.alwaysAt(epDualInvest, dualInvestmentQuery(state, 1), dualInvestmentAnswer(state))
 			r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"522","walletName":"Earn"}]`))
-			earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
-			if earn.Status != adapters.StatusSucceeded || balanceOf(t, earn, "ETH").Equity != "0.25" {
+			earn := reportOf(t, collect(t, a, adapter.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
+			if earn.Status != adapter.StatusSucceeded || balanceOf(t, earn, "ETH").Equity != "0.25" {
 				t.Fatalf("earn report %+v", earn)
 			}
 		})
@@ -885,12 +885,12 @@ func TestDualInvestmentStatuses(t *testing.T) {
 			t.Parallel()
 			r, a := newReplay(t, "")
 			r.alwaysAt(epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1), dualInvestmentAnswer(state))
-			batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeSpot)
+			batch := collect(t, a, adapter.StructureBinancePM, TypeEarn, TypeSpot)
 			earn := reportOf(t, batch, TypeEarn)
-			if earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassNormalization || !strings.Contains(earn.ErrorDetail, state) {
+			if earn.Status != adapter.StatusFailed || earn.ErrorClass != adapter.ClassNormalization || !strings.Contains(earn.ErrorDetail, state) {
 				t.Fatalf("earn report %+v", earn)
 			}
-			if reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded {
+			if reportOf(t, batch, TypeSpot).Status != adapter.StatusSucceeded {
 				t.Fatal("spot must not fail with earn")
 			}
 		})
@@ -901,8 +901,8 @@ func TestDualInvestmentCountsPrincipal(t *testing.T) {
 	t.Parallel()
 
 	_, a := newReplay(t, dualOnlySamples)
-	earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
-	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 2 || balanceOf(t, earn, "USDT").Equity != "10" || balanceOf(t, earn, "SOL").Equity != "0.1" {
+	earn := reportOf(t, collect(t, a, adapter.StructureBinancePM, TypeDualInvestment), TypeDualInvestment)
+	if earn.Status != adapter.StatusSucceeded || len(earn.Balances) != 2 || balanceOf(t, earn, "USDT").Equity != "10" || balanceOf(t, earn, "SOL").Equity != "0.1" {
 		t.Fatalf("earn report %+v: both synthetic principal balances must be counted", earn)
 	}
 }
@@ -914,13 +914,13 @@ func TestEarnCompletenessCheck(t *testing.T) {
 		t.Parallel()
 		r, a := newReplay(t, dualOnlySamples)
 		r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"5000","walletName":"Earn"}]`))
-		batch := collect(t, a, adapters.StructureBinancePM, TypeEarn, TypeSpot)
+		batch := collect(t, a, adapter.StructureBinancePM, TypeEarn, TypeSpot)
 		earn := reportOf(t, batch, TypeEarn)
-		if earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassUnsupported ||
+		if earn.Status != adapter.StatusFailed || earn.ErrorClass != adapter.ClassUnsupported ||
 			!strings.Contains(earn.ErrorDetail, "5000.00") || !strings.Contains(earn.ErrorDetail, "12.00") {
 			t.Fatalf("earn report %+v", earn)
 		}
-		if reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded {
+		if reportOf(t, batch, TypeSpot).Status != adapter.StatusSucceeded {
 			t.Fatal("spot must not fail with earn")
 		}
 	})
@@ -928,7 +928,7 @@ func TestEarnCompletenessCheck(t *testing.T) {
 		t.Parallel()
 		r, a := newReplay(t, dualOnlySamples)
 		r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"12.99","walletName":"Earn"}]`))
-		if earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn); earn.Status != adapters.StatusSucceeded {
+		if earn := reportOf(t, collect(t, a, adapter.StructureBinancePM, TypeEarn), TypeEarn); earn.Status != adapter.StatusSucceeded {
 			t.Fatalf("earn report %+v", earn)
 		}
 	})
@@ -936,7 +936,7 @@ func TestEarnCompletenessCheck(t *testing.T) {
 		t.Parallel()
 		r, a := newReplay(t, dualOnlySamples)
 		r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"0","walletName":"Spot"}]`))
-		if earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn); earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassNormalization {
+		if earn := reportOf(t, collect(t, a, adapter.StructureBinancePM, TypeEarn), TypeEarn); earn.Status != adapter.StatusFailed || earn.ErrorClass != adapter.ClassNormalization {
 			t.Fatalf("earn report %+v", earn)
 		}
 	})
@@ -947,7 +947,7 @@ func TestEarnCompletenessCheck(t *testing.T) {
 		r.alwaysAt(epDualInvest, dualInvestmentQuery("PURCHASE_SUCCESS", 1), status(http.StatusOK,
 			`{"total":1,"list":[{"id":"7","investCoin":"BNB","subscriptionAmount":"3","purchaseStatus":"PURCHASE_SUCCESS"}]}`))
 		r.always(epWalletValue, status(http.StatusOK, `[{"activate":true,"balance":"5000","walletName":"Earn"}]`))
-		if earn := reportOf(t, collect(t, a, adapters.StructureBinancePM, TypeEarn), TypeEarn); earn.Status != adapters.StatusSucceeded {
+		if earn := reportOf(t, collect(t, a, adapter.StructureBinancePM, TypeEarn), TypeEarn); earn.Status != adapter.StatusSucceeded {
 			t.Fatalf("earn report %+v", earn)
 		}
 	})
@@ -957,8 +957,8 @@ func TestClassicCrossMargin(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, classicSamples)
-	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeCrossMargin), TypeCrossMargin)
-	if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.AdjustedEquity != nil || report.ReportedInitialMarginRatio != nil {
+	report := reportOf(t, collect(t, a, adapter.StructureBinanceClassic, TypeCrossMargin), TypeCrossMargin)
+	if report.Status != adapter.StatusSucceeded || report.Equity != nil || report.AdjustedEquity != nil || report.ReportedInitialMarginRatio != nil {
 		t.Fatalf("report %+v: a classic wallet is valued from its balances", report)
 	}
 	account := body[crossMarginAccount](t, r, epCrossMargin, nil)
@@ -982,8 +982,8 @@ func TestClassicCrossMarginNotCreatedIsEmpty(t *testing.T) {
 
 	r, a := newReplay(t, classicSamples)
 	r.always(epCrossMargin, status(http.StatusOK, `{"created":false,"marginLevel":"999","userAssets":[]}`))
-	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeCrossMargin), TypeCrossMargin)
-	if report.Status != adapters.StatusSucceeded || len(report.Balances) != 0 || report.ReportedMarginRatio != nil {
+	report := reportOf(t, collect(t, a, adapter.StructureBinanceClassic, TypeCrossMargin), TypeCrossMargin)
+	if report.Status != adapter.StatusSucceeded || len(report.Balances) != 0 || report.ReportedMarginRatio != nil {
 		t.Fatalf("report %+v", report)
 	}
 }
@@ -992,8 +992,8 @@ func TestClassicIsolatedMarginSumsCoinsAcrossPairs(t *testing.T) {
 	t.Parallel()
 
 	_, a := newReplay(t, classicSamples)
-	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeIsolatedMargin), TypeIsolatedMargin)
-	if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.ReportedMarginRatio != nil || len(report.Balances) != 3 {
+	report := reportOf(t, collect(t, a, adapter.StructureBinanceClassic, TypeIsolatedMargin), TypeIsolatedMargin)
+	if report.Status != adapter.StatusSucceeded || report.Equity != nil || report.ReportedMarginRatio != nil || len(report.Balances) != 3 {
 		t.Fatalf("report %+v", report)
 	}
 	usdt := balanceOf(t, report, "USDT")
@@ -1011,8 +1011,8 @@ func TestClassicMultiAssetsWithOneWayPosition(t *testing.T) {
 	r, a := newReplay(t, classicSamples)
 	// Preserve the synthetic Multi-Assets position's illustrative configuration.
 	r.always(epUMSymbolConfig, status(http.StatusOK, `[{"symbol":"BTCUSDT","marginType":"CROSSED","isAutoAddMargin":false,"leverage":21,"maxNotionalValue":"1000000"}]`))
-	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeUMFutures), TypeUMFutures)
-	if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.ReportedMarginRatio != nil {
+	report := reportOf(t, collect(t, a, adapter.StructureBinanceClassic, TypeUMFutures), TypeUMFutures)
+	if report.Status != adapter.StatusSucceeded || report.Equity != nil || report.ReportedMarginRatio != nil {
 		t.Fatalf("report %+v", report)
 	}
 	account := body[futuresAccount](t, r, epUMAccount, nil)
@@ -1041,8 +1041,8 @@ func TestClassicMultiAssetsWithOneWayPosition(t *testing.T) {
 		t.Fatalf("positions %+v", report.Positions)
 	}
 	p := report.Positions[0]
-	if p.PositionKey != "um:BTCUSDT:BOTH" || p.SourceQuantityUnit != adapters.UnitBase || p.SourceQuantity != "0.01" || p.Side != adapters.SideLong ||
-		deref(p.Leverage) != "21" || p.LiquidationPrice != nil || p.FuturesContract.Kind != adapters.KindLinearPerpetual {
+	if p.PositionKey != "um:BTCUSDT:BOTH" || p.SourceQuantityUnit != adapter.UnitBase || p.SourceQuantity != "0.01" || p.Side != adapter.SideLong ||
+		deref(p.Leverage) != "21" || p.LiquidationPrice != nil || p.FuturesContract.Kind != adapter.KindLinearPerpetual {
 		t.Fatalf("position %+v", p)
 	}
 	if r.count(epUMSymbolConfig) != 1 {
@@ -1054,8 +1054,8 @@ func TestClassicUSDMFuturesInSingleAssetModeHasNoAccountFigures(t *testing.T) {
 	t.Parallel()
 
 	_, a := newReplay(t, classicSingleAsset)
-	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeUMFutures), TypeUMFutures)
-	if report.Status != adapters.StatusSucceeded || report.AdjustedEquity != nil || report.AvailableEquity != nil ||
+	report := reportOf(t, collect(t, a, adapter.StructureBinanceClassic, TypeUMFutures), TypeUMFutures)
+	if report.Status != adapter.StatusSucceeded || report.AdjustedEquity != nil || report.AvailableEquity != nil ||
 		report.ReportedInitialMarginRatio != nil || report.ReportedMaintenanceMarginRatio != nil || len(report.Balances) != 1 {
 		t.Fatalf("report %+v: Single-Asset totals cover USDT only and are not stored", report)
 	}
@@ -1066,8 +1066,8 @@ func TestClassicUSDMWithoutPositionSkipsSymbolConfig(t *testing.T) {
 
 	r, a := newReplay(t, classicSamples)
 	r.always(epUMPositionRisk, status(http.StatusOK, `[]`))
-	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeUMFutures), TypeUMFutures)
-	if report.Status != adapters.StatusSucceeded || len(report.Positions) != 0 || r.count(epUMSymbolConfig) != 0 {
+	report := reportOf(t, collect(t, a, adapter.StructureBinanceClassic, TypeUMFutures), TypeUMFutures)
+	if report.Status != adapter.StatusSucceeded || len(report.Positions) != 0 || r.count(epUMSymbolConfig) != 0 {
 		t.Fatalf("report %+v, symbol configuration read %d times", report, r.count(epUMSymbolConfig))
 	}
 }
@@ -1075,8 +1075,8 @@ func TestClassicUSDMWithoutPositionSkipsSymbolConfig(t *testing.T) {
 func TestClassicCOINMFuturesOmitsZeroRows(t *testing.T) {
 	t.Parallel()
 	_, a := newReplay(t, classicCoinM)
-	report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, TypeCMFutures), TypeCMFutures)
-	if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.AdjustedEquity != nil || len(report.Balances) != 1 {
+	report := reportOf(t, collect(t, a, adapter.StructureBinanceClassic, TypeCMFutures), TypeCMFutures)
+	if report.Status != adapter.StatusSucceeded || report.Equity != nil || report.AdjustedEquity != nil || len(report.Balances) != 1 {
 		t.Fatalf("report %+v", report)
 	}
 	if eth := balanceOf(t, report, "ETH"); eth.Equity != "0.011" || deref(eth.AvailableToWithdraw) != "0.007" {
@@ -1092,9 +1092,9 @@ func TestClassicWalletsBinanceSaysAreNotOpenedReportEmpty(t *testing.T) {
 
 	r, a := newReplay(t, classicSamples)
 	r.always(epAccountInfo, status(http.StatusOK, `{"vipLevel":0,"isMarginEnabled":false,"isFutureEnabled":false,"isOptionsEnabled":false,"isPortfolioMarginRetailEnabled":false}`))
-	batch := collect(t, a, adapters.StructureBinanceClassic, TypeCrossMargin, TypeIsolatedMargin, TypeUMFutures, TypeCMFutures)
+	batch := collect(t, a, adapter.StructureBinanceClassic, TypeCrossMargin, TypeIsolatedMargin, TypeUMFutures, TypeCMFutures)
 	for _, report := range batch.Reports {
-		if report.Status != adapters.StatusSucceeded || len(report.Balances) != 0 || len(report.Positions) != 0 || report.CollectedAt.IsZero() {
+		if report.Status != adapter.StatusSucceeded || len(report.Balances) != 0 || len(report.Positions) != 0 || report.CollectedAt.IsZero() {
 			t.Fatalf("%s report %+v", report.AccountType, report)
 		}
 	}
@@ -1111,7 +1111,7 @@ func TestClassicBatchValuesEveryAccount(t *testing.T) {
 	r, a := newReplay(t, classicSamples)
 	// The synthetic aggregate matches the selected savings, dual principal and prices.
 	r.always(epWalletValue, status(http.StatusOK, mappingEarnWallet))
-	batch := collect(t, a, adapters.StructureBinanceClassic, classicTypes...)
+	batch := collect(t, a, adapter.StructureBinanceClassic, classicTypes...)
 	if len(batch.Reports) != len(classicTypes) {
 		t.Fatalf("%d reports for %d account types", len(batch.Reports), len(classicTypes))
 	}
@@ -1120,11 +1120,11 @@ func TestClassicBatchValuesEveryAccount(t *testing.T) {
 		priced[p.CanonicalAssetSymbol] = true
 	}
 	for _, report := range batch.Reports {
-		if report.Status != adapters.StatusSucceeded {
+		if report.Status != adapter.StatusSucceeded {
 			t.Fatalf("%s failed: %s %s", report.AccountType, report.ErrorClass, report.ErrorDetail)
 		}
 		for _, b := range report.Balances {
-			if !adapters.USDEquivalent(b.AssetSymbol) && !priced[b.AssetSymbol] {
+			if !adapter.USDEquivalent(b.AssetSymbol) && !priced[b.AssetSymbol] {
 				t.Errorf("%s balance %s has no price", report.AccountType, b.AssetSymbol)
 			}
 		}
@@ -1140,11 +1140,11 @@ func TestAccountTypeOfTheOtherStructureFailsOnlyItself(t *testing.T) {
 	t.Parallel()
 
 	r, a := newReplay(t, "")
-	batch := collect(t, a, adapters.StructureBinancePM, TypeUMFutures, TypeSpot)
-	if um := reportOf(t, batch, TypeUMFutures); um.Status != adapters.StatusFailed || um.ErrorClass != adapters.ClassUnsupported {
+	batch := collect(t, a, adapter.StructureBinancePM, TypeUMFutures, TypeSpot)
+	if um := reportOf(t, batch, TypeUMFutures); um.Status != adapter.StatusFailed || um.ErrorClass != adapter.ClassUnsupported {
 		t.Fatalf("um_futures under portfolio margin %+v", um)
 	}
-	if reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded || r.count(epUMAccount) != 0 {
+	if reportOf(t, batch, TypeSpot).Status != adapter.StatusSucceeded || r.count(epUMAccount) != 0 {
 		t.Fatal("spot must still be collected and no classic endpoint read")
 	}
 }
@@ -1155,8 +1155,8 @@ func TestCollectPrices(t *testing.T) {
 	r, a := newReplay(t, "")
 	// The synthetic aggregate matches the selected savings, dual principal and prices.
 	r.always(epWalletValue, status(http.StatusOK, mappingEarnWallet))
-	batch := collect(t, a, adapters.StructureBinancePM, pmTypes...)
-	priced := map[string]adapters.Price{}
+	batch := collect(t, a, adapter.StructureBinancePM, pmTypes...)
+	priced := map[string]adapter.Price{}
 	for _, p := range batch.Prices {
 		priced[p.CanonicalAssetSymbol] = p
 		if p.QuoteCanonicalAssetSymbol != "USDT" && p.QuoteCanonicalAssetSymbol != "USDC" {
@@ -1177,11 +1177,11 @@ func TestCollectPrices(t *testing.T) {
 		}
 	}
 	for _, report := range batch.Reports {
-		if report.Status != adapters.StatusSucceeded {
+		if report.Status != adapter.StatusSucceeded {
 			t.Fatalf("%s failed: %s %s", report.AccountType, report.ErrorClass, report.ErrorDetail)
 		}
 		for _, b := range report.Balances {
-			if !adapters.USDEquivalent(b.AssetSymbol) {
+			if !adapter.USDEquivalent(b.AssetSymbol) {
 				if _, ok := priced[b.AssetSymbol]; !ok {
 					t.Errorf("%s balance %s has no price", report.AccountType, b.AssetSymbol)
 				}
@@ -1193,9 +1193,9 @@ func TestCollectPrices(t *testing.T) {
 func TestPricesFallBackToUSDC(t *testing.T) {
 	t.Parallel()
 
-	reports := []adapters.AccountReport{{Balances: []adapters.Balance{{AssetSymbol: "AAA"}, {AssetSymbol: "BBB"}, {AssetSymbol: "CCC"}, {AssetSymbol: "USDT"}}}}
+	reports := []adapter.AccountReport{{Balances: []adapter.Balance{{AssetSymbol: "AAA"}, {AssetSymbol: "BBB"}, {AssetSymbol: "CCC"}, {AssetSymbol: "USDT"}}}}
 	table := lastPrices{"AAAUSDT": "2", "AAAUSDC": "2.1", "BBBUSDC": "3", "CCCFDUSD": "4"}
-	prices := adapters.QuotePrices(reports, quotes, table.quote, time.Unix(1, 0))
+	prices := adapter.QuotePrices(reports, quotes, table.quote, time.Unix(1, 0))
 	if len(prices) != 2 || prices[0].CanonicalAssetSymbol != "AAA" || prices[0].QuoteCanonicalAssetSymbol != "USDT" || prices[1].CanonicalAssetSymbol != "BBB" || prices[1].QuoteCanonicalAssetSymbol != "USDC" {
 		t.Fatalf("prices %+v", prices)
 	}
@@ -1213,8 +1213,8 @@ func TestDelistedPairIsNotAPrice(t *testing.T) {
 	}
 	r.always(epTickerPrice, status(http.StatusOK, `[{"symbol":"AAAUSDT","price":"0.00000000"},{"symbol":"AAAUSDC","price":"2.5"}]`))
 	prices, _ := a.lastPrices(context.Background(), a.client(testCreds))
-	reports := []adapters.AccountReport{{Balances: []adapters.Balance{{AssetSymbol: "AAA"}}}}
-	got := adapters.QuotePrices(reports, quotes, prices.quote, time.Unix(1, 0))
+	reports := []adapter.AccountReport{{Balances: []adapter.Balance{{AssetSymbol: "AAA"}}}}
+	got := adapter.QuotePrices(reports, quotes, prices.quote, time.Unix(1, 0))
 	if len(got) != 1 || got[0].QuoteCanonicalAssetSymbol != "USDC" || got[0].Price != "2.5" {
 		t.Fatalf("prices %+v: the delisted USDT pair must give way to the USDC one", got)
 	}
@@ -1225,12 +1225,12 @@ func TestTickerFailureKeepsReports(t *testing.T) {
 
 	r, a := newReplay(t, "")
 	r.always(epTickerPrice, status(http.StatusServiceUnavailable, ``))
-	batch := collect(t, a, adapters.StructureBinancePM, pmTypes...)
+	batch := collect(t, a, adapter.StructureBinancePM, pmTypes...)
 	if len(batch.Prices) != 0 {
 		t.Fatalf("prices %+v after a ticker failure", batch.Prices)
 	}
 	for _, report := range batch.Reports {
-		if report.Status != adapters.StatusSucceeded {
+		if report.Status != adapter.StatusSucceeded {
 			t.Fatalf("%s failed with the ticker: %+v", report.AccountType, report)
 		}
 	}
@@ -1245,11 +1245,11 @@ func TestAuthenticationFailsTheBatch(t *testing.T) {
 				t.Parallel()
 				r, a := newReplay(t, "")
 				r.always(ep, serve(r.failure(scenario)))
-				_, err := a.Collect(context.Background(), testCreds, adapters.StructureBinancePM, pmTypes)
-				if classOfErr(t, err) != adapters.ClassAuthentication {
+				_, err := a.Collect(context.Background(), testCreds, adapter.StructureBinancePM, pmTypes)
+				if classOfErr(t, err) != adapter.ClassAuthentication {
 					t.Fatalf("%s on %s: error %v", scenario, ep, err)
 				}
-				if !adapters.StopsScheduling(classOfErr(t, err)) {
+				if !adapter.StopsScheduling(classOfErr(t, err)) {
 					t.Fatal("authentication must stop scheduling")
 				}
 			})
@@ -1262,8 +1262,8 @@ func TestErrorDetailNamesBinanceCodeOnly(t *testing.T) {
 
 	r, a := newReplay(t, "")
 	r.always(epAccountInfo, serve(r.failure("invalid_key")))
-	_, err := a.Collect(context.Background(), testCreds, adapters.StructureBinancePM, []adapters.AccountType{TypePortfolioMargin})
-	_, detail := adapters.Classify(err)
+	_, err := a.Collect(context.Background(), testCreds, adapter.StructureBinancePM, []adapter.AccountType{TypePortfolioMargin})
+	_, detail := adapter.Classify(err)
 	if !strings.Contains(detail, "GET /sapi/v1/account/info") || !strings.Contains(detail, "-2015") {
 		t.Fatalf("detail %q", detail)
 	}
@@ -1277,8 +1277,8 @@ func TestStaleTimestampResyncsAndRetries(t *testing.T) {
 
 	r, a := newReplay(t, "")
 	r.then(epAccountInfo, serve(r.failure("stale_timestamp")))
-	batch := collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin)
-	if reportOf(t, batch, TypePortfolioMargin).Status != adapters.StatusSucceeded {
+	batch := collect(t, a, adapter.StructureBinancePM, TypePortfolioMargin)
+	if reportOf(t, batch, TypePortfolioMargin).Status != adapter.StatusSucceeded {
 		t.Fatal("the retried call must succeed")
 	}
 	if r.count(epServerTime) != 2 || r.count(epAccountInfo) != 2 {
@@ -1294,15 +1294,15 @@ func TestErrorClasses(t *testing.T) {
 		body   string
 		class  string
 	}{
-		{http.StatusTooManyRequests, `{"code":-1003,"msg":"Too many requests."}`, adapters.ClassRateLimited},
-		{http.StatusTeapot, `{"code":-1003,"msg":"Way too many requests; IP banned."}`, adapters.ClassRateLimited},
-		{http.StatusForbidden, ``, adapters.ClassRateLimited},
-		{http.StatusInternalServerError, ``, adapters.ClassTemporary},
-		{http.StatusServiceUnavailable, `{"code":-1001,"msg":"Internal error; unable to process your request."}`, adapters.ClassTemporary},
-		{http.StatusUnauthorized, ``, adapters.ClassAuthentication},
-		{http.StatusBadRequest, `{"code":-1102,"msg":"Mandatory parameter was not sent."}`, adapters.ClassTemporary},
-		{http.StatusBadRequest, `{"code":-2014,"msg":"API-key format invalid."}`, adapters.ClassAuthentication},
-		{http.StatusBadRequest, `{"code":-2008,"msg":"Invalid Api-Key ID."}`, adapters.ClassAuthentication},
+		{http.StatusTooManyRequests, `{"code":-1003,"msg":"Too many requests."}`, adapter.ClassRateLimited},
+		{http.StatusTeapot, `{"code":-1003,"msg":"Way too many requests; IP banned."}`, adapter.ClassRateLimited},
+		{http.StatusForbidden, ``, adapter.ClassRateLimited},
+		{http.StatusInternalServerError, ``, adapter.ClassTemporary},
+		{http.StatusServiceUnavailable, `{"code":-1001,"msg":"Internal error; unable to process your request."}`, adapter.ClassTemporary},
+		{http.StatusUnauthorized, ``, adapter.ClassAuthentication},
+		{http.StatusBadRequest, `{"code":-1102,"msg":"Mandatory parameter was not sent."}`, adapter.ClassTemporary},
+		{http.StatusBadRequest, `{"code":-2014,"msg":"API-key format invalid."}`, adapter.ClassAuthentication},
+		{http.StatusBadRequest, `{"code":-2008,"msg":"Invalid Api-Key ID."}`, adapter.ClassAuthentication},
 	} {
 		err := classify(epPMAccount, response{status: tc.status, body: []byte(tc.body)})
 		if got := classOfErr(t, err); got != tc.class {
@@ -1315,7 +1315,7 @@ func TestErrorDetailKeepsWholeCharacters(t *testing.T) {
 	t.Parallel()
 
 	body := `{"code":-1102,"msg":"` + strings.Repeat("参数", 100) + `"}`
-	_, detail := adapters.Classify(classify(epPMAccount, response{status: http.StatusBadRequest, body: []byte(body)}))
+	_, detail := adapter.Classify(classify(epPMAccount, response{status: http.StatusBadRequest, body: []byte(body)}))
 	if !utf8.ValidString(detail) || !strings.Contains(detail, "参数") {
 		t.Fatalf("detail %q", detail)
 	}
@@ -1326,13 +1326,13 @@ func TestOneFailingAccountLeavesSiblingsOK(t *testing.T) {
 
 	r, a := newReplay(t, "")
 	r.always(epFlexibleEarn, status(http.StatusBadRequest, `{"code":-6001,"msg":"Simple Earn is not available for this account."}`))
-	batch := collect(t, a, adapters.StructureBinancePM, pmTypes...)
+	batch := collect(t, a, adapter.StructureBinancePM, pmTypes...)
 	earn := reportOf(t, batch, TypeEarn)
-	if earn.Status != adapters.StatusFailed || !strings.Contains(earn.ErrorDetail, "-6001") {
+	if earn.Status != adapter.StatusFailed || !strings.Contains(earn.ErrorDetail, "-6001") {
 		t.Fatalf("earn report %+v", earn)
 	}
-	for _, sibling := range []adapters.AccountType{TypePortfolioMargin, TypeSpot, TypeFunding} {
-		if reportOf(t, batch, sibling).Status != adapters.StatusSucceeded {
+	for _, sibling := range []adapter.AccountType{TypePortfolioMargin, TypeSpot, TypeFunding} {
+		if reportOf(t, batch, sibling).Status != adapter.StatusSucceeded {
 			t.Fatalf("%s failed with earn", sibling)
 		}
 	}
@@ -1345,8 +1345,8 @@ func TestEveryAccountRetryableFailureFailsTheBatch(t *testing.T) {
 	for _, ep := range []endpoint{epPMAccount, epUserAsset} {
 		r.always(ep, status(http.StatusServiceUnavailable, ``))
 	}
-	_, err := a.Collect(context.Background(), testCreds, adapters.StructureBinancePM, []adapters.AccountType{TypePortfolioMargin, TypeSpot})
-	if classOfErr(t, err) != adapters.ClassTemporary {
+	_, err := a.Collect(context.Background(), testCreds, adapter.StructureBinancePM, []adapter.AccountType{TypePortfolioMargin, TypeSpot})
+	if classOfErr(t, err) != adapter.ClassTemporary {
 		t.Fatalf("error %v: the collection service retries only a batch error", err)
 	}
 }
@@ -1356,12 +1356,12 @@ func TestUnknownFuturesContractFailsTheAccount(t *testing.T) {
 
 	r, a := newReplay(t, "")
 	r.always(epPMCMPositionRisk, status(http.StatusOK, `[{"symbol":"NOPEUSD_PERP","positionAmt":"2","positionSide":"BOTH","entryPrice":"1","markPrice":"1","liquidationPrice":"0","unRealizedProfit":"0","leverage":"2"}]`))
-	batch := collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin, TypeSpot)
+	batch := collect(t, a, adapter.StructureBinancePM, TypePortfolioMargin, TypeSpot)
 	pm := reportOf(t, batch, TypePortfolioMargin)
-	if pm.Status != adapters.StatusFailed || pm.ErrorClass != adapters.ClassNormalization || !strings.Contains(pm.ErrorDetail, "NOPEUSD_PERP") {
+	if pm.Status != adapter.StatusFailed || pm.ErrorClass != adapter.ClassNormalization || !strings.Contains(pm.ErrorDetail, "NOPEUSD_PERP") {
 		t.Fatalf("pm report %+v", pm)
 	}
-	if reportOf(t, batch, TypeSpot).Status != adapters.StatusSucceeded {
+	if reportOf(t, batch, TypeSpot).Status != adapter.StatusSucceeded {
 		t.Fatal("spot must not fail with an unknown contract")
 	}
 }
@@ -1371,8 +1371,8 @@ func TestNonDecimalFieldIsNormalizationFailure(t *testing.T) {
 
 	r, a := newReplay(t, "")
 	r.always(epPMAccount, status(http.StatusOK, `{"actualEquity":"n/a","accountEquity":"1","accountInitialMargin":"0","accountMaintMargin":"0","totalAvailableBalance":"1","uniMMR":"0"}`))
-	batch := collect(t, a, adapters.StructureBinancePM, TypePortfolioMargin, TypeSpot)
-	if pm := reportOf(t, batch, TypePortfolioMargin); pm.Status != adapters.StatusFailed || pm.ErrorClass != adapters.ClassNormalization {
+	batch := collect(t, a, adapter.StructureBinancePM, TypePortfolioMargin, TypeSpot)
+	if pm := reportOf(t, batch, TypePortfolioMargin); pm.Status != adapter.StatusFailed || pm.ErrorClass != adapter.ClassNormalization {
 		t.Fatalf("pm report %+v", pm)
 	}
 }
@@ -1380,7 +1380,7 @@ func TestNonDecimalFieldIsNormalizationFailure(t *testing.T) {
 func TestAmountWithoutACoinIsNormalizationFailure(t *testing.T) {
 	t.Parallel()
 
-	if _, err := mapWallet(epUserAsset, []walletAsset{{Asset: " ", Free: "1"}}); classOfErr(t, err) != adapters.ClassNormalization {
+	if _, err := mapWallet(epUserAsset, []walletAsset{{Asset: " ", Free: "1"}}); classOfErr(t, err) != adapter.ClassNormalization {
 		t.Fatalf("error %v: an amount without a coin must not disappear", err)
 	}
 	if balances, err := mapWallet(epUserAsset, []walletAsset{{Asset: "", Free: "0"}}); err != nil || len(balances) != 0 {
@@ -1403,17 +1403,17 @@ func TestZeroEquityLeavesMarginRatiosNull(t *testing.T) {
 func TestShortPositionAndZeroLiquidation(t *testing.T) {
 	t.Parallel()
 
-	in := adapters.FuturesContract{Symbol: "BTCUSDT", Kind: adapters.KindLinearPerpetual}
+	in := adapter.FuturesContract{Symbol: "BTCUSDT", Kind: adapter.KindLinearPerpetual}
 	row := &positionRisk{Symbol: "BTCUSDT", PositionAmt: "-0.5", PositionSide: "BOTH", EntryPrice: "100", MarkPrice: "90", LiquidationPrice: "0", UnRealizedProfit: "5", Leverage: "3"}
 	p, err := mapPosition(marketUM, epPMUMPositionRisk, row, rat(t, row.PositionAmt), &in)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Side != adapters.SideShort || p.SourceQuantity != "0.5" || p.LiquidationPrice != nil || p.PositionKey != "um:BTCUSDT:BOTH" {
+	if p.Side != adapter.SideShort || p.SourceQuantity != "0.5" || p.LiquidationPrice != nil || p.PositionKey != "um:BTCUSDT:BOTH" {
 		t.Fatalf("position %+v", p)
 	}
 	hedged := &positionRisk{Symbol: "BTCUSDT", PositionAmt: "0.5", PositionSide: "SHORT", EntryPrice: "1", MarkPrice: "1", LiquidationPrice: "1", UnRealizedProfit: "0", Leverage: "1"}
-	if p, _ := mapPosition(marketUM, epPMUMPositionRisk, hedged, rat(t, hedged.PositionAmt), &in); p.Side != adapters.SideShort {
+	if p, _ := mapPosition(marketUM, epPMUMPositionRisk, hedged, rat(t, hedged.PositionAmt), &in); p.Side != adapter.SideShort {
 		t.Fatalf("hedge-mode SHORT mapped to %s", p.Side)
 	}
 }

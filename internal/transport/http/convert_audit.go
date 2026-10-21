@@ -1,7 +1,7 @@
 package httpserver
 
 import (
-	"github.com/rbee3u/plutus/internal/application/audit"
+	"github.com/rbee3u/plutus/internal/service/audit"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

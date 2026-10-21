@@ -8,9 +8,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/rbee3u/plutus/internal/application/auth"
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/valuation"
+	"github.com/rbee3u/plutus/internal/service/auth"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 	"github.com/rbee3u/plutus/internal/shared/apperr"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )

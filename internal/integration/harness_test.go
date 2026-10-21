@@ -10,16 +10,16 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/application/catalog"
-	"github.com/rbee3u/plutus/internal/application/collection"
-	"github.com/rbee3u/plutus/internal/application/cycles"
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/manual"
-	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/config"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fake"
+	"github.com/rbee3u/plutus/internal/service/catalog"
+	"github.com/rbee3u/plutus/internal/service/collection"
+	"github.com/rbee3u/plutus/internal/service/cycle"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/manual"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 )
 
@@ -37,10 +37,10 @@ type harness struct {
 	valuation   *valuation.Service
 	financial   *financial.Service
 	manual      *manual.Service
-	cycles      *cycles.Service
+	cycles      *cycle.Service
 	collection  *collection.Service
-	registry    *adapters.Registry
-	fakes       map[adapters.Platform]*fake.Adapter
+	registry    *adapter.Registry
+	fakes       map[adapter.Platform]*fake.Adapter
 }
 
 func newHarness(t *testing.T, databases ...*sql.DB) *harness {
@@ -62,9 +62,9 @@ func newHarness(t *testing.T, databases ...*sql.DB) *harness {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	t.Cleanup(cancel)
-	registry := adapters.NewRegistry()
-	fakes := map[adapters.Platform]*fake.Adapter{}
-	for _, platform := range adapters.OfferedPlatforms() {
+	registry := adapter.NewRegistry()
+	fakes := map[adapter.Platform]*fake.Adapter{}
+	for _, platform := range adapter.OfferedPlatforms() {
 		fakes[platform] = fake.New(platform)
 		registry.Register(platform, fakes[platform])
 	}
@@ -99,7 +99,7 @@ func newHarness(t *testing.T, databases ...*sql.DB) *harness {
 	}
 }
 
-func (h *harness) createIdentity(name string, platform adapters.Platform, structure adapters.AccountStructure, types ...adapters.AccountType) identity.Identity {
+func (h *harness) createIdentity(name string, platform adapter.Platform, structure adapter.AccountStructure, types ...adapter.AccountType) identity.Identity {
 	h.t.Helper()
 	item, err := h.identities.Create(h.ctx, h.portfolioID, &identity.CreateInput{
 		ActorUserID: h.userID, RequestID: "test", Platform: platform, DisplayName: name, AccountStructure: structure, SelectedAccountTypes: types,
@@ -112,7 +112,7 @@ func (h *harness) createIdentity(name string, platform adapters.Platform, struct
 
 func (h *harness) storeCredentials(item identity.Identity, apiKey string) identity.Identity {
 	h.t.Helper()
-	stored, err := h.identities.PutCredentials(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID, RequestID: "test"}, adapters.Credentials{APIKey: apiKey, APISecret: "secret"})
+	stored, err := h.identities.PutCredentials(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID, RequestID: "test"}, adapter.Credentials{APIKey: apiKey, APISecret: "secret"})
 	if err != nil {
 		h.t.Fatalf("store credentials for %s: %v", item.DisplayName, err)
 	}
@@ -121,22 +121,22 @@ func (h *harness) storeCredentials(item identity.Identity, apiKey string) identi
 
 func (h *harness) runCycle() (collection.Summary, uuid.UUID) {
 	h.t.Helper()
-	cycle, _, err := h.cycles.Enqueue(h.ctx, h.portfolioID, cycles.TriggerUser)
+	collectionCycle, _, err := h.cycles.Enqueue(h.ctx, h.portfolioID, cycle.TriggerUser)
 	if err != nil {
 		h.t.Fatal(err)
 	}
 	// Install a lease on this fixture's cycle without claiming unrelated test work.
 	now := time.Now().UTC()
-	if _, err := h.db.ExecContext(h.ctx, "UPDATE collection_cycles SET status='running',lease_owner='test-worker',lease_expires_at=?,attempt_count=1,started_at=? WHERE portfolio_id=? AND id=?", now.Add(time.Minute), now, h.portfolioID[:], cycle.ID[:]); err != nil {
+	if _, err := h.db.ExecContext(h.ctx, "UPDATE collection_cycles SET status='running',lease_owner='test-worker',lease_expires_at=?,attempt_count=1,started_at=? WHERE portfolio_id=? AND id=?", now.Add(time.Minute), now, h.portfolioID[:], collectionCycle.ID[:]); err != nil {
 		h.t.Fatal(err)
 	}
-	cycle.Status, cycle.AttemptCount = cycles.StatusRunning, 1
-	claimed := cycles.Claim{Cycle: cycle, WorkerID: "test-worker"}
-	summary, err := h.collection.RunCycle(h.ctx, h.portfolioID, cycle.ID, &claimed)
+	collectionCycle.Status, collectionCycle.AttemptCount = cycle.StatusRunning, 1
+	claimed := cycle.Claim{Cycle: collectionCycle, WorkerID: "test-worker"}
+	summary, err := h.collection.RunCycle(h.ctx, h.portfolioID, collectionCycle.ID, &claimed)
 	if err != nil {
 		h.t.Fatalf("run cycle: %v", err)
 	}
-	return summary, cycle.ID
+	return summary, collectionCycle.ID
 }
 
 func (h *harness) accountsByType(cycleID uuid.UUID, identityID uuid.UUID) map[string]valuation.AccountValuation {

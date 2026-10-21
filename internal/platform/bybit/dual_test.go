@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 )
 
 func TestDualSelectionAndDocumentedTerms(t *testing.T) {
-	for _, types := range [][]adapters.AccountType{{TypeFunding}, {TypeEarn}, {TypeDualInvestment}, {TypeEarn, TypeDualInvestment}} {
+	for _, types := range [][]adapter.AccountType{{TypeFunding}, {TypeEarn}, {TypeDualInvestment}, {TypeEarn, TypeDualInvestment}} {
 		r := newReplay(t, "dual_investment", nil)
-		batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, types)
+		batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, types)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -27,7 +27,7 @@ func TestDualSelectionAndDocumentedTerms(t *testing.T) {
 			t.Fatal("shared collection must run once, only when selected")
 		}
 		for _, r := range batch.Reports {
-			if r.Status != adapters.StatusSucceeded {
+			if r.Status != adapter.StatusSucceeded {
 				t.Fatalf("report: %+v", r)
 			}
 			if r.AccountType == TypeDualInvestment {
@@ -56,13 +56,13 @@ func TestDocumentedDualPosition(t *testing.T) {
 	}
 
 	r := newReplay(t, "", nil)
-	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeEarn, TypeDualInvestment})
+	batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, []adapter.AccountType{TypeEarn, TypeDualInvestment})
 	if err != nil {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, &batch, TypeEarn)
 	dual := reportOf(t, &batch, TypeDualInvestment)
-	if earn.Status != adapters.StatusSucceeded || dual.Status != adapters.StatusSucceeded || len(dual.Balances) != 1 || len(dual.DualPositions) != 1 {
+	if earn.Status != adapter.StatusSucceeded || dual.Status != adapter.StatusSucceeded || len(dual.Balances) != 1 || len(dual.DualPositions) != 1 {
 		t.Fatalf("synthetic earn and dual reports: %+v", batch.Reports)
 	}
 	row := synthetic.List[0]
@@ -85,11 +85,11 @@ func TestDocumentedDualPosition(t *testing.T) {
 
 func TestDualOnlyDependsOnAuxiliarySavings(t *testing.T) {
 	r := newReplay(t, "dual_investment", map[string]string{epFlexible.path: `{"retCode":0,"result":{"list":[],"nextPageCursor":"unread"}}`})
-	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeFunding, TypeDualInvestment})
+	batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, []adapter.AccountType{TypeFunding, TypeDualInvestment})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reportOf(t, &batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, &batch, TypeFunding).Status != adapters.StatusSucceeded {
+	if reportOf(t, &batch, TypeDualInvestment).ErrorClass != adapter.ClassNormalization || reportOf(t, &batch, TypeFunding).Status != adapter.StatusSucceeded {
 		t.Fatalf("auxiliary failure: %+v", batch)
 	}
 }

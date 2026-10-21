@@ -12,16 +12,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/httpclient"
 )
 
 // Account types of the bybit_uta_2_0 account structure.
 const (
-	TypeDualInvestment                      = adapters.TypeDualInvestment
-	TypeUnified        adapters.AccountType = "unified"
-	TypeFunding        adapters.AccountType = "funding"
-	TypeEarn           adapters.AccountType = "earn"
+	TypeDualInvestment                     = adapter.TypeDualInvestment
+	TypeUnified        adapter.AccountType = "unified"
+	TypeFunding        adapter.AccountType = "funding"
+	TypeEarn           adapter.AccountType = "earn"
 )
 
 // Only statuses 5 and 6 are supported; other names explain structure failures.
@@ -33,10 +33,10 @@ var accountStatuses = map[int]string{
 	6: "Unified Trading Account 2.0 Pro",
 }
 
-var marginModes = map[string]adapters.MarginMode{
-	"ISOLATED_MARGIN":  adapters.MarginBybitIsolated,
-	"REGULAR_MARGIN":   adapters.MarginBybitCross,
-	"PORTFOLIO_MARGIN": adapters.MarginBybitPM,
+var marginModes = map[string]adapter.MarginMode{
+	"ISOLATED_MARGIN":  adapter.MarginBybitIsolated,
+	"REGULAR_MARGIN":   adapter.MarginBybitCross,
+	"PORTFOLIO_MARGIN": adapter.MarginBybitPM,
 }
 
 // Options configures an adapter. Zero values select production defaults.
@@ -77,35 +77,35 @@ func New(in *Options) *Adapter {
 	return &Adapter{host: strings.TrimSuffix(opts.Host, "/"), http: opts.HTTP, clock: &clock{now: opts.Now}}
 }
 
-func (a *Adapter) client(creds adapters.Credentials) *client {
+func (a *Adapter) client(creds adapter.Credentials) *client {
 	return &client{http: a.http, host: a.host, clock: a.clock, creds: creds}
 }
 
 func (a *Adapter) now() time.Time { return a.clock.now().UTC() }
 
-func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure) (adapters.ValidationResult, error) {
+func (a *Adapter) Validate(ctx context.Context, creds adapter.Credentials, structure adapter.AccountStructure) (adapter.ValidationResult, error) {
 	c := a.client(creds)
 	mode, err := readMarginMode(ctx, c, structure)
 	if err != nil {
-		return adapters.ValidationResult{}, err
+		return adapter.ValidationResult{}, err
 	}
 	var key struct {
 		UserID json.Number `json:"userID"`
 	}
 	if err := c.call(ctx, epAPIKey, nil, &key); err != nil {
-		return adapters.ValidationResult{}, err
+		return adapter.ValidationResult{}, err
 	}
 	uid := strings.TrimSpace(key.UserID.String())
 	if uid == "" {
-		return adapters.ValidationResult{}, adapters.Malformed(epAPIKey.String(), "userID")
+		return adapter.ValidationResult{}, adapter.Malformed(epAPIKey.String(), "userID")
 	}
-	return adapters.ValidationResult{ExternalRef: uid, MarginMode: mode}, nil
+	return adapter.ValidationResult{ExternalRef: uid, MarginMode: mode}, nil
 }
 
 // Recheck on validation and every run: platform settings can change externally.
-func readMarginMode(ctx context.Context, c *client, structure adapters.AccountStructure) (adapters.MarginMode, error) {
-	if structure != adapters.StructureBybitUTA2 {
-		return "", adapters.UnsupportedStructure(adapters.PlatformBybit, structure)
+func readMarginMode(ctx context.Context, c *client, structure adapter.AccountStructure) (adapter.MarginMode, error) {
+	if structure != adapter.StructureBybitUTA2 {
+		return "", adapter.UnsupportedStructure(adapter.PlatformBybit, structure)
 	}
 	var info struct {
 		UnifiedMarginStatus *int   `json:"unifiedMarginStatus"`
@@ -115,38 +115,38 @@ func readMarginMode(ctx context.Context, c *client, structure adapters.AccountSt
 		return "", err
 	}
 	if info.UnifiedMarginStatus == nil {
-		return "", adapters.Malformed(epAccountInfo.String(), "unifiedMarginStatus")
+		return "", adapter.Malformed(epAccountInfo.String(), "unifiedMarginStatus")
 	}
 	if status := *info.UnifiedMarginStatus; status != 5 && status != 6 {
 		name, ok := accountStatuses[status]
 		if !ok {
 			name = "an undocumented account status"
 		}
-		return "", adapters.StructureMismatch(adapters.PlatformBybit, fmt.Sprintf("%s (unifiedMarginStatus %d)", name, status), structure)
+		return "", adapter.StructureMismatch(adapter.PlatformBybit, fmt.Sprintf("%s (unifiedMarginStatus %d)", name, status), structure)
 	}
 	reported := strings.TrimSpace(info.MarginMode)
 	if reported == "" {
-		return "", adapters.Malformed(epAccountInfo.String(), "marginMode")
+		return "", adapter.Malformed(epAccountInfo.String(), "marginMode")
 	}
 	mode, ok := marginModes[reported]
 	if !ok {
-		return "", adapters.UnknownMarginMode(adapters.PlatformBybit, reported)
+		return "", adapter.UnknownMarginMode(adapter.PlatformBybit, reported)
 	}
 	return mode, nil
 }
 
-func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
+func (a *Adapter) Collect(ctx context.Context, creds adapter.Credentials, structure adapter.AccountStructure, accounts []adapter.AccountType) (adapter.Batch, error) {
 	c := a.client(creds)
 	mode, err := readMarginMode(ctx, c, structure)
 	if err != nil {
-		return adapters.Batch{}, err
+		return adapter.Batch{}, err
 	}
 	// Read prices before reports to satisfy at-or-before valuation lookup.
 	prices, pricedAt := a.tickers(ctx, c)
-	earnPair := adapters.CollectEarnPair(func(ctx context.Context) (adapters.AccountReport, adapters.AccountReport, error) {
+	earnPair := adapter.CollectEarnPair(func(ctx context.Context) (adapter.AccountReport, adapter.AccountReport, error) {
 		return a.earn(ctx, c, prices, slices.Contains(accounts, TypeEarn))
 	})
-	reports, err := adapters.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
+	reports, err := adapter.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapter.AccountType) (adapter.AccountReport, error) {
 		//nolint:exhaustive // manual is application-owned and never enters private adapter collection.
 		switch accountType {
 		case TypeUnified:
@@ -156,16 +156,16 @@ func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, struc
 		case TypeEarn, TypeDualInvestment:
 			return earnPair(ctx, accountType)
 		default:
-			return adapters.AccountReport{}, adapters.UnknownAccountType(adapters.PlatformBybit, structure, accountType)
+			return adapter.AccountReport{}, adapter.UnknownAccountType(adapter.PlatformBybit, structure, accountType)
 		}
 	})
 	if err != nil {
-		return adapters.Batch{}, err
+		return adapter.Batch{}, err
 	}
-	return adapters.Batch{
+	return adapter.Batch{
 		CollectedAt: a.now(),
 		MarginMode:  mode,
 		Reports:     reports,
-		Prices:      adapters.QuotePrices(reports, quotes, prices.lookup, pricedAt),
+		Prices:      adapter.QuotePrices(reports, quotes, prices.lookup, pricedAt),
 	}, nil
 }

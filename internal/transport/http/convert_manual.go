@@ -1,7 +1,7 @@
 package httpserver
 
 import (
-	"github.com/rbee3u/plutus/internal/application/manual"
+	"github.com/rbee3u/plutus/internal/service/manual"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

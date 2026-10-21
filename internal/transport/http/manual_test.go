@@ -14,13 +14,13 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/application/auth"
-	"github.com/rbee3u/plutus/internal/application/catalog"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/manual"
-	"github.com/rbee3u/plutus/internal/application/portfolio"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fake"
+	"github.com/rbee3u/plutus/internal/service/auth"
+	"github.com/rbee3u/plutus/internal/service/catalog"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/manual"
+	"github.com/rbee3u/plutus/internal/service/portfolio"
 	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -39,13 +39,13 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := adapters.NewRegistry()
-	registry.Register(adapters.PlatformOKX, fake.New(adapters.PlatformOKX))
+	registry := adapter.NewRegistry()
+	registry.Register(adapter.PlatformOKX, fake.New(adapter.PlatformOKX))
 	identities, err := identity.NewService(db, identity.Options{MasterKey: []byte("0123456789abcdef0123456789abcdef"), Adapters: registry})
 	if err != nil {
 		t.Fatal(err)
 	}
-	item, err := identities.Create(ctx, owned[0].ID, &identity.CreateInput{ActorUserID: user.ID, DisplayName: "Manual HTTP", Platform: adapters.PlatformOKX, AccountStructure: adapters.StructureOKXUnified, SelectedAccountTypes: []adapters.AccountType{"trading"}})
+	item, err := identities.Create(ctx, owned[0].ID, &identity.CreateInput{ActorUserID: user.ID, DisplayName: "Manual HTTP", Platform: adapter.PlatformOKX, AccountStructure: adapter.StructureOKXUnified, SelectedAccountTypes: []adapter.AccountType{"trading"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestManualHTTPMutationPreconditionsAndOwnership(t *testing.T) {
 	if deleted.Code != 200 || json.Unmarshal(deleted.Body.Bytes(), &state) != nil || len(state.Items) != 0 || state.Pending {
 		t.Fatalf("delete %d %s", deleted.Code, deleted.Body.String())
 	}
-	item, err = identities.PutCredentials(ctx, owned[0].ID, item.ID, item.Version, identity.ActionInput{ActorUserID: user.ID}, adapters.Credentials{APIKey: "invalid-http", APISecret: "secret"})
+	item, err = identities.PutCredentials(ctx, owned[0].ID, item.ID, item.Version, identity.ActionInput{ActorUserID: user.ID}, adapter.Credentials{APIKey: "invalid-http", APISecret: "secret"})
 	if err != nil {
 		t.Fatal(err)
 	}

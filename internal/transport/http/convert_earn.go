@@ -1,12 +1,12 @@
 package httpserver
 
 import (
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/financial"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 
-func toAPIEarnAmounts(in []adapters.EarnAmount) []api.EarnAmount {
+func toAPIEarnAmounts(in []adapter.EarnAmount) []api.EarnAmount {
 	out := make([]api.EarnAmount, 0, len(in))
 	for _, a := range in {
 		out = append(out, api.EarnAmount{AssetSymbol: a.AssetSymbol, Amount: a.Amount, CanonicalAssetSymbol: a.CanonicalAssetSymbol})

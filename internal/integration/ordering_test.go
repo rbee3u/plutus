@@ -7,28 +7,28 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/catalog"
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/catalog"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 )
 
 func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 	h := newHarness(t)
 	// Creation order deliberately disagrees with platform and identity display order.
 	created := []identity.Identity{
-		h.createIdentity("Alpha", adapters.PlatformKraken, adapters.StructureKrakenSeparate, adapters.AccountTypeIDs(adapters.StructureKrakenSeparate)...),
-		h.createIdentity("Alpha", adapters.PlatformBybit, adapters.StructureBybitUTA2, adapters.AccountTypeIDs(adapters.StructureBybitUTA2)...),
-		h.createIdentity("Alpha", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.AccountTypeIDs(adapters.StructureOKXUnified)...),
-		h.createIdentity("Zulu", adapters.PlatformBinance, adapters.StructureBinancePM, adapters.AccountTypeIDs(adapters.StructureBinancePM)...),
-		h.createIdentity("alpha", adapters.PlatformBinance, adapters.StructureBinanceClassic, adapters.AccountTypeIDs(adapters.StructureBinanceClassic)...),
+		h.createIdentity("Alpha", adapter.PlatformKraken, adapter.StructureKrakenSeparate, adapter.AccountTypeIDs(adapter.StructureKrakenSeparate)...),
+		h.createIdentity("Alpha", adapter.PlatformBybit, adapter.StructureBybitUTA2, adapter.AccountTypeIDs(adapter.StructureBybitUTA2)...),
+		h.createIdentity("Alpha", adapter.PlatformOKX, adapter.StructureOKXUnified, adapter.AccountTypeIDs(adapter.StructureOKXUnified)...),
+		h.createIdentity("Zulu", adapter.PlatformBinance, adapter.StructureBinancePM, adapter.AccountTypeIDs(adapter.StructureBinancePM)...),
+		h.createIdentity("alpha", adapter.PlatformBinance, adapter.StructureBinanceClassic, adapter.AccountTypeIDs(adapter.StructureBinanceClassic)...),
 	}
 	for _, item := range created {
-		creds := adapters.Credentials{APIKey: "order-" + item.ID.String(), APISecret: "secret"}
-		if item.Platform == adapters.PlatformKraken {
-			creds.Futures = &adapters.KeyPair{APIKey: "futures-order", APISecret: "secret"}
+		creds := adapter.Credentials{APIKey: "order-" + item.ID.String(), APISecret: "secret"}
+		if item.Platform == adapter.PlatformKraken {
+			creds.Futures = &adapter.KeyPair{APIKey: "futures-order", APISecret: "secret"}
 		}
 		stored, err := h.identities.PutCredentials(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}, creds)
 		if err != nil {
@@ -103,7 +103,7 @@ func TestSharedHierarchyAcrossManagementAndHoldingsReads(t *testing.T) {
 	}
 	var visibleAccounts []uuid.UUID
 	for _, account := range accounts {
-		if account.AccountType != string(adapters.TypeManual) {
+		if account.AccountType != string(adapter.TypeManual) {
 			visibleAccounts = append(visibleAccounts, account.AccountID)
 		}
 	}
@@ -226,11 +226,11 @@ func TestCatalogBusinessOrderBeforePagination(t *testing.T) {
 	h := newHarness(t)
 	q := sqlcgen.New(h.db)
 	symbol := "ORDER" + uuid.NewString()[:8]
-	for _, platform := range []adapters.Platform{adapters.PlatformKraken, adapters.PlatformBybit, adapters.PlatformOKX, adapters.PlatformBinance} {
+	for _, platform := range []adapter.Platform{adapter.PlatformKraken, adapter.PlatformBybit, adapter.PlatformOKX, adapter.PlatformBinance} {
 		if _, _, err := h.catalog.EnsureAsset(h.ctx, q, h.portfolioID, platform, symbol, time.Now()); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := h.catalog.EnsureFuturesContract(h.ctx, q, h.portfolioID, platform, &adapters.FuturesContract{Symbol: symbol, Kind: adapters.KindLinearPerpetual, BaseAssetSymbol: "BTC"}, time.Now()); err != nil {
+		if _, err := h.catalog.EnsureFuturesContract(h.ctx, q, h.portfolioID, platform, &adapter.FuturesContract{Symbol: symbol, Kind: adapter.KindLinearPerpetual, BaseAssetSymbol: "BTC"}, time.Now()); err != nil {
 			t.Fatal(err)
 		}
 	}

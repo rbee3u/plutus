@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 )
 
 func TestExchangeInfoKeepsWhitelistedContractsBeyondFirstType(t *testing.T) {
-	s := New(adapters.PlatformBinance, fixture.Request{Service: "cm", Method: "GET", Path: "/dapi/v1/exchangeInfo"})
-	f, err := s.Run(context.Background(), adapters.Credentials{}, func(context.Context) error {
+	s := New(adapter.PlatformBinance, fixture.Request{Service: "cm", Method: "GET", Path: "/dapi/v1/exchangeInfo"})
+	f, err := s.Run(context.Background(), adapter.Credentials{}, func(context.Context) error {
 		s.Add(s.request, 200, []byte(`{"symbols":[
 			{"symbol":"BTCUSD_PERP","baseAsset":"BTC","quoteAsset":"USD","contractType":"PERPETUAL","contractSize":100},
 			{"symbol":"ETHUSD_PERP","baseAsset":"ETH","quoteAsset":"USD","contractType":"PERPETUAL","contractSize":10},
@@ -56,8 +56,8 @@ func TestExchangeInfoKeepsWhitelistedContractsBeyondFirstType(t *testing.T) {
 }
 
 func TestMarketSelectionPreservesPreparedProductsAndNewShapes(t *testing.T) {
-	s := New(adapters.PlatformBinance, fixture.Request{Service: "um", Method: "GET", Path: "/fapi/v1/exchangeInfo"}, Options{KeepSymbols: []string{"DOGEUSDT"}})
-	f, err := s.Run(context.Background(), adapters.Credentials{}, func(context.Context) error {
+	s := New(adapter.PlatformBinance, fixture.Request{Service: "um", Method: "GET", Path: "/fapi/v1/exchangeInfo"}, Options{KeepSymbols: []string{"DOGEUSDT"}})
+	f, err := s.Run(context.Background(), adapter.Credentials{}, func(context.Context) error {
 		s.Add(s.request, 200, []byte(`{"total":5,"symbols":[
 		{"symbol":"AAAUSDT","contractType":"PERPETUAL","baseAsset":"AAA","quoteAsset":"USDT","marginAsset":"USDT"},
 		{"symbol":"BTCUSDT","contractType":"PERPETUAL","baseAsset":"BTC","quoteAsset":"USDT","marginAsset":"USDT"},
@@ -89,8 +89,8 @@ func TestMarketSelectionPreservesPreparedProductsAndNewShapes(t *testing.T) {
 }
 
 func TestZeroRowsKeepLiabilitiesSettingsTypesAndUnknownValues(t *testing.T) {
-	s := New(adapters.PlatformBinance, fixture.Request{Service: "portfolio", Method: "GET", Path: "/papi/v1/balance"})
-	f, err := s.Run(context.Background(), adapters.Credentials{}, func(context.Context) error {
+	s := New(adapter.PlatformBinance, fixture.Request{Service: "portfolio", Method: "GET", Path: "/papi/v1/balance"})
+	f, err := s.Run(context.Background(), adapter.Credentials{}, func(context.Context) error {
 		s.Add(s.request, 200, []byte(`[
 		{"asset":"BTC","totalWalletBalance":"0","crossMarginBorrowed":"0","crossMarginInterest":"0"},
 		{"asset":"ETH","totalWalletBalance":"0","crossMarginBorrowed":"0","crossMarginInterest":"0"},
@@ -129,8 +129,8 @@ func TestZeroRowsKeepLiabilitiesSettingsTypesAndUnknownValues(t *testing.T) {
 }
 
 func TestZeroPositionRowsKeepModesAndNonzeroIsolatedMargin(t *testing.T) {
-	s := New(adapters.PlatformBinance, fixture.Request{Service: "cm", Method: "GET", Path: "/dapi/v1/positionRisk"})
-	f, err := s.Run(context.Background(), adapters.Credentials{}, func(context.Context) error {
+	s := New(adapter.PlatformBinance, fixture.Request{Service: "cm", Method: "GET", Path: "/dapi/v1/positionRisk"})
+	f, err := s.Run(context.Background(), adapter.Credentials{}, func(context.Context) error {
 		s.Add(s.request, 200, []byte(`[
 		{"symbol":"BTCUSD_PERP","positionAmt":"0","positionSide":"LONG","marginType":"cross","isolatedWallet":"0"},
 		{"symbol":"ETHUSD_PERP","positionAmt":"0","positionSide":"LONG","marginType":"cross","isolatedWallet":"0"},
@@ -162,8 +162,8 @@ func TestZeroNestedBalancesKeepOriginalTotalsAndProductLists(t *testing.T) {
 		{"/sapi/v1/simple-earn/flexible/position", `{"total":3,"rows":[{"asset":"BTC","free":"0"},{"asset":"ETH","free":"0"},{"asset":"USDT","free":"5"}]}`, 3},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
-			s := New(adapters.PlatformBybit, fixture.Request{Service: "v5", Method: "GET", Path: tc.path})
-			f, err := s.Run(context.Background(), adapters.Credentials{}, func(context.Context) error { s.Add(s.request, 200, []byte(tc.raw)); return nil })
+			s := New(adapter.PlatformBybit, fixture.Request{Service: "v5", Method: "GET", Path: tc.path})
+			f, err := s.Run(context.Background(), adapter.Credentials{}, func(context.Context) error { s.Add(s.request, 200, []byte(tc.raw)); return nil })
 			if err != nil {
 				t.Fatal(err)
 			}

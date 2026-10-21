@@ -6,7 +6,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
@@ -34,23 +34,23 @@ type crossMarginAccount struct {
 // crossMargin maps the cross margin wallet. Binance's margin level, total asset ÷ total liability
 // where higher is safer, is retained as reported; Binance uses 999 when nothing is borrowed.
 // A margin account that was never created is empty.
-func (a *Adapter) crossMargin(ctx context.Context, c *client) (adapters.AccountReport, error) {
+func (a *Adapter) crossMargin(ctx context.Context, c *client) (adapter.AccountReport, error) {
 	var account crossMarginAccount
 	if err := c.call(ctx, epCrossMargin, nil, &account); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
-	report := adapters.AccountReport{AccountType: TypeCrossMargin, Status: adapters.StatusSucceeded, CollectedAt: a.now()}
+	report := adapter.AccountReport{AccountType: TypeCrossMargin, Status: adapter.StatusSucceeded, CollectedAt: a.now()}
 	if account.Created != nil && !*account.Created {
 		return report, nil
 	}
-	if _, err := adapters.OptionalDecimal(epCrossMargin.String(), "marginLevel", account.MarginLevel); err != nil {
-		return adapters.AccountReport{}, err
+	if _, err := adapter.OptionalDecimal(epCrossMargin.String(), "marginLevel", account.MarginLevel); err != nil {
+		return adapter.AccountReport{}, err
 	}
-	report.ReportedMarginRatio = adapters.Plain(account.MarginLevel)
+	report.ReportedMarginRatio = adapter.Plain(account.MarginLevel)
 	totals := newMarginTotals()
 	for i := range account.UserAssets {
 		if err := totals.add(epCrossMargin, &account.UserAssets[i]); err != nil {
-			return adapters.AccountReport{}, err
+			return adapter.AccountReport{}, err
 		}
 	}
 	report.Balances = totals.balances()
@@ -67,30 +67,30 @@ type isolatedMarginAccount struct {
 // isolatedMargin maps the isolated margin wallet. Every pair holds its base and quote coins apart
 // from the other pairs; the account sums one coin across all pairs, so it appears once however
 // many pairs hold it.
-func (a *Adapter) isolatedMargin(ctx context.Context, c *client) (adapters.AccountReport, error) {
+func (a *Adapter) isolatedMargin(ctx context.Context, c *client) (adapter.AccountReport, error) {
 	var account isolatedMarginAccount
 	if err := c.call(ctx, epIsolatedMargin, nil, &account); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	totals := newMarginTotals()
 	for i := range account.Assets {
 		for _, side := range []*marginAsset{&account.Assets[i].Base, &account.Assets[i].Quote} {
 			if err := totals.add(epIsolatedMargin, side); err != nil {
-				return adapters.AccountReport{}, err
+				return adapter.AccountReport{}, err
 			}
 		}
 	}
-	return adapters.AccountReport{AccountType: TypeIsolatedMargin, Status: adapters.StatusSucceeded, CollectedAt: a.now(), Balances: totals.balances()}, nil
+	return adapter.AccountReport{AccountType: TypeIsolatedMargin, Status: adapter.StatusSucceeded, CollectedAt: a.now(), Balances: totals.balances()}, nil
 }
 
 // marginTotals sums margin wallet rows by coin. A coin's equity is its netAsset, the free and
 // locked amount less the borrowed principal and interest, and may be negative.
 type marginTotals struct {
-	net, borrowed, interest adapters.Totals
+	net, borrowed, interest adapter.Totals
 }
 
 func newMarginTotals() *marginTotals {
-	return &marginTotals{net: adapters.Totals{}, borrowed: adapters.Totals{}, interest: adapters.Totals{}}
+	return &marginTotals{net: adapter.Totals{}, borrowed: adapter.Totals{}, interest: adapter.Totals{}}
 }
 
 func (t *marginTotals) add(ep endpoint, row *marginAsset) error {
@@ -101,7 +101,7 @@ func (t *marginTotals) add(ep endpoint, row *marginAsset) error {
 	if err != nil || !nonzero {
 		return err
 	}
-	net, err := adapters.Decimal(where, "netAsset", row.NetAsset)
+	net, err := adapter.Decimal(where, "netAsset", row.NetAsset)
 	if err != nil {
 		return err
 	}
@@ -116,13 +116,13 @@ func (t *marginTotals) add(ep endpoint, row *marginAsset) error {
 
 // balances returns one balance per coin with a nonzero equity, liability, or interest, ordered by
 // coin.
-func (t *marginTotals) balances() []adapters.Balance {
-	out := make([]adapters.Balance, 0, len(t.net))
+func (t *marginTotals) balances() []adapter.Balance {
+	out := make([]adapter.Balance, 0, len(t.net))
 	for _, symbol := range slices.Sorted(maps.Keys(t.net)) {
 		if t.net[symbol].Sign() == 0 && t.borrowed[symbol].Sign() == 0 && t.interest[symbol].Sign() == 0 {
 			continue
 		}
-		out = append(out, adapters.Balance{
+		out = append(out, adapter.Balance{
 			AssetSymbol: symbol,
 			Equity:      decimal.Format(t.net[symbol]),
 			Liability:   decimal.FormatPtr(t.borrowed[symbol]),
@@ -163,80 +163,80 @@ type futuresAsset struct {
 // umFutures maps the USDⓈ-M futures wallet. In Multi-Assets Mode its margin assets form one pool
 // and Binance reports USD account figures for it; in Single-Asset Mode every margin asset stands
 // alone and the totals cover USDT only, so no account figure is stored.
-func (a *Adapter) umFutures(ctx context.Context, c *client) (adapters.AccountReport, error) {
+func (a *Adapter) umFutures(ctx context.Context, c *client) (adapter.AccountReport, error) {
 	var mode struct {
 		MultiAssets *bool `json:"multiAssetsMargin"`
 	}
 	if err := c.call(ctx, epUMMultiAssets, nil, &mode); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	if mode.MultiAssets == nil {
-		return adapters.AccountReport{}, adapters.Malformed(epUMMultiAssets.String(), "multiAssetsMargin")
+		return adapter.AccountReport{}, adapter.Malformed(epUMMultiAssets.String(), "multiAssetsMargin")
 	}
 	var account futuresAccount
 	if err := c.call(ctx, epUMAccount, nil, &account); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	var rows []positionRisk
 	if err := c.call(ctx, epUMPositionRisk, nil, &rows); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	if err := withLeverage(ctx, c, rows); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
-	report := adapters.AccountReport{AccountType: TypeUMFutures, Status: adapters.StatusSucceeded, CollectedAt: a.now()}
+	report := adapter.AccountReport{AccountType: TypeUMFutures, Status: adapter.StatusSucceeded, CollectedAt: a.now()}
 	if *mode.MultiAssets {
 		if err := mapMultiAssets(&account, &report); err != nil {
-			return adapters.AccountReport{}, err
+			return adapter.AccountReport{}, err
 		}
 	}
 	var err error
 	if report.Balances, err = mapFuturesAssets(epUMAccount, account.Assets); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	if report.Positions, err = a.positions(ctx, c, positionSource{marketUM, epUMPositionRisk, rows}); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	return report, nil
 }
 
 // mapMultiAssets retains the USD account measures of Multi-Assets Mode.
 // Ratios are read-model calculations, not platform-reported observations.
-func mapMultiAssets(account *futuresAccount, report *adapters.AccountReport) error {
+func mapMultiAssets(account *futuresAccount, report *adapter.AccountReport) error {
 	where := epUMAccount.String()
 	for name, value := range map[string]string{
 		"totalMarginBalance": account.TotalMarginBalance, "totalInitialMargin": account.TotalInitialMargin,
 		"totalMaintMargin": account.TotalMaintMargin, "availableBalance": account.AvailableBalance,
 	} {
-		if _, err := adapters.Decimal(where, name, value); err != nil {
+		if _, err := adapter.Decimal(where, name, value); err != nil {
 			return err
 		}
 	}
-	report.AdjustedEquity = adapters.Plain(account.TotalMarginBalance)
-	report.AvailableEquity = adapters.Plain(account.AvailableBalance)
-	report.InitialMarginRequirementUSD = adapters.Plain(account.TotalInitialMargin)
-	report.MaintenanceMarginRequirementUSD = adapters.Plain(account.TotalMaintMargin)
+	report.AdjustedEquity = adapter.Plain(account.TotalMarginBalance)
+	report.AvailableEquity = adapter.Plain(account.AvailableBalance)
+	report.InitialMarginRequirementUSD = adapter.Plain(account.TotalInitialMargin)
+	report.MaintenanceMarginRequirementUSD = adapter.Plain(account.TotalMaintMargin)
 	return nil
 }
 
 // cmFutures maps the COIN-M futures wallet, where every margin coin stands alone.
-func (a *Adapter) cmFutures(ctx context.Context, c *client) (adapters.AccountReport, error) {
+func (a *Adapter) cmFutures(ctx context.Context, c *client) (adapter.AccountReport, error) {
 	var account futuresAccount
 	if err := c.call(ctx, epCMAccount, nil, &account); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	var rows []positionRisk
 	if err := c.call(ctx, epCMPositionRisk, nil, &rows); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	withCMRequirements(rows, account.Positions)
-	report := adapters.AccountReport{AccountType: TypeCMFutures, Status: adapters.StatusSucceeded, CollectedAt: a.now()}
+	report := adapter.AccountReport{AccountType: TypeCMFutures, Status: adapter.StatusSucceeded, CollectedAt: a.now()}
 	var err error
 	if report.Balances, err = mapFuturesAssets(epCMAccount, account.Assets); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	if report.Positions, err = a.positions(ctx, c, positionSource{marketCM, epCMPositionRisk, rows}); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	return report, nil
 }
@@ -244,9 +244,9 @@ func (a *Adapter) cmFutures(ctx context.Context, c *client) (adapters.AccountRep
 // mapFuturesAssets maps the margin assets of a futures wallet. A coin's equity is its margin
 // balance, the wallet balance plus unrealized PnL, and may be negative. Binance lists every
 // margin asset; rows that hold nothing are omitted.
-func mapFuturesAssets(ep endpoint, rows []futuresAsset) ([]adapters.Balance, error) {
+func mapFuturesAssets(ep endpoint, rows []futuresAsset) ([]adapter.Balance, error) {
 	where := ep.String()
-	out := make([]adapters.Balance, 0, len(rows))
+	out := make([]adapter.Balance, 0, len(rows))
 	for i := range rows {
 		row := &rows[i]
 		parsed, nonzero, err := amounts(where, map[string]string{
@@ -262,19 +262,19 @@ func mapFuturesAssets(ep endpoint, rows []futuresAsset) ([]adapters.Balance, err
 		if err != nil {
 			return nil, err
 		}
-		equity, err := adapters.Decimal(where, "marginBalance", row.MarginBalance)
+		equity, err := adapter.Decimal(where, "marginBalance", row.MarginBalance)
 		if err != nil {
 			return nil, err
 		}
 		if _, _, err := amounts(where, map[string]string{"availableBalance": row.AvailableBalance, "maxWithdrawAmount": row.MaxWithdrawAmount}); err != nil {
 			return nil, err
 		}
-		out = append(out, adapters.Balance{
+		out = append(out, adapter.Balance{
 			AssetSymbol:         symbol,
 			Equity:              decimal.Format(equity),
 			UnrealizedPnl:       decimal.FormatPtr(parsed["unrealizedProfit"]),
-			AvailableToTrade:    adapters.Plain(row.AvailableBalance),
-			AvailableToWithdraw: adapters.Plain(row.MaxWithdrawAmount),
+			AvailableToTrade:    adapter.Plain(row.AvailableBalance),
+			AvailableToWithdraw: adapter.Plain(row.MaxWithdrawAmount),
 		})
 	}
 	return out, nil

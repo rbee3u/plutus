@@ -69,7 +69,7 @@ with fewer dimensions use the corresponding part of that hierarchy.
 - Platforms: Binance, OKX, Bybit, Kraken.
 - Identities: case-insensitive display name, then immutable ID.
 - Accounts: account type order within the declared account structure, then
-  immutable ID. The [platform catalog](../internal/platform/adapters/catalog.go)
+  immutable ID. The [platform catalog](../internal/platform/adapter/catalog.go)
   owns type order; manual is last. Account names and margin mode do not affect
   order.
 - Balances within an account: asset symbol, canonical asset symbol, asset ID.

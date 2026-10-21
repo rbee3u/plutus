@@ -10,10 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rbee3u/plutus/internal/application/identity"
 	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
-	"github.com/rbee3u/plutus/internal/seeds"
+	"github.com/rbee3u/plutus/internal/seed"
+	"github.com/rbee3u/plutus/internal/service/identity"
 )
 
 func newDatabaseCommand() *cobra.Command {
@@ -44,7 +44,7 @@ func newDBSeedCommand() *cobra.Command {
 }
 
 func newDBResetCommand() *cobra.Command {
-	var seed bool
+	var devSeed bool
 	cmd := &cobra.Command{
 		Use:   "reset",
 		Short: "Drop every table, migrate, and optionally load development data",
@@ -63,7 +63,7 @@ func newDBResetCommand() *cobra.Command {
 				return errors.New("db reset requires [database].allow_reset = true in the selected config file")
 			}
 			ctx := cmd.Context()
-			if seed {
+			if devSeed {
 				if err := validateSeedConfig(&cfg); err != nil {
 					return err
 				}
@@ -79,14 +79,14 @@ func newDBResetCommand() *cobra.Command {
 			if err := mysql.Up(db); err != nil {
 				return err
 			}
-			if !seed {
+			if !devSeed {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Migrated an empty database; create a user with `plutus user create`")
 				return nil
 			}
 			return seedDatabase(ctx, db, &cfg, cmd.OutOrStdout())
 		},
 	}
-	cmd.Flags().BoolVar(&seed, "seed", false, "Load development data after migrating (omit to leave the database empty)")
+	cmd.Flags().BoolVar(&devSeed, "seed", false, "Load development data after migrating (omit to leave the database empty)")
 	return cmd
 }
 
@@ -96,18 +96,18 @@ func seedDatabase(ctx context.Context, db *sql.DB, cfg *config.Config, out io.Wr
 		return err
 	}
 	started := time.Now()
-	seed, err := seeds.Build()
+	devSeed, err := seed.Build()
 	if err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "Generated source facts in %s\n", time.Since(started).Round(time.Millisecond))
 	stage := time.Now()
-	if err := seeds.Apply(ctx, db, seed); err != nil {
+	if err := seed.Apply(ctx, db, devSeed); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "Initialized source facts and valuation points in %s\n", time.Since(stage).Round(time.Millisecond))
 	stage = time.Now()
-	if err := activateSeedIdentities(ctx, db, cfg, seed.Live, out); err != nil {
+	if err := activateSeedIdentities(ctx, db, cfg, devSeed.Live, out); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintf(out, "Initialized connections in %s\n", time.Since(stage).Round(time.Millisecond))
@@ -118,12 +118,12 @@ func seedDatabase(ctx context.Context, db *sql.DB, cfg *config.Config, out io.Wr
 
 // activateSeedIdentities seals deterministic credentials and enables each live identity through the
 // configured adapters, so the scheduler collects them like user-configured connections.
-func activateSeedIdentities(ctx context.Context, db *sql.DB, cfg *config.Config, live []seeds.LiveIdentity, out io.Writer) error {
+func activateSeedIdentities(ctx context.Context, db *sql.DB, cfg *config.Config, live []seed.LiveIdentity, out io.Writer) error {
 	identities, err := identity.NewService(db, identity.Options{MasterKey: cfg.Crypto.MasterKey, Adapters: buildAdapters(cfg), ValidateTimeout: cfg.Collection.ConnectionValidationTimeout})
 	if err != nil {
 		return err
 	}
-	return seeds.ActivateConnections(ctx, identities, live, out)
+	return seed.ActivateConnections(ctx, identities, live, out)
 }
 
 func validateSeedConfig(cfg *config.Config) error {

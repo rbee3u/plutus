@@ -4,19 +4,19 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 )
 
 func TestModeAndInitialMarginProvenance(t *testing.T) {
 	info := nativeInstrument{Symbol: "BTCUSD", ContractType: "InversePerpetual", BaseCoin: "BTC", QuoteCoin: "USD", SettleCoin: "BTC"}
 	index := 0
 	row := openPosition{Symbol: info.Symbol, PositionIdx: &index, Side: "Sell", PositionIM: "0.002"}
-	for _, mode := range []adapters.MarginMode{adapters.MarginBybitCross, adapters.MarginBybitIsolated, adapters.MarginBybitPM} {
+	for _, mode := range []adapter.MarginMode{adapter.MarginBybitCross, adapter.MarginBybitIsolated, adapter.MarginBybitPM} {
 		position, err := mapPosition(&row, big.NewRat(200, 1), &info, mode)
 		if err != nil || position.PositionMode != "one_way" || position.SourceQuantityUnit != "quote" {
 			t.Fatalf("position %+v %v", position, err)
 		}
-		if mode == adapters.MarginBybitPM {
+		if mode == adapter.MarginBybitPM {
 			if position.Margin != nil {
 				t.Fatal("Portfolio amount guessed")
 			}
@@ -27,16 +27,16 @@ func TestModeAndInitialMarginProvenance(t *testing.T) {
 		}
 	}
 	index = 1
-	if _, err := mapPosition(&row, big.NewRat(200, 1), &info, adapters.MarginBybitCross); err == nil {
+	if _, err := mapPosition(&row, big.NewRat(200, 1), &info, adapter.MarginBybitCross); err == nil {
 		t.Fatal("hedge index contradicting direction accepted")
 	}
 	index = 2
-	position, err := mapPosition(&row, big.NewRat(200, 1), &info, adapters.MarginBybitCross)
+	position, err := mapPosition(&row, big.NewRat(200, 1), &info, adapter.MarginBybitCross)
 	if err != nil || position.PositionMode != "hedged" {
 		t.Fatalf("hedged %+v %v", position, err)
 	}
 	row.PositionIdx = nil
-	if _, err := mapPosition(&row, big.NewRat(200, 1), &info, adapters.MarginBybitCross); err == nil {
+	if _, err := mapPosition(&row, big.NewRat(200, 1), &info, adapter.MarginBybitCross); err == nil {
 		t.Fatal("missing positionIdx treated as one-way")
 	}
 }

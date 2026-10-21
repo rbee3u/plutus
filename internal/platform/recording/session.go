@@ -16,13 +16,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 )
 
 // Session blocks every request except one selected exchange, including retries and redirects.
 type Session struct {
-	platform    adapters.Platform
+	platform    adapter.Platform
 	request     fixture.Request
 	mu          sync.Mutex
 	used        bool
@@ -36,7 +36,7 @@ type Options struct {
 	KeepSymbols []string
 }
 
-func New(platform adapters.Platform, request fixture.Request, options ...Options) *Session {
+func New(platform adapter.Platform, request fixture.Request, options ...Options) *Session {
 	s := &Session{platform: platform, request: request, keepSymbols: map[string]bool{}}
 	for _, option := range options {
 		for _, symbol := range option.KeepSymbols {
@@ -46,8 +46,8 @@ func New(platform adapters.Platform, request fixture.Request, options ...Options
 	return s
 }
 
-func Service(platform adapters.Platform, path string) string {
-	if platform == adapters.PlatformBinance {
+func Service(platform adapter.Platform, path string) string {
+	if platform == adapter.PlatformBinance {
 		for prefix, name := range map[string]string{"/papi/": "portfolio", "/fapi/": "um", "/dapi/": "cm"} {
 			if strings.HasPrefix(path, prefix) {
 				return name
@@ -55,7 +55,7 @@ func Service(platform adapters.Platform, path string) string {
 		}
 		return "spot"
 	}
-	if platform == adapters.PlatformKraken {
+	if platform == adapter.PlatformKraken {
 		if strings.HasPrefix(path, "/0/") {
 			return "spot"
 		}
@@ -79,7 +79,7 @@ func business(values url.Values) url.Values {
 }
 
 // HTTPRequest reads the replayable business identity without consuming the signed request body.
-func HTTPRequest(platform adapters.Platform, req *http.Request) (fixture.Request, error) {
+func HTTPRequest(platform adapter.Platform, req *http.Request) (fixture.Request, error) {
 	r := fixture.Request{Service: Service(platform, req.URL.Path), Method: req.Method, Path: req.URL.Path, Query: business(req.URL.Query())}
 	if req.Body != nil && strings.HasPrefix(req.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
 		if req.GetBody == nil {
@@ -174,7 +174,7 @@ func (s *Session) Add(request fixture.Request, status int, body []byte) {
 	s.files = append(s.files, fixture.File{Source: "recorded", RecordedAt: &now, Request: request, Status: status, Body: bytes.Clone(body)})
 }
 
-func (s *Session) Run(ctx context.Context, creds adapters.Credentials, call func(context.Context) error) (*fixture.File, error) {
+func (s *Session) Run(ctx context.Context, creds adapter.Credentials, call func(context.Context) error) (*fixture.File, error) {
 	if err := s.request.Validate(); err != nil {
 		return nil, err
 	}
@@ -188,7 +188,7 @@ func (s *Session) Run(ctx context.Context, creds adapters.Credentials, call func
 var ipPattern = regexp.MustCompile(`\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b`)
 
 // finish returns only sanitized evidence and sanitized errors. Business numbers remain intact.
-func (s *Session) finish(creds adapters.Credentials, failure error) (*fixture.File, error) {
+func (s *Session) finish(creds adapter.Credentials, failure error) (*fixture.File, error) {
 	secrets := []string{creds.APIKey, creds.APISecret, creds.Passphrase, creds.FuturesKey(), creds.FuturesSecret()}
 	values := make([]any, len(s.files))
 	identifiers := map[string]bool{}

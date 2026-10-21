@@ -15,14 +15,14 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/application/auth"
-	"github.com/rbee3u/plutus/internal/application/capital"
-	"github.com/rbee3u/plutus/internal/application/cycles"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/portfolio"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/auth"
+	"github.com/rbee3u/plutus/internal/service/capital"
+	"github.com/rbee3u/plutus/internal/service/cycle"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/portfolio"
 	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 )
 
@@ -487,14 +487,14 @@ func TestIdentityAndCycleCreationTouchSessionOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Services: &app.Services{
-		DB: db, Auth: authentication, Portfolios: portfolios, Identities: identities, Cycles: cycles.NewService(db), Idempotency: idempotency.NewStore(db),
+		DB: db, Auth: authentication, Portfolios: portfolios, Identities: identities, Cycles: cycle.NewService(db), Idempotency: idempotency.NewStore(db),
 	}})
 	for _, tc := range []struct {
 		path, body string
 		status     int
 		writes     int64
 	}{
-		{"identities", `{"platform":"binance","displayName":"Created once","accountStructure":"binance_classic","selectedAccountTypes":["spot"]}`, http.StatusCreated, int64(len(adapters.AccountTypes(adapters.StructureBinanceClassic)) + 6)},
+		{"identities", `{"platform":"binance","displayName":"Created once","accountStructure":"binance_classic","selectedAccountTypes":["spot"]}`, http.StatusCreated, int64(len(adapter.AccountTypes(adapter.StructureBinanceClassic)) + 6)},
 		{"collection-cycles", `{}`, http.StatusAccepted, 3},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
@@ -552,7 +552,7 @@ func TestCreationRevalidatesAfterWaitingForUserLock(t *testing.T) {
 					t.Fatal(err)
 				}
 				engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Services: &app.Services{
-					DB: db, Auth: authentication, Portfolios: portfolios, Capital: capital.NewService(db), Identities: identities, Cycles: cycles.NewService(db), Idempotency: idempotency.NewStore(db),
+					DB: db, Auth: authentication, Portfolios: portfolios, Capital: capital.NewService(db), Identities: identities, Cycles: cycle.NewService(db), Idempotency: idempotency.NewStore(db),
 				}})
 				blocker, err := db.BeginTx(ctx, nil)
 				if err != nil {

@@ -12,22 +12,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/httpclient"
 )
 
 // Account types. Spot, funding, and earn belong to both account structures; portfolio margin
 // replaces the four classic margin and futures wallets with portfolio_margin.
 const (
-	TypeDualInvestment                       = adapters.TypeDualInvestment
-	TypeSpot            adapters.AccountType = "spot"
-	TypeFunding         adapters.AccountType = "funding"
-	TypeEarn            adapters.AccountType = "earn"
-	TypePortfolioMargin adapters.AccountType = "portfolio_margin"
-	TypeCrossMargin     adapters.AccountType = "cross_margin"
-	TypeIsolatedMargin  adapters.AccountType = "isolated_margin"
-	TypeUMFutures       adapters.AccountType = "um_futures"
-	TypeCMFutures       adapters.AccountType = "cm_futures"
+	TypeDualInvestment                      = adapter.TypeDualInvestment
+	TypeSpot            adapter.AccountType = "spot"
+	TypeFunding         adapter.AccountType = "funding"
+	TypeEarn            adapter.AccountType = "earn"
+	TypePortfolioMargin adapter.AccountType = "portfolio_margin"
+	TypeCrossMargin     adapter.AccountType = "cross_margin"
+	TypeIsolatedMargin  adapter.AccountType = "isolated_margin"
+	TypeUMFutures       adapter.AccountType = "um_futures"
+	TypeCMFutures       adapter.AccountType = "cm_futures"
 )
 
 // pageSize is the largest page the Simple Earn and dual investment position endpoints accept.
@@ -77,30 +77,30 @@ func New(in *Options) *Adapter {
 	}
 }
 
-func (a *Adapter) client(creds adapters.Credentials) *client {
+func (a *Adapter) client(creds adapter.Credentials) *client {
 	return &client{http: a.http, hosts: a.hosts, clock: a.clock, creds: creds}
 }
 
 func (a *Adapter) now() time.Time { return a.clock.now().UTC() }
 
-func (a *Adapter) Validate(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure) (adapters.ValidationResult, error) {
-	if !adapters.ValidStructure(adapters.PlatformBinance, structure) {
-		return adapters.ValidationResult{}, adapters.UnsupportedStructure(adapters.PlatformBinance, structure)
+func (a *Adapter) Validate(ctx context.Context, creds adapter.Credentials, structure adapter.AccountStructure) (adapter.ValidationResult, error) {
+	if !adapter.ValidStructure(adapter.PlatformBinance, structure) {
+		return adapter.ValidationResult{}, adapter.UnsupportedStructure(adapter.PlatformBinance, structure)
 	}
 	c := a.client(creds)
 	if _, err := checkStructure(ctx, c, structure); err != nil {
-		return adapters.ValidationResult{}, err
+		return adapter.ValidationResult{}, err
 	}
 	var spot struct {
 		UID int64 `json:"uid"`
 	}
 	if err := c.call(ctx, epSpotAccount, spotAccountQuery(), &spot); err != nil {
-		return adapters.ValidationResult{}, err
+		return adapter.ValidationResult{}, err
 	}
 	if spot.UID <= 0 {
-		return adapters.ValidationResult{}, adapters.NewError(adapters.ClassNormalization, "Binance returned no account UID.")
+		return adapter.ValidationResult{}, adapter.NewError(adapter.ClassNormalization, "Binance returned no account UID.")
 	}
-	return adapters.ValidationResult{ExternalRef: strconv.FormatInt(spot.UID, 10)}, nil
+	return adapter.ValidationResult{ExternalRef: strconv.FormatInt(spot.UID, 10)}, nil
 }
 
 // spotAccountQuery reads the spot account for its UID without listing every coin ever held; the
@@ -109,40 +109,40 @@ func spotAccountQuery() url.Values {
 	return url.Values{"omitZeroBalances": {"true"}}
 }
 
-func (a *Adapter) Collect(ctx context.Context, creds adapters.Credentials, structure adapters.AccountStructure, accounts []adapters.AccountType) (adapters.Batch, error) {
+func (a *Adapter) Collect(ctx context.Context, creds adapter.Credentials, structure adapter.AccountStructure, accounts []adapter.AccountType) (adapter.Batch, error) {
 	// Market terms are reused only within this collection run.
 	run := *a
 	run.futuresContracts = newFuturesContractCache(a.now)
 	a = &run
 
-	if !adapters.ValidStructure(adapters.PlatformBinance, structure) {
-		return adapters.Batch{}, adapters.UnsupportedStructure(adapters.PlatformBinance, structure)
+	if !adapter.ValidStructure(adapter.PlatformBinance, structure) {
+		return adapter.Batch{}, adapter.UnsupportedStructure(adapter.PlatformBinance, structure)
 	}
 	c := a.client(creds)
 	info, err := checkStructure(ctx, c, structure)
 	if err != nil {
-		return adapters.Batch{}, err
+		return adapter.Batch{}, err
 	}
 	// Read prices before reports to satisfy at-or-before valuation lookup.
 	prices, pricedAt := a.lastPrices(ctx, c)
-	earnPair := adapters.CollectEarnPair(func(ctx context.Context) (adapters.AccountReport, adapters.AccountReport, error) {
+	earnPair := adapter.CollectEarnPair(func(ctx context.Context) (adapter.AccountReport, adapter.AccountReport, error) {
 		return a.earn(ctx, c, prices)
 	})
-	reports, err := adapters.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapters.AccountType) (adapters.AccountReport, error) {
+	reports, err := adapter.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapter.AccountType) (adapter.AccountReport, error) {
 		if accountType == TypeEarn || accountType == TypeDualInvestment {
 			return earnPair(ctx, accountType)
 		}
 		return a.collectAccount(ctx, c, structure, &info, accountType)
 	})
 	if err != nil {
-		return adapters.Batch{}, err
+		return adapter.Batch{}, err
 	}
-	return adapters.Batch{CollectedAt: a.now(), Reports: reports, Prices: adapters.QuotePrices(reports, quotes, prices.quote, pricedAt)}, nil
+	return adapter.Batch{CollectedAt: a.now(), Reports: reports, Prices: adapter.QuotePrices(reports, quotes, prices.quote, pricedAt)}, nil
 }
 
-func (a *Adapter) collectAccount(ctx context.Context, c *client, structure adapters.AccountStructure, info *accountInfo, accountType adapters.AccountType) (adapters.AccountReport, error) {
-	if !adapters.ValidAccountType(structure, accountType) {
-		return adapters.AccountReport{}, adapters.UnknownAccountType(adapters.PlatformBinance, structure, accountType)
+func (a *Adapter) collectAccount(ctx context.Context, c *client, structure adapter.AccountStructure, info *accountInfo, accountType adapter.AccountType) (adapter.AccountReport, error) {
+	if !adapter.ValidAccountType(structure, accountType) {
+		return adapter.AccountReport{}, adapter.UnknownAccountType(adapter.PlatformBinance, structure, accountType)
 	}
 	// Earn and dual investment are collected together before this helper is called.
 	switch accountType { //nolint:exhaustive // Shared product accounts are handled by earnPair.
@@ -169,14 +169,14 @@ func (a *Adapter) collectAccount(ctx context.Context, c *client, structure adapt
 		}
 		return a.cmFutures(ctx, c)
 	default:
-		return adapters.AccountReport{}, adapters.UnknownAccountType(adapters.PlatformBinance, structure, accountType)
+		return adapter.AccountReport{}, adapter.UnknownAccountType(adapter.PlatformBinance, structure, accountType)
 	}
 }
 
 // closed is the report of a classic wallet Binance says is not opened: it cannot hold anything,
 // so the account is reported empty instead of failing on an endpoint that refuses it.
-func (a *Adapter) closed(accountType adapters.AccountType) adapters.AccountReport {
-	return adapters.AccountReport{AccountType: accountType, Status: adapters.StatusSucceeded, CollectedAt: a.now()}
+func (a *Adapter) closed(accountType adapter.AccountType) adapter.AccountReport {
+	return adapter.AccountReport{AccountType: accountType, Status: adapter.StatusSucceeded, CollectedAt: a.now()}
 }
 
 // accountInfo is /sapi/v1/account/info: the account's account structure and whether its classic
@@ -190,14 +190,14 @@ type accountInfo struct {
 // structure maps isPortfolioMarginRetailEnabled, Binance's portfolio margin enable status: true is
 // portfolio margin, false is classic trading. Portfolio Margin Pro is institutional only and not
 // offered.
-func (info *accountInfo) structure() (adapters.AccountStructure, error) {
+func (info *accountInfo) structure() (adapter.AccountStructure, error) {
 	if info.PortfolioMargin == nil {
-		return "", adapters.Malformed(epAccountInfo.String(), "isPortfolioMarginRetailEnabled")
+		return "", adapter.Malformed(epAccountInfo.String(), "isPortfolioMarginRetailEnabled")
 	}
 	if *info.PortfolioMargin {
-		return adapters.StructureBinancePM, nil
+		return adapter.StructureBinancePM, nil
 	}
-	return adapters.StructureBinanceClassic, nil
+	return adapter.StructureBinanceClassic, nil
 }
 
 // marginClosed and futuresClosed report a classic wallet Binance says is not opened. An absent
@@ -214,7 +214,7 @@ func (info *accountInfo) futuresClosed() bool {
 // between classic trading and portfolio margin inside Binance at any time, so
 // every validation and every collection run checks it first (ADR 0001); a
 // different structure fails before any account is read.
-func checkStructure(ctx context.Context, c *client, configured adapters.AccountStructure) (accountInfo, error) {
+func checkStructure(ctx context.Context, c *client, configured adapter.AccountStructure) (accountInfo, error) {
 	var info accountInfo
 	if err := c.call(ctx, epAccountInfo, nil, &info); err != nil {
 		return accountInfo{}, err
@@ -224,7 +224,7 @@ func checkStructure(ctx context.Context, c *client, configured adapters.AccountS
 		return accountInfo{}, err
 	}
 	if actual != configured {
-		return accountInfo{}, adapters.StructureMismatch(adapters.PlatformBinance, adapters.StructureName(actual), configured)
+		return accountInfo{}, adapter.StructureMismatch(adapter.PlatformBinance, adapter.StructureName(actual), configured)
 	}
 	return info, nil
 }
@@ -234,7 +234,7 @@ func amounts(where string, fields map[string]string) (map[string]*big.Rat, bool,
 	parsed := make(map[string]*big.Rat, len(fields))
 	nonzero := false
 	for name, value := range fields {
-		rat, err := adapters.OptionalDecimal(where, name, value)
+		rat, err := adapter.OptionalDecimal(where, name, value)
 		if err != nil {
 			return nil, false, err
 		}
@@ -249,7 +249,7 @@ func amounts(where string, fields map[string]string) (map[string]*big.Rat, bool,
 func coin(where, asset string) (string, error) {
 	asset = strings.TrimSpace(asset)
 	if asset == "" {
-		return "", adapters.Malformed(where, "the asset of a nonzero row")
+		return "", adapter.Malformed(where, "the asset of a nonzero row")
 	}
 	return asset, nil
 }

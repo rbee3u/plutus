@@ -6,19 +6,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 )
 
 func TestCollectIsDeterministic(t *testing.T) {
 	t.Parallel()
 	at := time.Date(2026, 9, 20, 8, 0, 0, 0, time.UTC)
-	a := New(adapters.PlatformBinance).WithClock(func() time.Time { return at })
-	creds := adapters.Credentials{APIKey: "key-alice", APISecret: "secret"}
-	first, err := a.Collect(context.Background(), creds, adapters.StructureBinancePM, []adapters.AccountType{"portfolio_margin", "spot"})
+	a := New(adapter.PlatformBinance).WithClock(func() time.Time { return at })
+	creds := adapter.Credentials{APIKey: "key-alice", APISecret: "secret"}
+	first, err := a.Collect(context.Background(), creds, adapter.StructureBinancePM, []adapter.AccountType{"portfolio_margin", "spot"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := a.Collect(context.Background(), creds, adapters.StructureBinancePM, []adapters.AccountType{"portfolio_margin", "spot"})
+	second, err := a.Collect(context.Background(), creds, adapter.StructureBinancePM, []adapter.AccountType{"portfolio_margin", "spot"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,19 +36,19 @@ func TestCollectIsDeterministic(t *testing.T) {
 func TestEveryAccountTypeOfEveryStructureReports(t *testing.T) {
 	t.Parallel()
 	at := time.Date(2026, 9, 20, 8, 0, 0, 0, time.UTC)
-	creds := adapters.Credentials{APIKey: "key-alice", APISecret: "secret", Futures: &adapters.KeyPair{APIKey: "fk", APISecret: "fs"}}
-	for _, info := range adapters.NewRegistry().Platforms() {
+	creds := adapter.Credentials{APIKey: "key-alice", APISecret: "secret", Futures: &adapter.KeyPair{APIKey: "fk", APISecret: "fs"}}
+	for _, info := range adapter.NewRegistry().Platforms() {
 		a := New(info.ID).WithClock(func() time.Time { return at })
 		for _, structure := range info.Structures {
-			batch, err := a.Collect(context.Background(), creds, structure.ID, adapters.AccountTypeIDs(structure.ID))
+			batch, err := a.Collect(context.Background(), creds, structure.ID, adapter.AccountTypeIDs(structure.ID))
 			if err != nil {
 				t.Fatalf("%s: %v", structure.ID, err)
 			}
-			if !adapters.ValidMarginMode(structure.ID, batch.MarginMode) {
+			if !adapter.ValidMarginMode(structure.ID, batch.MarginMode) {
 				t.Fatalf("%s: margin mode %q does not belong to the structure", structure.ID, batch.MarginMode)
 			}
 			for _, report := range batch.Reports {
-				if report.Status != adapters.StatusSucceeded || len(report.Balances) == 0 {
+				if report.Status != adapter.StatusSucceeded || len(report.Balances) == 0 {
 					t.Fatalf("%s/%s: %+v", structure.ID, report.AccountType, report)
 				}
 			}
@@ -59,17 +59,17 @@ func TestEveryAccountTypeOfEveryStructureReports(t *testing.T) {
 func TestMarginModeFollowsTheKey(t *testing.T) {
 	t.Parallel()
 	at := time.Date(2026, 9, 20, 8, 0, 0, 0, time.UTC)
-	if MarginMode(adapters.StructureOKXUnified, "k", at) != MarginMode(adapters.StructureOKXUnified, "k", at.Add(time.Hour)) {
+	if MarginMode(adapter.StructureOKXUnified, "k", at) != MarginMode(adapter.StructureOKXUnified, "k", at.Add(time.Hour)) {
 		t.Fatal("an ordinary key keeps its margin mode")
 	}
-	if MarginMode(adapters.StructureBybitUTA2, "switch-k", at) == MarginMode(adapters.StructureBybitUTA2, "switch-k", at.Add(time.Minute)) {
+	if MarginMode(adapter.StructureBybitUTA2, "switch-k", at) == MarginMode(adapter.StructureBybitUTA2, "switch-k", at.Add(time.Minute)) {
 		t.Fatal("a switch- key changes its margin mode every minute")
 	}
-	isolated := Scenario("k", at).Report(adapters.MarginBybitIsolated, "unified", at, false)
+	isolated := Scenario("k", at).Report(adapter.MarginBybitIsolated, "unified", at, false)
 	if isolated.Equity != nil || isolated.ReportedMarginRatio != nil || len(isolated.Balances) == 0 {
 		t.Fatal("Isolated margin reports no account-wide figures")
 	}
-	pm := Scenario("k", at).Report(adapters.MarginBybitPM, "unified", at, false)
+	pm := Scenario("k", at).Report(adapter.MarginBybitPM, "unified", at, false)
 	if pm.Positions[0].Leverage != nil || pm.Positions[0].LiquidationPrice != nil || pm.Equity == nil {
 		t.Fatal("Portfolio margin positions carry no leverage or liquidation price")
 	}
@@ -87,22 +87,22 @@ func TestBehaviorPrefixesKeepTheAccount(t *testing.T) {
 
 func TestKeyPrefixesReproduceFailureClasses(t *testing.T) {
 	t.Parallel()
-	a := New(adapters.PlatformOKX)
+	a := New(adapter.PlatformOKX)
 	for key, class := range map[string]string{
-		"invalid-x": adapters.ClassAuthentication, "forbidden-x": adapters.ClassAuthorization,
-		"ratelimit-x": adapters.ClassRateLimited, "restructured-x": adapters.ClassUnsupported,
+		"invalid-x": adapter.ClassAuthentication, "forbidden-x": adapter.ClassAuthorization,
+		"ratelimit-x": adapter.ClassRateLimited, "restructured-x": adapter.ClassUnsupported,
 	} {
-		_, err := a.Validate(context.Background(), adapters.Credentials{APIKey: key, APISecret: "s"}, adapters.StructureOKXUnified)
-		var adapterErr *adapters.Error
+		_, err := a.Validate(context.Background(), adapter.Credentials{APIKey: key, APISecret: "s"}, adapter.StructureOKXUnified)
+		var adapterErr *adapter.Error
 		if !errors.As(err, &adapterErr) || adapterErr.Class != class {
 			t.Fatalf("%s: got %v", key, err)
 		}
 	}
-	if _, err := a.Validate(context.Background(), adapters.Credentials{APIKey: "k", APISecret: "s"}, adapters.StructureBinancePM); err == nil {
+	if _, err := a.Validate(context.Background(), adapter.Credentials{APIKey: "k", APISecret: "s"}, adapter.StructureBinancePM); err == nil {
 		t.Fatal("a structure of another platform must be unsupported")
 	}
-	batch, err := a.Collect(context.Background(), adapters.Credentials{APIKey: "k", APISecret: "s"}, adapters.StructureOKXUnified, []adapters.AccountType{"trading", "spot"})
-	if err != nil || batch.Reports[1].Status != adapters.StatusFailed || batch.Reports[1].ErrorClass != adapters.ClassUnsupported {
+	batch, err := a.Collect(context.Background(), adapter.Credentials{APIKey: "k", APISecret: "s"}, adapter.StructureOKXUnified, []adapter.AccountType{"trading", "spot"})
+	if err != nil || batch.Reports[1].Status != adapter.StatusFailed || batch.Reports[1].ErrorClass != adapter.ClassUnsupported {
 		t.Fatalf("an account type outside the structure fails only its report: %+v %v", batch.Reports, err)
 	}
 }

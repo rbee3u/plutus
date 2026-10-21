@@ -1,0 +1,230 @@
+package adapter
+
+import (
+	"fmt"
+	"slices"
+	"strings"
+	"time"
+	"unicode/utf8"
+
+	"github.com/rbee3u/plutus/internal/shared/decimal"
+)
+
+// EarnPosition describes value already represented in earn balances. References
+// identify a source product aggregate, strategy, or individual position.
+type EarnPosition struct {
+	PositionKey  string       `json:"positionKey"`
+	ProductRef   *string      `json:"productRef"`
+	ProductName  *string      `json:"productName"`
+	Type         string       `json:"type"`
+	Granularity  string       `json:"granularity"`
+	AmountBasis  string       `json:"amountBasis"`
+	Assets       []EarnAmount `json:"assets"`
+	Rates        []EarnRate   `json:"rates"`
+	Rewards      []EarnReward `json:"rewards"`
+	SubscribedAt *time.Time   `json:"subscribedAt"`
+	MaturityAt   *time.Time   `json:"maturityAt"`
+	Status       *string      `json:"status"`
+	Details      []EarnDetail `json:"details"`
+	Problems     []string     `json:"problems"`
+}
+
+// Earn amounts, rates, and rewards use explicit asset symbols in typed details.
+type EarnAmount struct {
+	AssetSymbol          string  `json:"assetSymbol"`
+	CanonicalAssetSymbol *string `json:"canonicalAssetSymbol,omitempty"`
+	Amount               string  `json:"amount"`
+}
+
+type EarnRate struct {
+	Value       string  `json:"value"`
+	Upper       *string `json:"upper"`
+	Kind        string  `json:"kind"`
+	Qualifier   string  `json:"qualifier"`
+	Label       string  `json:"label"`
+	AssetSymbol *string `json:"assetSymbol"`
+}
+
+type EarnReward struct {
+	AssetSymbol string `json:"assetSymbol"`
+	Amount      string `json:"amount"`
+	Kind        string `json:"kind"`
+}
+
+// EarnDetail contains normalized explanatory facts, never raw response data.
+type EarnDetail struct {
+	Label string     `json:"label"`
+	Value *string    `json:"value"`
+	At    *time.Time `json:"at"`
+}
+
+func NewEarnPosition(ref, kind, grain, basis string) EarnPosition {
+	return EarnPosition{
+		PositionKey: ref, Type: kind, Granularity: grain, AmountBasis: basis,
+		Assets: []EarnAmount{}, Rates: []EarnRate{}, Rewards: []EarnReward{}, Details: []EarnDetail{}, Problems: []string{},
+	}
+}
+
+// Optional metadata failures retain known holdings and never expose source values.
+func (p *EarnPosition) OptionalDecimal(label, value string) *string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	n, ok := decimal.Parse(value)
+	if !decimal.Valid(value) || !ok {
+		p.Problems = append(p.Problems, label+" is invalid.")
+		return nil
+	}
+	return decimal.FormatPtr(n)
+}
+
+func (p *EarnPosition) AddRate(value, kind, qualifier, label string, assetSymbol *string) {
+	if n := p.OptionalDecimal(label, value); n != nil {
+		p.Rates = append(p.Rates, EarnRate{Value: *n, Kind: kind, Qualifier: qualifier, Label: label, AssetSymbol: assetSymbol})
+	}
+}
+
+func (p *EarnPosition) AddReward(assetSymbol, value, kind string) {
+	if n := p.OptionalDecimal(kind+" rewards", value); n != nil {
+		if strings.TrimSpace(assetSymbol) == "" {
+			p.Problems = append(p.Problems, kind+" reward currency is unavailable.")
+			return
+		}
+		p.Rewards = append(p.Rewards, EarnReward{AssetSymbol: assetSymbol, Amount: *n, Kind: kind})
+	}
+}
+
+func (p *EarnPosition) AddDetail(label, value string) {
+	if text := OptionalText(value); text != nil {
+		p.Details = append(p.Details, EarnDetail{Label: label, Value: text})
+	}
+}
+
+func (p *EarnPosition) Millis(label, value string) *time.Time {
+	at, err := OptionalMillis("Earn position", label, value)
+	if err != nil {
+		p.Problems = append(p.Problems, label+" is invalid.")
+		return nil
+	}
+	return at
+}
+
+func (p *EarnPosition) AddMillisDetail(label, value string) {
+	if at := p.Millis(label, value); at != nil {
+		p.Details = append(p.Details, EarnDetail{Label: label, At: at})
+	}
+}
+
+func (p *EarnPosition) RequiredMillis(label, value string) *time.Time {
+	at := p.Millis(label, value)
+	if strings.TrimSpace(value) == "" || strings.TrimSpace(value) == "0" {
+		p.Problems = append(p.Problems, label+" was not supplied.")
+	}
+	return at
+}
+
+// NormalizeEarnPosition enforces the core identity and quantity boundary. Optional
+// description lengths are checked here; invalid descriptions become diagnostics.
+func NormalizeEarnPosition(p *EarnPosition) error {
+	for _, field := range []struct {
+		label string
+		value **string
+		limit int
+	}{
+		{"Product name", &p.ProductName, 255},
+		{"Product status", &p.Status, 64},
+	} {
+		if *field.value == nil {
+			continue
+		}
+		value := strings.TrimSpace(**field.value)
+		if !utf8.ValidString(value) || utf8.RuneCountInString(value) > field.limit {
+			p.Problems = append(p.Problems, field.label+" is invalid.")
+			*field.value = nil
+		} else {
+			*field.value = OptionalText(value)
+		}
+	}
+	if p.PositionKey == "" || len(p.PositionKey) > 255 || (p.ProductRef != nil && len(*p.ProductRef) > 255) ||
+		!slices.Contains([]string{"flexible", "fixed", "bonded", "timed", "on_chain"}, p.Type) ||
+		!slices.Contains([]string{"product", "position", "strategy"}, p.Granularity) ||
+		!slices.Contains([]string{"principal", "total", "allocated"}, p.AmountBasis) || len(p.Assets) == 0 {
+		return NewError(ClassNormalization, "Earn position identity, type, or amounts are unavailable.")
+	}
+	seen := map[string]bool{}
+	for i := range p.Assets {
+		a := &p.Assets[i]
+		a.AssetSymbol = strings.ToUpper(strings.TrimSpace(a.AssetSymbol))
+		n, ok := decimal.Parse(a.Amount)
+		if !decimal.Valid(a.Amount) || !ok || n.Sign() <= 0 || a.AssetSymbol == "" || seen[a.AssetSymbol] {
+			return NewError(ClassNormalization, "Earn position has invalid or duplicate invested amounts.")
+		}
+		seen[a.AssetSymbol] = true
+		a.Amount = decimal.Format(n)
+	}
+	slices.SortFunc(p.Assets, func(a, b EarnAmount) int { return strings.Compare(a.AssetSymbol, b.AssetSymbol) })
+	for _, r := range p.Rates {
+		if !decimal.Valid(r.Value) || (r.Upper != nil && !decimal.Valid(*r.Upper)) || (r.Kind != "apr" && r.Kind != "apy") {
+			return NewError(ClassNormalization, "Earn position has invalid normalized rate metadata.")
+		}
+	}
+	for _, r := range p.Rewards {
+		if r.AssetSymbol == "" || !decimal.Valid(r.Amount) {
+			return NewError(ClassNormalization, "Earn position has invalid normalized rewards.")
+		}
+	}
+	return nil
+}
+
+// CheckEarnPositions ensures descriptive detail cannot silently omit valued funds.
+func CheckEarnPositions(positions []EarnPosition, balances []Balance) error {
+	totals := Totals{}
+	seen := map[string]bool{}
+	for i := range positions {
+		p := &positions[i]
+		if err := NormalizeEarnPosition(p); err != nil {
+			return err
+		}
+		if seen[p.PositionKey] {
+			return NewError(ClassNormalization, "Earn position references are duplicated.")
+		}
+		seen[p.PositionKey] = true
+		for _, a := range p.Assets {
+			if err := totals.Add("Earn positions", a.AssetSymbol, decimal.ParseOrZero(a.Amount)); err != nil {
+				return err
+			}
+		}
+	}
+	known := totals.Balances()
+	if len(known) != len(balances) {
+		return NewError(ClassNormalization, "Earn details do not match the reported balances.")
+	}
+	for _, b := range balances {
+		amount, ok := decimal.Parse(b.Equity)
+		if !decimal.Valid(b.Equity) || !ok {
+			return NewError(ClassNormalization, "Earn balance has an invalid amount.")
+		}
+		found := false
+		for i, k := range known {
+			if strings.EqualFold(k.AssetSymbol, b.AssetSymbol) && decimal.ParseOrZero(k.Equity).Cmp(amount) == 0 {
+				known = slices.Delete(known, i, i+1)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return NewError(ClassNormalization, fmt.Sprintf("Earn details do not match the %s balance.", b.AssetSymbol))
+		}
+	}
+	return nil
+}
+
+// EarnDetails is the normalized variable-width portion of one earn position.
+type EarnDetails struct {
+	Assets  []EarnAmount `json:"assets"`
+	Rates   []EarnRate   `json:"rates"`
+	Rewards []EarnReward `json:"rewards"`
+	Details []EarnDetail `json:"details"`
+	Issues  []string     `json:"issues"`
+}

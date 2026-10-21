@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 )
 
 // Synthetic scenes intentionally choose stable values independently of recorded evidence.
@@ -12,7 +12,7 @@ func TestClassicSyntheticScenes(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		selection                string
-		account                  adapters.AccountType
+		account                  adapter.AccountType
 		equity                   string
 		multi, isolated, inverse bool
 	}{
@@ -24,8 +24,8 @@ func TestClassicSyntheticScenes(t *testing.T) {
 		t.Run(tc.selection, func(t *testing.T) {
 			t.Parallel()
 			r, a := newReplay(t, tc.selection)
-			report := reportOf(t, collect(t, a, adapters.StructureBinanceClassic, tc.account), tc.account)
-			if report.Status != adapters.StatusSucceeded || report.Equity != nil || report.ReportedMarginRatio != nil {
+			report := reportOf(t, collect(t, a, adapter.StructureBinanceClassic, tc.account), tc.account)
+			if report.Status != adapter.StatusSucceeded || report.Equity != nil || report.ReportedMarginRatio != nil {
 				t.Fatalf("report %+v", report)
 			}
 			if tc.multi {
@@ -47,12 +47,12 @@ func TestClassicSyntheticScenes(t *testing.T) {
 				t.Fatalf("coin measures %+v", balance)
 			}
 			want := map[string]struct{ side, quantity, entry, pnl, liquidation string }{
-				"um:DOGEUSDT:LONG":  {adapters.SideLong, "100", "0.09", "1", "0.05"},
-				"um:DOGEUSDT:SHORT": {adapters.SideShort, "50", "0.11", "0.5", "0.2"},
+				"um:DOGEUSDT:LONG":  {adapter.SideLong, "100", "0.09", "1", "0.05"},
+				"um:DOGEUSDT:SHORT": {adapter.SideShort, "50", "0.11", "0.5", "0.2"},
 			}
 			if tc.isolated {
 				want = map[string]struct{ side, quantity, entry, pnl, liquidation string }{
-					"um:DOGEUSDT:BOTH": {adapters.SideShort, "100", "0.11", "1", "0.12"},
+					"um:DOGEUSDT:BOTH": {adapter.SideShort, "100", "0.11", "1", "0.12"},
 				}
 				rows := body[[]struct{ PositionSide, PositionAmt, IsolatedWallet, IsolatedMargin string }](t, r, epUMPositionRisk, nil)
 				if len(rows) != 1 || rows[0].PositionSide != "BOTH" || rows[0].PositionAmt != "-100" || rows[0].IsolatedWallet != "2" || rows[0].IsolatedMargin != "3" {
@@ -61,8 +61,8 @@ func TestClassicSyntheticScenes(t *testing.T) {
 			}
 			if tc.inverse {
 				want = map[string]struct{ side, quantity, entry, pnl, liquidation string }{
-					"cm:ETHUSD_PERP:BOTH":   {adapters.SideLong, "2", "2000", "0.002", "1500"},
-					"cm:ETHUSD_261225:BOTH": {adapters.SideShort, "1", "2000", "-0.001", "3500"},
+					"cm:ETHUSD_PERP:BOTH":   {adapter.SideLong, "2", "2000", "0.002", "1500"},
+					"cm:ETHUSD_261225:BOTH": {adapter.SideShort, "1", "2000", "-0.001", "3500"},
 				}
 			}
 			if len(report.Positions) != len(want) {
@@ -74,17 +74,17 @@ func TestClassicSyntheticScenes(t *testing.T) {
 					t.Fatalf("position %+v", p)
 				}
 				if tc.inverse {
-					kind := adapters.KindInversePerpetual
+					kind := adapter.KindInversePerpetual
 					if p.PositionKey == "cm:ETHUSD_261225:BOTH" {
-						kind = adapters.KindInverseDelivery
+						kind = adapter.KindInverseDelivery
 						if p.FuturesContract.ExpiryAt == nil || !p.FuturesContract.ExpiryAt.Equal(time.UnixMilli(1798185600000).UTC()) {
 							t.Fatalf("delivery expiry %+v", p.FuturesContract)
 						}
 					}
-					if p.SourceQuantityUnit != adapters.UnitContracts || p.FuturesContract.Kind != kind || p.FuturesContract.BaseAssetSymbol != "ETH" || p.FuturesContract.QuoteAssetSymbol != "USD" || p.FuturesContract.SettlementAssetSymbol != "ETH" || deref(p.FuturesContract.ContractSize) != "10" || deref(p.MarkPrice) != "2500" {
+					if p.SourceQuantityUnit != adapter.UnitContracts || p.FuturesContract.Kind != kind || p.FuturesContract.BaseAssetSymbol != "ETH" || p.FuturesContract.QuoteAssetSymbol != "USD" || p.FuturesContract.SettlementAssetSymbol != "ETH" || deref(p.FuturesContract.ContractSize) != "10" || deref(p.MarkPrice) != "2500" {
 						t.Fatalf("inverse terms %+v", p)
 					}
-				} else if p.SourceQuantityUnit != adapters.UnitBase || p.FuturesContract.Kind != adapters.KindLinearPerpetual || p.FuturesContract.BaseAssetSymbol != "DOGE" || p.FuturesContract.QuoteAssetSymbol != "USDT" || p.FuturesContract.SettlementAssetSymbol != "USDT" || deref(p.MarkPrice) != "0.1" {
+				} else if p.SourceQuantityUnit != adapter.UnitBase || p.FuturesContract.Kind != adapter.KindLinearPerpetual || p.FuturesContract.BaseAssetSymbol != "DOGE" || p.FuturesContract.QuoteAssetSymbol != "USDT" || p.FuturesContract.SettlementAssetSymbol != "USDT" || deref(p.MarkPrice) != "0.1" {
 					t.Fatalf("linear terms %+v", p)
 				}
 				delete(want, p.PositionKey)

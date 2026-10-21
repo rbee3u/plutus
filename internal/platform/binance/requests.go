@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/url"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 	"github.com/rbee3u/plutus/internal/platform/recording"
 )
@@ -54,7 +54,7 @@ func recordingCalls() []recordCall {
 func RecordingRequests() recording.Catalogue {
 	out := recording.Catalogue{}
 	for _, call := range recordingCalls() {
-		request := fixture.Request{Service: recording.Service(adapters.PlatformBinance, call.ep.path), Method: call.ep.method, Path: call.ep.path, Query: call.params}
+		request := fixture.Request{Service: recording.Service(adapter.PlatformBinance, call.ep.path), Method: call.ep.method, Path: call.ep.path, Query: call.params}
 		out.Add(request, call.ep.signed)
 		if call.ep.path == epDualInvest.path {
 			name := fixture.Name(request.Path, "")
@@ -67,9 +67,9 @@ func RecordingRequests() recording.Catalogue {
 }
 
 // captureRequest uses native signing with the local clock, without preflight, retry or pagination.
-func (a *Adapter) captureRequest(ctx context.Context, creds adapters.Credentials, request fixture.Request) error {
+func (a *Adapter) captureRequest(ctx context.Context, creds adapter.Credentials, request fixture.Request) error {
 	for _, call := range recordingCalls() {
-		if request.Service != recording.Service(adapters.PlatformBinance, call.ep.path) || request.Method != call.ep.method || request.Path != call.ep.path || len(request.Form) != 0 {
+		if request.Service != recording.Service(adapter.PlatformBinance, call.ep.path) || request.Method != call.ep.method || request.Path != call.ep.path || len(request.Form) != 0 {
 			continue
 		}
 		resp, err := a.client(creds).send(ctx, call.ep, request.Query, creds.APIKey, creds.APISecret)

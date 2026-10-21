@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/url"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 	"github.com/rbee3u/plutus/internal/platform/recording"
 )
@@ -43,7 +43,7 @@ func RecordingRequests() recording.Catalogue {
 	return out
 }
 
-func (a *Adapter) captureRequest(ctx context.Context, creds adapters.Credentials, request fixture.Request) error {
+func (a *Adapter) captureRequest(ctx context.Context, creds adapter.Credentials, request fixture.Request) error {
 	for _, ep := range recordingEndpoints() {
 		if request.Service != "v5" || request.Method != "GET" || request.Path != ep.path || len(request.Form) != 0 {
 			continue

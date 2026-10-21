@@ -10,13 +10,13 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/catalog"
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/valuation"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/binance"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
+	"github.com/rbee3u/plutus/internal/service/catalog"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
@@ -28,7 +28,7 @@ func TestBinanceFixturesStoreAndValue(t *testing.T) {
 	h := newHarness(t)
 	registerBinanceReplay(t, h, "")
 
-	item := h.createIdentity("Binance fixtures", adapters.PlatformBinance, adapters.StructureBinancePM,
+	item := h.createIdentity("Binance fixtures", adapter.PlatformBinance, adapter.StructureBinancePM,
 		binance.TypePortfolioMargin, binance.TypeSpot, binance.TypeFunding, binance.TypeEarn, binance.TypeDualInvestment)
 	item = h.storeCredentials(item, "fixture-key")
 	enabled, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID})
@@ -54,7 +54,7 @@ func TestBinanceFixturesStoreAndValue(t *testing.T) {
 	if summary.Point.TotalUSD != "1539" {
 		t.Fatalf("Portfolio total = %s, want 1539", summary.Point.TotalUSD)
 	}
-	futuresContracts, err := h.catalog.ListFuturesContracts(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: string(adapters.PlatformBinance), Limit: 50})
+	futuresContracts, err := h.catalog.ListFuturesContracts(h.ctx, catalog.ListFilter{PortfolioID: h.portfolioID, Platform: string(adapter.PlatformBinance), Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,11 +74,11 @@ func TestBinanceClassicScenarioStoresAndValues(t *testing.T) {
 	h := newHarness(t)
 	registerBinanceReplay(t, h, "binance_classic")
 
-	types := make([]adapters.AccountType, 0, 7)
-	for _, info := range adapters.AccountTypes(adapters.StructureBinanceClassic) {
+	types := make([]adapter.AccountType, 0, 7)
+	for _, info := range adapter.AccountTypes(adapter.StructureBinanceClassic) {
 		types = append(types, info.ID)
 	}
-	item := h.createIdentity("Binance classic fixtures", adapters.PlatformBinance, adapters.StructureBinanceClassic, types...)
+	item := h.createIdentity("Binance classic fixtures", adapter.PlatformBinance, adapter.StructureBinanceClassic, types...)
 	item = h.storeCredentials(item, "fixture-key")
 	if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
 		t.Fatalf("enable: err=%v outcome=%+v", err, outcome)
@@ -112,7 +112,7 @@ func TestBinanceClassicScenarioStoresAndValues(t *testing.T) {
 // committed samples, chosen explicitly by the test selection.
 func registerBinanceReplay(t *testing.T, h *harness, selection string) {
 	t.Helper()
-	files := loadAdapterSamples(t, adapters.PlatformBinance, selection)
+	files := loadAdapterSamples(t, adapter.PlatformBinance, selection)
 	answers := map[string]fixture.File{}
 	for _, f := range files {
 		answers[f.Request.Key()] = f
@@ -165,7 +165,7 @@ func registerBinanceReplay(t *testing.T, h *harness, selection string) {
 	t.Cleanup(server.Close)
 	live := binance.New(&binance.Options{Hosts: binance.Hosts{API: server.URL, PAPI: server.URL, FAPI: server.URL, DAPI: server.URL}, HTTP: offline.Client(t, server)})
 	// The harness registry is shared by the identity and collection services.
-	h.registry.Register(adapters.PlatformBinance, live)
+	h.registry.Register(adapter.PlatformBinance, live)
 }
 
 // The PM samples contain 0.01 BTC at 30000 USD and two 100 USD inverse contracts.
@@ -177,8 +177,8 @@ func assertBinancePMPositions(t *testing.T, h *harness, accountID uuid.UUID) {
 		t.Fatal(err)
 	}
 	want := map[string]struct{ kind, side, quantity, unit, contractSize, mark, notional string }{
-		"um:BTCUSDT:BOTH":     {adapters.KindLinearPerpetual, adapters.SideLong, "0.01", adapters.UnitBase, "", "30000", "300"},
-		"cm:BTCUSD_PERP:BOTH": {adapters.KindInversePerpetual, adapters.SideShort, "2", adapters.UnitContracts, "100", "25000", "200"},
+		"um:BTCUSDT:BOTH":     {adapter.KindLinearPerpetual, adapter.SideLong, "0.01", adapter.UnitBase, "", "30000", "300"},
+		"cm:BTCUSD_PERP:BOTH": {adapter.KindInversePerpetual, adapter.SideShort, "2", adapter.UnitContracts, "100", "25000", "200"},
 	}
 	if len(view.Positions) != len(want) {
 		t.Fatalf("stored positions %+v, want both PM positions", view.Positions)
@@ -242,7 +242,7 @@ func TestSyntheticBinanceClassicPositionsStoreAndValueBalances(t *testing.T) {
 		t.Run(tc.selection, func(t *testing.T) {
 			h := newHarness(t)
 			registerBinanceReplay(t, h, tc.selection)
-			item := h.createIdentity("Synthetic Classic UM", adapters.PlatformBinance, adapters.StructureBinanceClassic, binance.TypeUMFutures)
+			item := h.createIdentity("Synthetic Classic UM", adapter.PlatformBinance, adapter.StructureBinanceClassic, binance.TypeUMFutures)
 			item = h.storeCredentials(item, "fixture-key")
 			if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
 				t.Fatalf("enable: err=%v outcome=%+v", err, outcome)
@@ -273,13 +273,13 @@ func TestSyntheticBinanceClassicPositionsStoreAndValueBalances(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := map[string]struct{ side, quantity, entry, pnl string }{
-				"um:DOGEUSDT:LONG":  {adapters.SideLong, "100", "0.09", "1"},
-				"um:DOGEUSDT:SHORT": {adapters.SideShort, "50", "0.11", "0.5"},
+				"um:DOGEUSDT:LONG":  {adapter.SideLong, "100", "0.09", "1"},
+				"um:DOGEUSDT:SHORT": {adapter.SideShort, "50", "0.11", "0.5"},
 			}
 			liquidation := "0.05"
 			if tc.selection == "binance_classic_one_way_isolated" {
 				want = map[string]struct{ side, quantity, entry, pnl string }{
-					"um:DOGEUSDT:BOTH": {adapters.SideShort, "100", "0.11", "1"},
+					"um:DOGEUSDT:BOTH": {adapter.SideShort, "100", "0.11", "1"},
 				}
 				liquidation = "0.12"
 			}
@@ -288,10 +288,10 @@ func TestSyntheticBinanceClassicPositionsStoreAndValueBalances(t *testing.T) {
 			}
 			for _, position := range view.Positions {
 				expected, ok := want[position.PositionKey]
-				if position.Side == adapters.SideShort && tc.selection != "binance_classic_one_way_isolated" {
+				if position.Side == adapter.SideShort && tc.selection != "binance_classic_one_way_isolated" {
 					liquidation = "0.2"
 				}
-				if !ok || position.FuturesSymbol != "DOGEUSDT" || position.Kind != adapters.KindLinearPerpetual || position.Side != expected.side || decimal.Compact(position.SourceQuantity) != expected.quantity || position.SourceQuantityUnit != adapters.UnitBase ||
+				if !ok || position.FuturesSymbol != "DOGEUSDT" || position.Kind != adapter.KindLinearPerpetual || position.Side != expected.side || decimal.Compact(position.SourceQuantity) != expected.quantity || position.SourceQuantityUnit != adapter.UnitBase ||
 					position.EntryPrice == nil || decimal.Compact(*position.EntryPrice) != expected.entry ||
 					position.UnrealizedPnl == nil || decimal.Compact(*position.UnrealizedPnl) != expected.pnl ||
 					position.Leverage == nil || decimal.Compact(*position.Leverage) != "5" ||
@@ -311,7 +311,7 @@ func TestSyntheticBinanceClassicPositionsStoreAndValueBalances(t *testing.T) {
 func TestSyntheticBinanceCoinMStoresAndValues(t *testing.T) {
 	h := newHarness(t)
 	registerBinanceReplay(t, h, "binance_classic_coin_m")
-	item := h.createIdentity("Synthetic Classic COIN-M", adapters.PlatformBinance, adapters.StructureBinanceClassic, binance.TypeCMFutures)
+	item := h.createIdentity("Synthetic Classic COIN-M", adapter.PlatformBinance, adapter.StructureBinanceClassic, binance.TypeCMFutures)
 	item = h.storeCredentials(item, "fixture-key")
 	if _, outcome, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !outcome.OK {
 		t.Fatalf("enable: err=%v outcome=%+v", err, outcome)
@@ -330,8 +330,8 @@ func TestSyntheticBinanceCoinMStoresAndValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]struct{ kind, side, entry, mark, pnl, liquidation, expiry string }{
-		"cm:ETHUSD_PERP:BOTH":   {adapters.KindInversePerpetual, adapters.SideLong, "2000", "2500", "0.002", "1500", ""},
-		"cm:ETHUSD_261225:BOTH": {adapters.KindInverseDelivery, adapters.SideShort, "2000", "2500", "-0.001", "3500", "2026-12-25T08:00:00Z"},
+		"cm:ETHUSD_PERP:BOTH":   {adapter.KindInversePerpetual, adapter.SideLong, "2000", "2500", "0.002", "1500", ""},
+		"cm:ETHUSD_261225:BOTH": {adapter.KindInverseDelivery, adapter.SideShort, "2000", "2500", "-0.001", "3500", "2026-12-25T08:00:00Z"},
 	}
 	if len(view.Positions) != len(want) || len(view.Issues) != 0 {
 		t.Fatalf("stored positions %+v", view)
@@ -342,7 +342,7 @@ func TestSyntheticBinanceCoinMStoresAndValues(t *testing.T) {
 		if position.ExpiryAt != nil {
 			expiry = position.ExpiryAt.UTC().Format(time.RFC3339)
 		}
-		if !ok || position.Kind != expected.kind || position.Side != expected.side || decimal.Compact(position.SourceQuantity) != map[string]string{adapters.KindInversePerpetual: "2", adapters.KindInverseDelivery: "1"}[expected.kind] || position.SourceQuantityUnit != adapters.UnitContracts || position.BaseAssetSymbol == nil || *position.BaseAssetSymbol != "ETH" || position.QuoteAssetSymbol == nil || *position.QuoteAssetSymbol != "USD" || position.SettlementAssetSymbol == nil || *position.SettlementAssetSymbol != "ETH" || position.ContractSize == nil || decimal.Compact(*position.ContractSize) != "10" || position.NotionalUSD == nil || decimal.Compact(*position.NotionalUSD) != map[string]string{adapters.KindInversePerpetual: "20", adapters.KindInverseDelivery: "10"}[expected.kind] || expiry != expected.expiry {
+		if !ok || position.Kind != expected.kind || position.Side != expected.side || decimal.Compact(position.SourceQuantity) != map[string]string{adapter.KindInversePerpetual: "2", adapter.KindInverseDelivery: "1"}[expected.kind] || position.SourceQuantityUnit != adapter.UnitContracts || position.BaseAssetSymbol == nil || *position.BaseAssetSymbol != "ETH" || position.QuoteAssetSymbol == nil || *position.QuoteAssetSymbol != "USD" || position.SettlementAssetSymbol == nil || *position.SettlementAssetSymbol != "ETH" || position.ContractSize == nil || decimal.Compact(*position.ContractSize) != "10" || position.NotionalUSD == nil || decimal.Compact(*position.NotionalUSD) != map[string]string{adapter.KindInversePerpetual: "20", adapter.KindInverseDelivery: "10"}[expected.kind] || expiry != expected.expiry {
 			t.Fatalf("stored inverse contract %+v; expiry %s", position, expiry)
 		}
 		for name, pair := range map[string]struct {

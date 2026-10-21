@@ -13,25 +13,25 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/capital"
-	"github.com/rbee3u/plutus/internal/application/catalog"
-	"github.com/rbee3u/plutus/internal/application/cycles"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/portfolio"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/capital"
+	"github.com/rbee3u/plutus/internal/service/catalog"
+	"github.com/rbee3u/plutus/internal/service/cycle"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/portfolio"
 )
 
 func TestFuturesContractsReuseObservedTermsAndPreserveObservationBounds(t *testing.T) {
 	h := newHarness(t)
 	at := time.Now().UTC().Truncate(time.Microsecond)
-	terms := adapters.FuturesContract{Symbol: " btc-usdt ", Kind: adapters.KindLinearPerpetual, BaseAssetSymbol: "btc", QuoteAssetSymbol: "usdt", SettlementAssetSymbol: "USDT", ContractSize: new("1.0")}
+	terms := adapter.FuturesContract{Symbol: " btc-usdt ", Kind: adapter.KindLinearPerpetual, BaseAssetSymbol: "btc", QuoteAssetSymbol: "usdt", SettlementAssetSymbol: "USDT", ContractSize: new("1.0")}
 	put := func(at time.Time) uuid.UUID {
 		t.Helper()
 		id, err := mysql.WithTx(h.ctx, h.db, func(q *sqlcgen.Queries) (uuid.UUID, error) {
-			return h.catalog.EnsureFuturesContract(h.ctx, q, h.portfolioID, adapters.PlatformBinance, &terms, at)
+			return h.catalog.EnsureFuturesContract(h.ctx, q, h.portfolioID, adapter.PlatformBinance, &terms, at)
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -206,12 +206,12 @@ func TestProductConstraintsMatchNormalizedTerms(t *testing.T) {
 			account = a.ID
 		}
 	}
-	cycle, _, err := h.cycles.Enqueue(h.ctx, h.portfolioID, cycles.TriggerUser)
+	collectionCycle, _, err := h.cycles.Enqueue(h.ctx, h.portfolioID, cycle.TriggerUser)
 	if err != nil {
 		t.Fatal(err)
 	}
 	report := uuid.New()
-	if _, err := h.db.ExecContext(h.ctx, "INSERT INTO account_reports (portfolio_id,id,cycle_id,account_id,status,collected_at,recorded_at) VALUES (?,?,?,?,'succeeded',UTC_TIMESTAMP(6),UTC_TIMESTAMP(6))", h.portfolioID[:], report[:], cycle.ID[:], account[:]); err != nil {
+	if _, err := h.db.ExecContext(h.ctx, "INSERT INTO account_reports (portfolio_id,id,cycle_id,account_id,status,collected_at,recorded_at) VALUES (?,?,?,?,'succeeded',UTC_TIMESTAMP(6),UTC_TIMESTAMP(6))", h.portfolioID[:], report[:], collectionCycle.ID[:], account[:]); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := h.db.ExecContext(h.ctx, `INSERT INTO dual_positions (portfolio_id,report_id,position_key,base_asset_symbol,quote_asset_symbol,principal_asset_symbol,principal,direction,target_price,annualized_rate,rate_kind,status) VALUES (?,?,'review','BTC','USDT','BTC',1,'sell_high',30000,0.1,'apr','active')`, h.portfolioID[:], report[:]); err != nil {
@@ -226,7 +226,7 @@ func TestProductConstraintsMatchNormalizedTerms(t *testing.T) {
 		t.Fatalf("unknown optional terms rejected: %v", err)
 	}
 	at := time.Now().UTC()
-	terms := adapters.FuturesContract{Symbol: "BTC-USDT", Kind: adapters.KindLinearPerpetual, ExpiryAt: &at}
+	terms := adapter.FuturesContract{Symbol: "BTC-USDT", Kind: adapter.KindLinearPerpetual, ExpiryAt: &at}
 	if _, _, err := catalog.NormalizeFuturesTerms(&terms); !errors.Is(err, catalog.ErrInvalid) {
 		t.Fatalf("perpetual expiry: %v", err)
 	}
@@ -234,14 +234,14 @@ func TestProductConstraintsMatchNormalizedTerms(t *testing.T) {
 
 func TestActiveLoginBindingIsLocalAndReleasedOnlyByArchive(t *testing.T) {
 	h := newHarness(t)
-	first := h.createIdentity("first", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
+	first := h.createIdentity("first", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	first = h.storeCredentials(first, "same-login")
 	action := identity.ActionInput{ActorUserID: h.userID}
 	first, _, err := h.identities.Enable(h.ctx, h.portfolioID, first.ID, first.Version, action)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second := h.createIdentity("second", adapters.PlatformBinance, adapters.StructureBinancePM, "portfolio_margin")
+	second := h.createIdentity("second", adapter.PlatformBinance, adapter.StructureBinancePM, "portfolio_margin")
 	second = h.storeCredentials(second, "same-login")
 	if _, _, err := h.identities.Enable(h.ctx, h.portfolioID, second.ID, second.Version, action); !errors.Is(err, identity.ErrLoginConflict) {
 		t.Fatalf("duplicate login: %v", err)
@@ -259,7 +259,7 @@ func TestActiveLoginBindingIsLocalAndReleasedOnlyByArchive(t *testing.T) {
 	}
 	copyHarness := *h
 	copyHarness.portfolioID = other.ID
-	third := copyHarness.createIdentity("third", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
+	third := copyHarness.createIdentity("third", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	third = copyHarness.storeCredentials(third, "same-login")
 	if _, _, err := h.identities.Enable(h.ctx, other.ID, third.ID, third.Version, action); err != nil {
 		t.Fatalf("same login across portfolios: %v", err)

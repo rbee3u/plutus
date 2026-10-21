@@ -20,18 +20,18 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 	"github.com/rbee3u/plutus/internal/platform/recording"
 	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
 
 // testCreds carry the base64 secret "secret" for both key groups, which the replay verifies.
-var testCreds = adapters.Credentials{APIKey: "spot-test", APISecret: "c2VjcmV0", Futures: &adapters.KeyPair{APIKey: "futures-test", APISecret: "c2VjcmV0"}}
+var testCreds = adapter.Credentials{APIKey: "spot-test", APISecret: "c2VjcmV0", Futures: &adapter.KeyPair{APIKey: "futures-test", APISecret: "c2VjcmV0"}}
 
 // separateScenario selects the explicit separate-wallet interface samples (ADR
 // 0009).
-const separateScenario = string(adapters.StructureKrakenSeparate)
+const separateScenario = string(adapter.StructureKrakenSeparate)
 
 // allEndpoints are every endpoint the adapter and the recorder call.
 var allEndpoints = []endpoint{
@@ -48,16 +48,16 @@ var accountEndpoints = []string{
 // errorClasses is the class of each error answer, by the scenario its file name ends with: the
 // synthetic refusals and the synthetic errors no recording can provoke.
 var errorClasses = map[string]string{
-	"invalid_key":          adapters.ClassAuthentication,
-	"bad_signature":        adapters.ClassAuthentication,
-	"authentication_error": adapters.ClassAuthentication,
-	"permission_denied":    adapters.ClassAuthorization,
-	"rate_limited":         adapters.ClassRateLimited,
-	"throttled":            adapters.ClassRateLimited,
-	"too_many_requests":    adapters.ClassRateLimited,
-	"api_limit_exceeded":   adapters.ClassRateLimited,
-	"invalid_nonce":        adapters.ClassTemporary,
-	"unavailable":          adapters.ClassTemporary,
+	"invalid_key":          adapter.ClassAuthentication,
+	"bad_signature":        adapter.ClassAuthentication,
+	"authentication_error": adapter.ClassAuthentication,
+	"permission_denied":    adapter.ClassAuthorization,
+	"rate_limited":         adapter.ClassRateLimited,
+	"throttled":            adapter.ClassRateLimited,
+	"too_many_requests":    adapter.ClassRateLimited,
+	"api_limit_exceeded":   adapter.ClassRateLimited,
+	"invalid_nonce":        adapter.ClassTemporary,
+	"unavailable":          adapter.ClassTemporary,
 }
 
 // fixtures are the committed answers: successful ones by endpoint, error answers by endpoint and
@@ -191,7 +191,7 @@ func (r *replay) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	req.Body = io.NopCloser(bytes.NewReader(raw))
 	req.GetBody = func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(raw)), nil }
-	identity, err := recording.HTTPRequest(adapters.PlatformKraken, req)
+	identity, err := recording.HTTPRequest(adapter.PlatformKraken, req)
 	expected, selected := r.files.answers[endpoint]
 	if err != nil || !selected || identity.Key() != expected.Request.Key() {
 		r.t.Errorf("unexpected request %s; expected %s (decode: %v)", identity.Key(), expected.Request.Key(), err)
@@ -306,12 +306,12 @@ func endpointNamed(t *testing.T, name string) endpoint {
 	return endpoint{}
 }
 
-func reportsByType(t *testing.T, batch *adapters.Batch) map[adapters.AccountType]adapters.AccountReport {
+func reportsByType(t *testing.T, batch *adapter.Batch) map[adapter.AccountType]adapter.AccountReport {
 	t.Helper()
-	out := map[adapters.AccountType]adapters.AccountReport{}
+	out := map[adapter.AccountType]adapter.AccountReport{}
 	for i := range batch.Reports {
 		report := batch.Reports[i]
-		if report.Status != adapters.StatusSucceeded {
+		if report.Status != adapter.StatusSucceeded {
 			t.Fatalf("%s: %s %s", report.AccountType, report.ErrorClass, report.ErrorDetail)
 		}
 		out[report.AccountType] = report
@@ -319,7 +319,7 @@ func reportsByType(t *testing.T, batch *adapters.Batch) map[adapters.AccountType
 	return out
 }
 
-func balances(report *adapters.AccountReport) map[string]string {
+func balances(report *adapter.AccountReport) map[string]string {
 	out := map[string]string{}
 	for _, balance := range report.Balances {
 		out[balance.AssetSymbol] = balance.Equity
@@ -335,18 +335,18 @@ func value(s *string) string {
 }
 
 func classOf(err error) string {
-	class, _ := adapters.Classify(err)
+	class, _ := adapter.Classify(err)
 	return class
 }
 
 func TestReplayUnifiedWallet(t *testing.T) {
 	r := newReplay(t, "", nil)
 	ctx := context.Background()
-	result, err := r.adapter.Validate(ctx, testCreds, adapters.StructureKrakenUnified)
+	result, err := r.adapter.Validate(ctx, testCreds, adapter.StructureKrakenUnified)
 	if err != nil || result.ExternalRef == "" || result.MarginMode != "" {
 		t.Fatalf("validate: %+v %v", result, err)
 	}
-	batch, err := r.adapter.Collect(ctx, testCreds, adapters.StructureKrakenUnified, adapters.AccountTypeIDs(adapters.StructureKrakenUnified))
+	batch, err := r.adapter.Collect(ctx, testCreds, adapter.StructureKrakenUnified, adapter.AccountTypeIDs(adapter.StructureKrakenUnified))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -372,8 +372,8 @@ func TestReplayUnifiedWallet(t *testing.T) {
 		t.Fatalf("Unified main positions: %+v", mainReport.Positions)
 	}
 	position := mainReport.Positions[0]
-	if position.PositionKey != "PF_XBTUSD:long" || position.Side != adapters.SideLong || position.SourceQuantity != "1" ||
-		position.SourceQuantityUnit != adapters.UnitContracts || position.FuturesContract.Kind != adapters.KindLinearPerpetual ||
+	if position.PositionKey != "PF_XBTUSD:long" || position.Side != adapter.SideLong || position.SourceQuantity != "1" ||
+		position.SourceQuantityUnit != adapter.UnitContracts || position.FuturesContract.Kind != adapter.KindLinearPerpetual ||
 		position.FuturesContract.BaseAssetSymbol != "BTC" || position.FuturesContract.SettlementAssetSymbol != "USD" || value(position.FuturesContract.ContractSize) != "1" ||
 		value(position.EntryPrice) != "570" || value(position.MarkPrice) != "30209.9" || position.UnrealizedPnl != nil {
 		t.Fatalf("Unified main position: %+v", position)
@@ -408,10 +408,10 @@ func TestReplayUnifiedWallet(t *testing.T) {
 func TestReplaySeparateWallets(t *testing.T) {
 	r := newReplay(t, separateScenario, nil)
 	ctx := context.Background()
-	if _, err := r.adapter.Validate(ctx, testCreds, adapters.StructureKrakenSeparate); err != nil {
+	if _, err := r.adapter.Validate(ctx, testCreds, adapter.StructureKrakenSeparate); err != nil {
 		t.Fatalf("validate: %v", err)
 	}
-	batch, err := r.adapter.Collect(ctx, testCreds, adapters.StructureKrakenSeparate, adapters.AccountTypeIDs(adapters.StructureKrakenSeparate))
+	batch, err := r.adapter.Collect(ctx, testCreds, adapter.StructureKrakenSeparate, adapter.AccountTypeIDs(adapter.StructureKrakenSeparate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,16 +443,16 @@ func TestReplaySeparateWallets(t *testing.T) {
 	if value(coin.Equity) != "3683.7011" || len(coin.Balances) != 1 || balances(&coin)["BTC"] != "0.1219368845" {
 		t.Fatalf("Coin-M: equity %s, balances %v", value(coin.Equity), balances(&coin))
 	}
-	positions := map[string]adapters.Position{}
+	positions := map[string]adapter.Position{}
 	for _, p := range coin.Positions {
 		positions[p.PositionKey] = p
 	}
 	perpetual, delivery := positions["PI_XBTUSD:short"], positions["FI_XBTUSD_220930:long"]
-	if len(positions) != 2 || perpetual.Side != adapters.SideShort || perpetual.SourceQuantity != "10000" || perpetual.FuturesContract.Kind != adapters.KindInversePerpetual ||
+	if len(positions) != 2 || perpetual.Side != adapter.SideShort || perpetual.SourceQuantity != "10000" || perpetual.FuturesContract.Kind != adapter.KindInversePerpetual ||
 		perpetual.FuturesContract.SettlementAssetSymbol != "BTC" || value(perpetual.FuturesContract.ContractSize) != "1" || perpetual.UnrealizedPnl != nil {
 		t.Fatalf("inverse perpetual: %+v", perpetual)
 	}
-	if delivery.FuturesContract.Kind != adapters.KindInverseDelivery || delivery.FuturesContract.ExpiryAt == nil ||
+	if delivery.FuturesContract.Kind != adapter.KindInverseDelivery || delivery.FuturesContract.ExpiryAt == nil ||
 		!delivery.FuturesContract.ExpiryAt.Equal(time.Date(2022, 9, 30, 15, 0, 0, 0, time.UTC)) || value(delivery.MarkPrice) != "20478.5" {
 		t.Fatalf("inverse delivery: %+v", delivery)
 	}
@@ -470,14 +470,14 @@ func TestStructureMismatchStopsCollection(t *testing.T) {
 	cases := []struct {
 		name       string
 		scenario   string
-		configured adapters.AccountStructure
+		configured adapter.AccountStructure
 		snapshot   string
 		class      string
 		detail     string
 	}{
-		{"Unified account, separate identity", "", adapters.StructureKrakenSeparate, "", adapters.ClassUnsupported, "unified_balances = true"},
-		{"Separate account, unified identity", separateScenario, adapters.StructureKrakenUnified, "", adapters.ClassUnsupported, "unified_balances = false"},
-		{"missing flag", "", adapters.StructureKrakenUnified, `{"feed":"balances_snapshot","flex_futures":{}}`, adapters.ClassNormalization, "unified_balances"},
+		{"Unified account, separate identity", "", adapter.StructureKrakenSeparate, "", adapter.ClassUnsupported, "unified_balances = true"},
+		{"Separate account, unified identity", separateScenario, adapter.StructureKrakenUnified, "", adapter.ClassUnsupported, "unified_balances = false"},
+		{"missing flag", "", adapter.StructureKrakenUnified, `{"feed":"balances_snapshot","flex_futures":{}}`, adapter.ClassNormalization, "unified_balances"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -486,8 +486,8 @@ func TestStructureMismatchStopsCollection(t *testing.T) {
 				overrides[epBalancesSnapshot.String()] = tc.snapshot
 			}
 			r := newReplay(t, tc.scenario, overrides)
-			_, err := r.adapter.Collect(context.Background(), testCreds, tc.configured, []adapters.AccountType{TypeMain, TypeEarn})
-			class, detail := adapters.Classify(err)
+			_, err := r.adapter.Collect(context.Background(), testCreds, tc.configured, []adapter.AccountType{TypeMain, TypeEarn})
+			class, detail := adapter.Classify(err)
 			if class != tc.class || !strings.Contains(detail, tc.detail) {
 				t.Fatalf("collect: %v", err)
 			}
@@ -506,23 +506,23 @@ func TestStructureMismatchStopsCollection(t *testing.T) {
 func TestUnsupportedStructureAndAccountType(t *testing.T) {
 	r := newReplay(t, "", nil)
 	ctx := context.Background()
-	if _, err := r.adapter.Validate(ctx, testCreds, adapters.StructureOKXUnified); classOf(err) != adapters.ClassUnsupported {
+	if _, err := r.adapter.Validate(ctx, testCreds, adapter.StructureOKXUnified); classOf(err) != adapter.ClassUnsupported {
 		t.Fatalf("another platform's structure: %v", err)
 	}
-	if _, err := r.adapter.Collect(ctx, testCreds, adapters.StructureBinancePM, []adapters.AccountType{TypeMain}); classOf(err) != adapters.ClassUnsupported {
+	if _, err := r.adapter.Collect(ctx, testCreds, adapter.StructureBinancePM, []adapter.AccountType{TypeMain}); classOf(err) != adapter.ClassUnsupported {
 		t.Fatalf("another platform's structure: %v", err)
 	}
-	batch, err := r.adapter.Collect(ctx, testCreds, adapters.StructureKrakenUnified, []adapters.AccountType{TypeMultiM, TypeEarn})
+	batch, err := r.adapter.Collect(ctx, testCreds, adapter.StructureKrakenUnified, []adapter.AccountType{TypeMultiM, TypeEarn})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if batch.Reports[0].Status != adapters.StatusFailed || batch.Reports[0].ErrorClass != adapters.ClassUnsupported || batch.Reports[1].Status != adapters.StatusSucceeded {
+	if batch.Reports[0].Status != adapter.StatusFailed || batch.Reports[0].ErrorClass != adapter.ClassUnsupported || batch.Reports[1].Status != adapter.StatusSucceeded {
 		t.Fatalf("Multi-M under unified wallet must fail alone: %+v", batch.Reports)
 	}
 }
 
 func TestEarnFailsOnUnclassifiedAllocations(t *testing.T) {
-	spotOnly := adapters.Credentials{APIKey: testCreds.APIKey, APISecret: testCreds.APISecret}
+	spotOnly := adapter.Credentials{APIKey: testCreds.APIKey, APISecret: testCreds.APISecret}
 	cases := map[string]map[string]string{
 		"unknown strategy": {
 			epEarnAllocations.String(): `{"error":[],"result":{"items":[{"strategy_id":"unknown","native_asset":"USD","amount_allocated":{"total":{"native":"10"}}}],"next_cursor":null}}`,
@@ -541,11 +541,11 @@ func TestEarnFailsOnUnclassifiedAllocations(t *testing.T) {
 	for name, overrides := range cases {
 		t.Run(name, func(t *testing.T) {
 			r := newReplay(t, "", overrides)
-			batch, err := r.adapter.Collect(context.Background(), spotOnly, adapters.StructureKrakenUnified, []adapters.AccountType{TypeEarn})
+			batch, err := r.adapter.Collect(context.Background(), spotOnly, adapter.StructureKrakenUnified, []adapter.AccountType{TypeEarn})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if batch.Reports[0].Status != adapters.StatusFailed || batch.Reports[0].ErrorClass != adapters.ClassNormalization {
+			if batch.Reports[0].Status != adapter.StatusFailed || batch.Reports[0].ErrorClass != adapter.ClassNormalization {
 				t.Fatalf("unclassified earn holdings were accepted: %+v", batch.Reports[0])
 			}
 			if r.reached(epBalancesSnapshot.String()) {
@@ -556,19 +556,19 @@ func TestEarnFailsOnUnclassifiedAllocations(t *testing.T) {
 }
 
 func TestEarnIgnoresZeroHistoricalAllocations(t *testing.T) {
-	for _, structure := range []adapters.AccountStructure{adapters.StructureKrakenSeparate, adapters.StructureKrakenUnified} {
+	for _, structure := range []adapter.AccountStructure{adapter.StructureKrakenSeparate, adapter.StructureKrakenUnified} {
 		t.Run(string(structure), func(t *testing.T) {
 			r := newReplay(t, "", map[string]string{
 				epEarnStrategies.String():  `{"error":[],"result":{"items":[{"id":"S1","asset":"DOT","lock_type":{"type":"bonded"}}],"next_cursor":null}}`,
 				epEarnAllocations.String(): `{"error":[],"result":{"items":[{"strategy_id":"retired","native_asset":"USD","amount_allocated":{"total":{"native":"0"}}},{"strategy_id":"S1","native_asset":"DOT","amount_allocated":{"total":{"native":"1"}}}],"next_cursor":null}}`,
 			})
-			spotOnly := adapters.Credentials{APIKey: testCreds.APIKey, APISecret: testCreds.APISecret}
-			batch, err := r.adapter.Collect(context.Background(), spotOnly, structure, []adapters.AccountType{TypeEarn})
+			spotOnly := adapter.Credentials{APIKey: testCreds.APIKey, APISecret: testCreds.APISecret}
+			batch, err := r.adapter.Collect(context.Background(), spotOnly, structure, []adapter.AccountType{TypeEarn})
 			if err != nil {
 				t.Fatal(err)
 			}
 			report := batch.Reports[0]
-			if report.Status != adapters.StatusSucceeded || len(report.Balances) != 1 || report.Balances[0].AssetSymbol != "DOT" || report.Balances[0].Equity != "1" {
+			if report.Status != adapter.StatusSucceeded || len(report.Balances) != 1 || report.Balances[0].AssetSymbol != "DOT" || report.Balances[0].Equity != "1" {
 				t.Fatalf("historical allocation changed current earn holdings: %+v", report)
 			}
 			if r.reached(epBalancesSnapshot.String()) {
@@ -580,14 +580,14 @@ func TestEarnIgnoresZeroHistoricalAllocations(t *testing.T) {
 
 func TestSeparateMainRules(t *testing.T) {
 	ctx := context.Background()
-	collectMain := func(t *testing.T, overrides map[string]string) adapters.AccountReport {
+	collectMain := func(t *testing.T, overrides map[string]string) adapter.AccountReport {
 		t.Helper()
 		r := newReplay(t, separateScenario, overrides)
-		batch, err := r.adapter.Collect(ctx, testCreds, adapters.StructureKrakenSeparate, []adapters.AccountType{TypeMain, TypeEarn})
+		batch, err := r.adapter.Collect(ctx, testCreds, adapter.StructureKrakenSeparate, []adapter.AccountType{TypeMain, TypeEarn})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if batch.Reports[1].Status != adapters.StatusSucceeded {
+		if batch.Reports[1].Status != adapter.StatusSucceeded {
 			t.Fatal("a main failure spread to earn")
 		}
 		return batch.Reports[0]
@@ -595,15 +595,15 @@ func TestSeparateMainRules(t *testing.T) {
 	unpriced := `{"error":[],"result":{"ZUSD":{"balance":"100.0000"},"XTZ":{"balance":"3.00000000"}}}`
 
 	used := collectMain(t, map[string]string{epBalanceEx.String(): `{"error":[],"result":{"ZUSD":{"balance":"100","credit":"50","credit_used":"5"}}}`})
-	if used.Status != adapters.StatusFailed || used.ErrorClass != adapters.ClassUnsupported {
+	if used.Status != adapter.StatusFailed || used.ErrorClass != adapter.ClassUnsupported {
 		t.Fatalf("used credit: %+v", used)
 	}
 	margin := collectMain(t, map[string]string{epBalanceEx.String(): unpriced})
-	if margin.Status != adapters.StatusSucceeded || margin.Equity != nil || margin.SpotMarginUnrealizedPnlUSD == nil || balances(&margin)["XTZ"] != "3" {
+	if margin.Status != adapter.StatusSucceeded || margin.Equity != nil || margin.SpotMarginUnrealizedPnlUSD == nil || balances(&margin)["XTZ"] != "3" {
 		t.Fatalf("a margin result with an unpriced coin: %+v", margin)
 	}
 	flat := collectMain(t, map[string]string{epBalanceEx.String(): unpriced, epTradeBalance.String(): `{"error":[],"result":{"n":"0.0000"}}`})
-	if flat.Status != adapters.StatusSucceeded || flat.Equity != nil || balances(&flat)["XTZ"] != "3" {
+	if flat.Status != adapter.StatusSucceeded || flat.Equity != nil || balances(&flat)["XTZ"] != "3" {
 		t.Fatalf("without a margin result the value is calculated from balances: %+v", flat)
 	}
 }
@@ -614,32 +614,32 @@ func TestKeyChecks(t *testing.T) {
 		epAPIKeyInfo.String(): `{"error":[],"result":{"iban":"AA11 BBBB CCCC DDDD"}}`,
 		epFuturesKey.String(): `{"iiban":"ZZ99BBBBCCCCDDDD","accountUid":"u-1"}`,
 	})
-	if _, err := r.adapter.Validate(ctx, testCreds, adapters.StructureKrakenUnified); classOf(err) != adapters.ClassAuthentication {
+	if _, err := r.adapter.Validate(ctx, testCreds, adapter.StructureKrakenUnified); classOf(err) != adapter.ClassAuthentication {
 		t.Fatalf("keys of different customers: %v", err)
 	}
 	r = newReplay(t, "", map[string]string{
 		epAPIKeyInfo.String(): `{"error":[],"result":{"iban":"AA11 BBBB CCCC DDDD"}}`,
 		epFuturesKey.String(): `{"iiban":"aa11bbbbccccdddd"}`,
 	})
-	result, err := r.adapter.Validate(ctx, testCreds, adapters.StructureKrakenUnified)
+	result, err := r.adapter.Validate(ctx, testCreds, adapter.StructureKrakenUnified)
 	if err != nil || result.ExternalRef != "AA11BBBBCCCCDDDD" {
 		t.Fatalf("one customer printed two ways: %+v %v", result, err)
 	}
-	spotOnly := adapters.Credentials{APIKey: testCreds.APIKey, APISecret: testCreds.APISecret}
-	if _, err := r.adapter.Collect(ctx, spotOnly, adapters.StructureKrakenUnified, []adapters.AccountType{TypeMain}); classOf(err) != adapters.ClassAuthentication {
+	spotOnly := adapter.Credentials{APIKey: testCreds.APIKey, APISecret: testCreds.APISecret}
+	if _, err := r.adapter.Collect(ctx, spotOnly, adapter.StructureKrakenUnified, []adapter.AccountType{TypeMain}); classOf(err) != adapter.ClassAuthentication {
 		t.Fatalf("Main without the futures key that checks the structure: %v", err)
 	}
 
 	// A missing canonical customer reference cannot establish a login binding.
-	futuresOnly := adapters.Credentials{Futures: testCreds.Futures}
+	futuresOnly := adapter.Credentials{Futures: testCreds.Futures}
 	for check, want := range map[string]string{
 		`{"iiban":"aa11 bbbb cccc dddd","accountUid":"u-1"}`: "AA11BBBBCCCCDDDD",
 		`{"iiban":null,"accountUid":"u-1"}`:                  "",
 		`{"iiban":null,"accountUid":null}`:                   "",
 	} {
 		r := newReplay(t, "", map[string]string{epFuturesKey.String(): check})
-		result, err := r.adapter.Validate(ctx, futuresOnly, adapters.StructureKrakenUnified)
-		if want == "" && classOf(err) != adapters.ClassNormalization || want != "" && (err != nil || result.ExternalRef != want) {
+		result, err := r.adapter.Validate(ctx, futuresOnly, adapter.StructureKrakenUnified)
+		if want == "" && classOf(err) != adapter.ClassNormalization || want != "" && (err != nil || result.ExternalRef != want) {
 			t.Fatalf("Futures-only key check %s: %+v %v", check, result, err)
 		}
 	}
@@ -650,11 +650,11 @@ func TestOptionPositionFailsTheMultiCollateralWallet(t *testing.T) {
 		epOpenPositions.String(): `{"result":"success","openPositions":[{"symbol":"OF_XBTUSD_260925_50000_P","side":"long","size":1,"price":10}]}`,
 		epInstruments.String():   `{"result":"success","instruments":[{"symbol":"OF_XBTUSD_260925_50000_P","type":"options","pair":"BTC:USD","base":"BTC","quote":"USD","contractSize":1}]}`,
 	})
-	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureKrakenUnified, []adapters.AccountType{TypeMain, TypeCoinM})
+	batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureKrakenUnified, []adapter.AccountType{TypeMain, TypeCoinM})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if batch.Reports[0].Status != adapters.StatusFailed || batch.Reports[0].ErrorClass != adapters.ClassNormalization || batch.Reports[1].Status != adapters.StatusSucceeded {
+	if batch.Reports[0].Status != adapter.StatusFailed || batch.Reports[0].ErrorClass != adapter.ClassNormalization || batch.Reports[1].Status != adapter.StatusSucceeded {
 		t.Fatalf("an option must fail main and leave Coin-M: %+v", batch.Reports)
 	}
 }
@@ -682,7 +682,7 @@ func TestMapPositionKeepsPnlOnlyInTheSettlementCurrency(t *testing.T) {
 		}
 	}
 	dated := nativeInstrument{Symbol: "FI_XBTUSD_X", Type: typeInverse, Base: "XBT", Quote: "USD", ContractSize: "1"}
-	if _, err := mapPosition(&openPosition{Symbol: "FI_XBTUSD_X", Side: "long", Size: "1"}, &dated, &futuresTicker{Tag: "quarter"}, nil); classOf(err) != adapters.ClassNormalization {
+	if _, err := mapPosition(&openPosition{Symbol: "FI_XBTUSD_X", Side: "long", Size: "1"}, &dated, &futuresTicker{Tag: "quarter"}, nil); classOf(err) != adapter.ClassNormalization {
 		t.Fatalf("a dated contract without an expiry: %v", err)
 	}
 }
@@ -702,7 +702,7 @@ func TestNumberReadsEveryKrakenAmountForm(t *testing.T) {
 	if got.Float != "134.87264532567443" || got.String != "0" || got.Exponent != "-0.000004680761641037005" || got.Null != "" || got.Garbage != "n/a" {
 		t.Fatalf("decoded %+v", got)
 	}
-	if _, err := adapters.Decimal("test", "garbage", string(got.Garbage)); err == nil {
+	if _, err := adapter.Decimal("test", "garbage", string(got.Garbage)); err == nil {
 		t.Fatal("a malformed amount must fail where it is read")
 	}
 }
@@ -720,7 +720,7 @@ func TestErrorAnswersClassify(t *testing.T) {
 	for key, f := range files.failures {
 		endpoint, scenario := key[:strings.LastIndex(key, " ")], key[strings.LastIndex(key, " ")+1:]
 		var out json.RawMessage
-		class, detail := adapters.Classify(decode(endpointNamed(t, endpoint), response{status: f.Status, body: f.Body}, &out))
+		class, detail := adapter.Classify(decode(endpointNamed(t, endpoint), response{status: f.Status, body: f.Body}, &out))
 		if class != errorClasses[scenario] || !strings.HasPrefix(detail, "Kraken "+endpoint+": HTTP ") || strings.ContainsAny(detail, "{[\"") ||
 			strings.HasSuffix(detail, "Platform request failed.") {
 			t.Errorf("%s: %s %q", key, class, detail)
@@ -737,12 +737,12 @@ func TestHTTPStatusDecidesWithoutAnErrorName(t *testing.T) {
 		body   string
 		class  string
 	}{
-		{epBalanceEx, http.StatusTooManyRequests, `{}`, adapters.ClassRateLimited},
-		{epBalanceEx, http.StatusForbidden, `{"error":[]}`, adapters.ClassAuthorization},
-		{epBalanceEx, http.StatusOK, `{"error":["EGeneral:Internal error"]}`, adapters.ClassTemporary},
-		{epOpenPositions, http.StatusUnauthorized, `{"result":"success"}`, adapters.ClassAuthentication},
-		{epOpenPositions, http.StatusServiceUnavailable, `<html>`, adapters.ClassTemporary},
-		{epOpenPositions, http.StatusOK, `not json`, adapters.ClassNormalization},
+		{epBalanceEx, http.StatusTooManyRequests, `{}`, adapter.ClassRateLimited},
+		{epBalanceEx, http.StatusForbidden, `{"error":[]}`, adapter.ClassAuthorization},
+		{epBalanceEx, http.StatusOK, `{"error":["EGeneral:Internal error"]}`, adapter.ClassTemporary},
+		{epOpenPositions, http.StatusUnauthorized, `{"result":"success"}`, adapter.ClassAuthentication},
+		{epOpenPositions, http.StatusServiceUnavailable, `<html>`, adapter.ClassTemporary},
+		{epOpenPositions, http.StatusOK, `not json`, adapter.ClassNormalization},
 	}
 	for _, tc := range cases {
 		var out json.RawMessage
@@ -754,18 +754,18 @@ func TestHTTPStatusDecidesWithoutAnErrorName(t *testing.T) {
 
 // A key Kraken refuses fails validation with authentication, which stops scheduling.
 func TestRefusedCredentialsStopScheduling(t *testing.T) {
-	cases := map[string]adapters.Credentials{
+	cases := map[string]adapter.Credentials{
 		"unknown Spot key":     {APIKey: refusedKey, APISecret: testCreds.APISecret, Futures: testCreds.Futures},
 		"wrong Spot secret":    {APIKey: testCreds.APIKey, APISecret: refusedSecret, Futures: testCreds.Futures},
-		"unknown Futures key":  {APIKey: testCreds.APIKey, APISecret: testCreds.APISecret, Futures: &adapters.KeyPair{APIKey: refusedKey, APISecret: testCreds.FuturesSecret()}},
-		"wrong Futures secret": {APIKey: testCreds.APIKey, APISecret: testCreds.APISecret, Futures: &adapters.KeyPair{APIKey: testCreds.FuturesKey(), APISecret: refusedSecret}},
+		"unknown Futures key":  {APIKey: testCreds.APIKey, APISecret: testCreds.APISecret, Futures: &adapter.KeyPair{APIKey: refusedKey, APISecret: testCreds.FuturesSecret()}},
+		"wrong Futures secret": {APIKey: testCreds.APIKey, APISecret: testCreds.APISecret, Futures: &adapter.KeyPair{APIKey: testCreds.FuturesKey(), APISecret: refusedSecret}},
 	}
 	for name, creds := range cases {
 		t.Run(name, func(t *testing.T) {
 			r := newReplay(t, "", nil)
 			r.refuse()
-			_, err := r.adapter.Validate(context.Background(), creds, adapters.StructureKrakenUnified)
-			if class := classOf(err); class != adapters.ClassAuthentication || !adapters.StopsScheduling(class) {
+			_, err := r.adapter.Validate(context.Background(), creds, adapter.StructureKrakenUnified)
+			if class := classOf(err); class != adapter.ClassAuthentication || !adapter.StopsScheduling(class) {
 				t.Fatalf("validate: %v", err)
 			}
 		})
@@ -777,13 +777,13 @@ func TestDocumentedErrorScope(t *testing.T) {
 	cases := []struct {
 		ep       endpoint
 		scenario string
-		failed   adapters.AccountType
+		failed   adapter.AccountType
 		batch    string
 	}{
 		{epEarnAllocations, "rate_limited", TypeEarn, ""},
-		{epEarnAllocations, "permission_denied", "", adapters.ClassAuthorization},
+		{epEarnAllocations, "permission_denied", "", adapter.ClassAuthorization},
 		{epOpenPositions, "api_limit_exceeded", TypeMain, ""},
-		{epOpenPositions, "authentication_error", "", adapters.ClassAuthentication},
+		{epOpenPositions, "authentication_error", "", adapter.ClassAuthentication},
 	}
 	files := loadFixtures(t, "")
 	for _, tc := range cases {
@@ -793,7 +793,7 @@ func TestDocumentedErrorScope(t *testing.T) {
 				t.Fatalf("the synthetic %s answer has status %d", tc.scenario, f.Status)
 			}
 			r := newReplay(t, "", map[string]string{tc.ep.String(): string(f.Body)})
-			batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureKrakenUnified, []adapters.AccountType{TypeMain, TypeEarn})
+			batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureKrakenUnified, []adapter.AccountType{TypeMain, TypeEarn})
 			if tc.batch != "" {
 				if classOf(err) != tc.batch {
 					t.Fatalf("collect: %v", err)
@@ -805,7 +805,7 @@ func TestDocumentedErrorScope(t *testing.T) {
 			}
 			for i := range batch.Reports {
 				report := &batch.Reports[i]
-				if failed := report.AccountType == tc.failed; failed != (report.Status == adapters.StatusFailed) || failed && report.ErrorClass != errorClasses[tc.scenario] {
+				if failed := report.AccountType == tc.failed; failed != (report.Status == adapter.StatusFailed) || failed && report.ErrorClass != errorClasses[tc.scenario] {
 					t.Fatalf("%s: %s %s", report.AccountType, report.Status, report.ErrorClass)
 				}
 			}

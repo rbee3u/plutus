@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
@@ -14,23 +14,23 @@ import (
 var quotes = []string{"USDT", "USDC"}
 
 // CollectPrices reads public market data without private credentials or account checks.
-func (a *Adapter) CollectPrices(ctx context.Context, symbols []string) ([]adapters.Price, error) {
-	prices, at := a.lastPrices(ctx, a.client(adapters.Credentials{}))
-	return adapters.SymbolPrices(symbols, quotes, prices.quote, at), ctx.Err()
+func (a *Adapter) CollectPrices(ctx context.Context, symbols []string) ([]adapter.Price, error) {
+	prices, at := a.lastPrices(ctx, a.client(adapter.Credentials{}))
+	return adapter.SymbolPrices(symbols, quotes, prices.quote, at), ctx.Err()
 }
 
 // lastPrices holds every spot last price by pair symbol, such as BTCUSDT.
 type lastPrices map[string]string
 
-// quote returns the last price of symbol in quote; it is the batch's adapters.QuoteLookup.
-func (p lastPrices) quote(symbol, quote string) (adapters.Quote, bool) {
+// quote returns the last price of symbol in quote; it is the batch's adapter.QuoteLookup.
+func (p lastPrices) quote(symbol, quote string) (adapter.Quote, bool) {
 	price, ok := p[symbol+quote]
-	return adapters.Quote{Price: price, SourceMarketRef: symbol + quote}, ok
+	return adapter.Quote{Price: price, SourceMarketRef: symbol + quote}, ok
 }
 
 // usd returns the USD value of one unit of symbol, for the earn completeness check.
 func (p lastPrices) usd(symbol string) (*big.Rat, bool) {
-	return adapters.USDPrice(symbol, quotes, p.quote)
+	return adapter.USDPrice(symbol, quotes, p.quote)
 }
 
 // lastPrices returns every spot last price and when it arrived. A failure yields no prices rather

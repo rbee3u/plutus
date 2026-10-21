@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 )
 
 const demoPrefix = "plutus-demo-v1:"
@@ -17,9 +17,9 @@ type DemoIdentity struct {
 	ID         string
 	Portfolio  string
 	Name       string
-	Platform   adapters.Platform
-	Structure  adapters.AccountStructure
-	Mode       adapters.MarginMode
+	Platform   adapter.Platform
+	Structure  adapter.AccountStructure
+	Mode       adapter.MarginMode
 	Profile    string
 	Connection string
 }
@@ -27,29 +27,29 @@ type DemoIdentity struct {
 // DemoIdentities returns an independent copy in stable ownership order.
 func DemoIdentities() []DemoIdentity {
 	return []DemoIdentity{
-		{"daily-classic", "default", "sub-04", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "daily", "enabled"},
-		{"daily-pm", "default", "main", adapters.PlatformBinance, adapters.StructureBinancePM, "", "daily", "enabled"},
-		{"daily-okx", "default", "main", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXPM, "daily", "enabled"},
-		{"daily-bybit", "default", "main", adapters.PlatformBybit, adapters.StructureBybitUTA2, adapters.MarginBybitPM, "daily", "enabled"},
-		{"daily-kraken", "default", "sum", adapters.PlatformKraken, adapters.StructureKrakenSeparate, "", "daily", "enabled"},
-		{"daily-kraken-unified", "default", "main", adapters.PlatformKraken, adapters.StructureKrakenUnified, "", "daily", "enabled"},
-		{"daily-sub-01", "default", "sub-01", adapters.PlatformBinance, adapters.StructureBinancePM, "", "daily", "enabled"},
-		{"daily-sub-02", "default", "sub-02", adapters.PlatformBinance, adapters.StructureBinancePM, "", "daily", "enabled"},
-		{"daily-sub-03", "default", "sub-03", adapters.PlatformBinance, adapters.StructureBinancePM, "", "daily", "enabled"},
-		{"daily-okx-sum", "default", "sum", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "daily", "enabled"},
-		{"daily-okx-coin", "default", "coinM", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "daily", "enabled"},
-		{"daily-okx-usd", "default", "usdM", adapters.PlatformOKX, adapters.StructureOKXUnified, adapters.MarginOKXMCM, "daily", "enabled"},
-		{"retired-classic", "default", "retired", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "archived", "unconfigured"},
-		{"edge-unpriced", "edge-cases", "Binance unpriced airdrop", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "unpriced", "enabled"},
-		{"edge-stale", "edge-cases", "Binance delayed reports", adapters.PlatformBinance, adapters.StructureBinanceClassic, "", "stale", "enabled"},
-		{"edge-missing", "edge-cases", "Bybit never collected", adapters.PlatformBybit, adapters.StructureBybitUTA2, adapters.MarginBybitCross, "missing", "enabled"},
+		{"daily-classic", "default", "sub-04", adapter.PlatformBinance, adapter.StructureBinanceClassic, "", "daily", "enabled"},
+		{"daily-pm", "default", "main", adapter.PlatformBinance, adapter.StructureBinancePM, "", "daily", "enabled"},
+		{"daily-okx", "default", "main", adapter.PlatformOKX, adapter.StructureOKXUnified, adapter.MarginOKXPM, "daily", "enabled"},
+		{"daily-bybit", "default", "main", adapter.PlatformBybit, adapter.StructureBybitUTA2, adapter.MarginBybitPM, "daily", "enabled"},
+		{"daily-kraken", "default", "sum", adapter.PlatformKraken, adapter.StructureKrakenSeparate, "", "daily", "enabled"},
+		{"daily-kraken-unified", "default", "main", adapter.PlatformKraken, adapter.StructureKrakenUnified, "", "daily", "enabled"},
+		{"daily-sub-01", "default", "sub-01", adapter.PlatformBinance, adapter.StructureBinancePM, "", "daily", "enabled"},
+		{"daily-sub-02", "default", "sub-02", adapter.PlatformBinance, adapter.StructureBinancePM, "", "daily", "enabled"},
+		{"daily-sub-03", "default", "sub-03", adapter.PlatformBinance, adapter.StructureBinancePM, "", "daily", "enabled"},
+		{"daily-okx-sum", "default", "sum", adapter.PlatformOKX, adapter.StructureOKXUnified, adapter.MarginOKXMCM, "daily", "enabled"},
+		{"daily-okx-coin", "default", "coinM", adapter.PlatformOKX, adapter.StructureOKXUnified, adapter.MarginOKXMCM, "daily", "enabled"},
+		{"daily-okx-usd", "default", "usdM", adapter.PlatformOKX, adapter.StructureOKXUnified, adapter.MarginOKXMCM, "daily", "enabled"},
+		{"retired-classic", "default", "retired", adapter.PlatformBinance, adapter.StructureBinanceClassic, "", "archived", "unconfigured"},
+		{"edge-unpriced", "edge-cases", "Binance unpriced airdrop", adapter.PlatformBinance, adapter.StructureBinanceClassic, "", "unpriced", "enabled"},
+		{"edge-stale", "edge-cases", "Binance delayed reports", adapter.PlatformBinance, adapter.StructureBinanceClassic, "", "stale", "enabled"},
+		{"edge-missing", "edge-cases", "Bybit never collected", adapter.PlatformBybit, adapter.StructureBybitUTA2, adapter.MarginBybitCross, "missing", "enabled"},
 	}
 }
 
 // ValidateDemoIdentity catches definition mistakes before producing SQL or facts.
 func ValidateDemoIdentity(d DemoIdentity) error {
 	if d.ID == "" || strings.Contains(d.ID, ":") || d.Name == "" ||
-		!adapters.ValidStructure(d.Platform, d.Structure) || !adapters.ValidMarginMode(d.Structure, d.Mode) {
+		!adapter.ValidStructure(d.Platform, d.Structure) || !adapter.ValidMarginMode(d.Structure, d.Mode) {
 		return fmt.Errorf("invalid demo identity %q: identity or capability", d.ID)
 	}
 	if d.Portfolio != "default" && d.Portfolio != "edge-cases" {
@@ -79,18 +79,18 @@ func parseDemoKey(key string) (DemoIdentity, time.Time, bool, error) {
 	}
 	parts := strings.Split(strings.TrimPrefix(key, demoPrefix), ":")
 	if len(parts) != 2 {
-		return DemoIdentity{}, time.Time{}, true, adapters.NewError(adapters.ClassAuthentication, "The offline scenario key is invalid.")
+		return DemoIdentity{}, time.Time{}, true, adapter.NewError(adapter.ClassAuthentication, "The offline scenario key is invalid.")
 	}
 	seconds, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil || seconds < 0 || seconds > 253402300799 {
-		return DemoIdentity{}, time.Time{}, true, adapters.NewError(adapters.ClassAuthentication, "The offline scenario anchor is invalid.")
+		return DemoIdentity{}, time.Time{}, true, adapter.NewError(adapter.ClassAuthentication, "The offline scenario anchor is invalid.")
 	}
 	for _, d := range DemoIdentities() {
 		if d.ID == parts[0] {
 			return d, time.Unix(seconds, 0).UTC(), true, nil
 		}
 	}
-	return DemoIdentity{}, time.Time{}, true, adapters.NewError(adapters.ClassUnsupported, "The offline scenario is not supported.")
+	return DemoIdentity{}, time.Time{}, true, adapter.NewError(adapter.ClassUnsupported, "The offline scenario is not supported.")
 }
 
 // DemoEventTime is a stable UTC event instant relative to the seed anchor.
@@ -100,65 +100,65 @@ func DemoEventTime(anchor time.Time, days int) time.Time {
 
 // DemoAccounts returns the historical portfolio boundary for one login. Only
 // seeds use this timeline; runtime always honors the owner's requested accounts.
-func DemoAccounts(d DemoIdentity, anchor, at time.Time) []adapters.AccountType {
+func DemoAccounts(d DemoIdentity, anchor, at time.Time) []adapter.AccountType {
 	switch d.Profile {
 	case "daily", "large":
-		if d.Profile == "daily" && d.Structure == adapters.StructureBinanceClassic {
-			return []adapters.AccountType{"spot", "funding", "um_futures", "cm_futures", "earn", adapters.TypeDualInvestment}
+		if d.Profile == "daily" && d.Structure == adapter.StructureBinanceClassic {
+			return []adapter.AccountType{"spot", "funding", "um_futures", "cm_futures", "earn", adapter.TypeDualInvestment}
 		}
-		return adapters.AccountTypeIDs(d.Structure)
+		return adapter.AccountTypeIDs(d.Structure)
 	case "archived":
 		if !at.Before(DemoEventTime(anchor, -2)) {
 			return nil
 		}
-		return []adapters.AccountType{"spot", "funding"}
+		return []adapter.AccountType{"spot", "funding"}
 	case "boundary":
 		if at.Before(DemoEventTime(anchor, -5)) {
-			return []adapters.AccountType{"spot"}
+			return []adapter.AccountType{"spot"}
 		}
 		if at.Before(DemoEventTime(anchor, -3)) {
-			return []adapters.AccountType{"spot", "funding"}
+			return []adapter.AccountType{"spot", "funding"}
 		}
-		return []adapters.AccountType{"funding"}
+		return []adapter.AccountType{"funding"}
 	case "stale":
-		return []adapters.AccountType{"cm_futures", "spot"}
+		return []adapter.AccountType{"cm_futures", "spot"}
 	case "unpriced":
 		if !at.Before(DemoEventTime(anchor, -5)) && at.Before(DemoEventTime(anchor, -3)) {
-			return []adapters.AccountType{"spot", "funding"}
+			return []adapter.AccountType{"spot", "funding"}
 		}
-		return []adapters.AccountType{"spot"}
+		return []adapter.AccountType{"spot"}
 	case "missing", "mode":
-		return []adapters.AccountType{"unified"}
+		return []adapter.AccountType{"unified"}
 	case "invalid", "unsupported", "metadata":
-		return []adapters.AccountType{"trading", "earn", adapters.TypeDualInvestment}
+		return []adapter.AccountType{"trading", "earn", adapter.TypeDualInvestment}
 	case "disabled":
-		return []adapters.AccountType{"main"}
+		return []adapter.AccountType{"main"}
 	case "unconfigured":
-		return []adapters.AccountType{"spot"}
+		return []adapter.AccountType{"spot"}
 	case "empty":
-		return []adapters.AccountType{"spot", "earn", adapters.TypeDualInvestment}
+		return []adapter.AccountType{"spot", "earn", adapter.TypeDualInvestment}
 	default:
-		return []adapters.AccountType{"spot"}
+		return []adapter.AccountType{"spot"}
 	}
 }
 
-func demoMode(d DemoIdentity, anchor, at time.Time) adapters.MarginMode {
+func demoMode(d DemoIdentity, anchor, at time.Time) adapter.MarginMode {
 	if (d.Profile == "mode" || d.ID == "daily-bybit") && at.Before(DemoEventTime(anchor, -3)) {
-		return adapters.MarginBybitCross
+		return adapter.MarginBybitCross
 	}
 	return d.Mode
 }
 
 // DemoBatch is shared by history seeding and the fake adapter. It emits only
 // normalized observations; it never mutates application configuration or flows.
-func DemoBatch(d DemoIdentity, anchor, at time.Time, accounts []adapters.AccountType) (adapters.Batch, error) {
+func DemoBatch(d DemoIdentity, anchor, at time.Time, accounts []adapter.AccountType) (adapter.Batch, error) {
 	if err := ValidateDemoIdentity(d); err != nil {
-		return adapters.Batch{}, err
+		return adapter.Batch{}, err
 	}
-	batch := adapters.Batch{CollectedAt: at, MarginMode: demoMode(d, anchor, at)}
+	batch := adapter.Batch{CollectedAt: at, MarginMode: demoMode(d, anchor, at)}
 	for _, kind := range accounts {
-		if !adapters.ValidAccountType(d.Structure, kind) {
-			return adapters.Batch{}, adapters.UnknownAccountType(d.Platform, d.Structure, kind)
+		if !adapter.ValidAccountType(d.Structure, kind) {
+			return adapter.Batch{}, adapter.UnknownAccountType(d.Platform, d.Structure, kind)
 		}
 		r := demoReport(d, anchor, at, kind)
 		batch.Reports = append(batch.Reports, r)
@@ -181,7 +181,7 @@ func DemoBatch(d DemoIdentity, anchor, at time.Time, accounts []adapters.Account
 		if !needed[asset.Symbol] {
 			continue
 		}
-		batch.Prices = append(batch.Prices, adapters.Price{CanonicalAssetSymbol: asset.Symbol, Price: DemoPrice(d.Platform, asset.Symbol, at), SourceMarketRef: asset.Symbol + "USDT", QuoteCanonicalAssetSymbol: "USDT", RetrievedAt: at})
+		batch.Prices = append(batch.Prices, adapter.Price{CanonicalAssetSymbol: asset.Symbol, Price: DemoPrice(d.Platform, asset.Symbol, at), SourceMarketRef: asset.Symbol + "USDT", QuoteCanonicalAssetSymbol: "USDT", RetrievedAt: at})
 	}
 	return batch, nil
 }

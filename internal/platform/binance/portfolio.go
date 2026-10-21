@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
@@ -35,60 +35,60 @@ type pmBalance struct {
 	CMUnrealizedPNL     string `json:"cmUnrealizedPNL"`
 }
 
-func (a *Adapter) portfolioMargin(ctx context.Context, c *client) (adapters.AccountReport, error) {
+func (a *Adapter) portfolioMargin(ctx context.Context, c *client) (adapter.AccountReport, error) {
 	var account pmAccount
 	if err := c.call(ctx, epPMAccount, nil, &account); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	var balances []pmBalance
 	if err := c.call(ctx, epPMBalance, nil, &balances); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	var um, cm []positionRisk
 	if err := c.call(ctx, epPMUMPositionRisk, nil, &um); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	if err := c.call(ctx, epPMCMPositionRisk, nil, &cm); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	report, err := mapPMAccount(&account)
 	if err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	report.CollectedAt = a.now()
 	if report.Balances, err = mapPMBalances(balances); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	if report.Positions, err = a.positions(ctx, c,
 		positionSource{marketUM, epPMUMPositionRisk, um},
 		positionSource{marketCM, epPMCMPositionRisk, cm}); err != nil {
-		return adapters.AccountReport{}, err
+		return adapter.AccountReport{}, err
 	}
 	return report, nil
 }
 
-func mapPMAccount(in *pmAccount) (adapters.AccountReport, error) {
+func mapPMAccount(in *pmAccount) (adapter.AccountReport, error) {
 	where := epPMAccount.String()
 	fields := map[string]string{
 		"actualEquity": in.ActualEquity, "accountEquity": in.AccountEquity, "totalAvailableBalance": in.TotalAvailable,
 		"accountInitialMargin": in.AccountInitialMargin, "accountMaintMargin": in.AccountMaintMargin, "uniMMR": in.UniMMR,
 	}
 	for name, value := range fields {
-		_, err := adapters.Decimal(where, name, value)
+		_, err := adapter.Decimal(where, name, value)
 		if err != nil {
-			return adapters.AccountReport{}, err
+			return adapter.AccountReport{}, err
 		}
 	}
-	report := adapters.AccountReport{
+	report := adapter.AccountReport{
 		AccountType:         TypePortfolioMargin,
-		Status:              adapters.StatusSucceeded,
-		Equity:              adapters.Plain(in.ActualEquity),
-		AdjustedEquity:      adapters.Plain(in.AccountEquity),
-		AvailableEquity:     adapters.Plain(in.TotalAvailable),
-		ReportedMarginRatio: adapters.Plain(in.UniMMR),
+		Status:              adapter.StatusSucceeded,
+		Equity:              adapter.Plain(in.ActualEquity),
+		AdjustedEquity:      adapter.Plain(in.AccountEquity),
+		AvailableEquity:     adapter.Plain(in.TotalAvailable),
+		ReportedMarginRatio: adapter.Plain(in.UniMMR),
 	}
-	report.InitialMarginRequirementUSD = adapters.Plain(in.AccountInitialMargin)
-	report.MaintenanceMarginRequirementUSD = adapters.Plain(in.AccountMaintMargin)
+	report.InitialMarginRequirementUSD = adapter.Plain(in.AccountInitialMargin)
+	report.MaintenanceMarginRequirementUSD = adapter.Plain(in.AccountMaintMargin)
 
 	return report, nil
 }
@@ -96,9 +96,9 @@ func mapPMAccount(in *pmAccount) (adapters.AccountReport, error) {
 // mapPMBalances maps /papi/v1/balance rows. Equity is the net coin amount: wallet balance across
 // cross margin, UM, and CM, plus unrealized PnL, minus borrowed principal and interest. It may be
 // negative. negativeBalance is already inside totalWalletBalance and is not subtracted again.
-func mapPMBalances(rows []pmBalance) ([]adapters.Balance, error) {
+func mapPMBalances(rows []pmBalance) ([]adapter.Balance, error) {
 	where := epPMBalance.String()
-	out := make([]adapters.Balance, 0, len(rows))
+	out := make([]adapter.Balance, 0, len(rows))
 	for i := range rows {
 		row := &rows[i]
 		parsed, nonzero, err := amounts(where, map[string]string{
@@ -118,7 +118,7 @@ func mapPMBalances(rows []pmBalance) ([]adapters.Balance, error) {
 		}
 		pnl := decimal.Add(parsed["umUnrealizedPNL"], parsed["cmUnrealizedPNL"])
 		equity := decimal.Sub(decimal.Sub(decimal.Add(parsed["totalWalletBalance"], pnl), parsed["crossMarginBorrowed"]), parsed["crossMarginInterest"])
-		out = append(out, adapters.Balance{
+		out = append(out, adapter.Balance{
 			AssetSymbol:   symbol,
 			Equity:        decimal.Format(equity),
 			Liability:     decimal.FormatPtr(parsed["crossMarginBorrowed"]),
@@ -156,12 +156,12 @@ type positionSource struct {
 
 // positions maps every open position. A zero position is omitted; an open one whose contract is
 // unknown fails the account instead of being dropped.
-func (a *Adapter) positions(ctx context.Context, c *client, sources ...positionSource) ([]adapters.Position, error) {
-	out := make([]adapters.Position, 0)
+func (a *Adapter) positions(ctx context.Context, c *client, sources ...positionSource) ([]adapter.Position, error) {
+	out := make([]adapter.Position, 0)
 	for _, source := range sources {
 		for i := range source.rows {
 			row := &source.rows[i]
-			amount, err := adapters.Decimal(source.ep.String(), "positionAmt", row.PositionAmt)
+			amount, err := adapter.Decimal(source.ep.String(), "positionAmt", row.PositionAmt)
 			if err != nil {
 				return nil, err
 			}
@@ -184,54 +184,54 @@ func (a *Adapter) positions(ctx context.Context, c *client, sources ...positionS
 
 // mapPosition maps one open position. USDⓈ-M quantities are in base units, COIN-M quantities in
 // contracts.
-func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, futuresContract *adapters.FuturesContract) (adapters.Position, error) {
-	unit := adapters.UnitBase
+func mapPosition(m market, ep endpoint, row *positionRisk, amount *big.Rat, futuresContract *adapter.FuturesContract) (adapter.Position, error) {
+	unit := adapter.UnitBase
 	if m == marketCM {
-		unit = adapters.UnitContracts
+		unit = adapter.UnitContracts
 	}
 	if _, _, err := amounts(ep.String(), map[string]string{
 		"entryPrice": row.EntryPrice, "markPrice": row.MarkPrice, "liquidationPrice": row.LiquidationPrice,
 		"unRealizedProfit": row.UnRealizedProfit, "leverage": row.Leverage,
 		"positionInitialMargin": row.PositionInitialMargin, "isolatedWallet": row.IsolatedWallet,
 	}); err != nil {
-		return adapters.Position{}, err
+		return adapter.Position{}, err
 	}
-	side := adapters.SideLong
+	side := adapter.SideLong
 	switch strings.ToUpper(row.PositionSide) {
 	case "SHORT":
-		side = adapters.SideShort
+		side = adapter.SideShort
 	case "LONG":
 	case "BOTH":
 		if amount.Sign() < 0 {
-			side = adapters.SideShort
+			side = adapter.SideShort
 		}
 	default:
-		return adapters.Position{}, adapters.Malformed(ep.String(), "positionSide of "+row.Symbol)
+		return adapter.Position{}, adapter.Malformed(ep.String(), "positionSide of "+row.Symbol)
 	}
 	mode := "hedged"
 	if strings.EqualFold(row.PositionSide, "BOTH") {
 		mode = "one_way"
 	}
-	out := adapters.Position{
+	out := adapter.Position{
 		PositionKey:        fmt.Sprintf("%s:%s:%s", m, row.Symbol, strings.ToUpper(row.PositionSide)),
 		FuturesContract:    *futuresContract,
 		Side:               side,
 		PositionMode:       mode,
 		SourceQuantity:     decimal.Format(decimal.Abs(amount)),
 		SourceQuantityUnit: unit,
-		EntryPrice:         adapters.Plain(row.EntryPrice),
-		MarkPrice:          adapters.Plain(row.MarkPrice),
-		LiquidationPrice:   adapters.NonZero(row.LiquidationPrice),
-		UnrealizedPnl:      adapters.Plain(row.UnRealizedProfit),
-		Leverage:           adapters.Plain(row.Leverage),
+		EntryPrice:         adapter.Plain(row.EntryPrice),
+		MarkPrice:          adapter.Plain(row.MarkPrice),
+		LiquidationPrice:   adapter.NonZero(row.LiquidationPrice),
+		UnrealizedPnl:      adapter.Plain(row.UnRealizedProfit),
+		Leverage:           adapter.Plain(row.Leverage),
 	}
 	if ep == epUMPositionRisk || ep == epCMPositionRisk {
 		out.MarginSetting = strings.ToLower(strings.TrimSpace(row.MarginType))
 		switch out.MarginSetting {
 		case "cross":
-			out.Margin, out.MarginBasis = adapters.Plain(row.PositionInitialMargin), "initial"
+			out.Margin, out.MarginBasis = adapter.Plain(row.PositionInitialMargin), "initial"
 		case "isolated":
-			out.Margin, out.MarginBasis = adapters.Plain(row.IsolatedWallet), "allocated"
+			out.Margin, out.MarginBasis = adapter.Plain(row.IsolatedWallet), "allocated"
 		default:
 			out.MarginSetting = ""
 		}

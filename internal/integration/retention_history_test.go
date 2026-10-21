@@ -11,18 +11,18 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/audit"
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/retention"
-	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/infra/mysql/sqlcgen"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/audit"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/retention"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 )
 
 func TestRollingHistoryPreservesWindowAndCurrentDependencies(t *testing.T) {
 	h := newHarness(t)
-	item := h.createIdentity("rolling", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot")
+	item := h.createIdentity("rolling", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	var manualID uuid.UUID
 	for _, a := range item.Accounts {
 		if a.AccountType == "manual" {
@@ -208,7 +208,7 @@ func TestRollingHistoryKeepsExactCutoffFlowWithoutOpeningPoint(t *testing.T) {
 
 func TestDormantCurrentPositionsSurviveHistoryExpiry(t *testing.T) {
 	h := newHarness(t)
-	item := h.createIdentity("Dormant", adapters.PlatformBinance, adapters.StructureBinanceClassic, "um_futures")
+	item := h.createIdentity("Dormant", adapter.PlatformBinance, adapter.StructureBinanceClassic, "um_futures")
 	item = h.storeCredentials(item, "dormant-positions")
 	if _, result, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !result.OK {
 		t.Fatalf("enable %+v %v", result, err)
@@ -301,7 +301,7 @@ func TestRollingHistoryPreservesPolicyForCycleCrossingCutoff(t *testing.T) {
 // an initially old fixture. Assets and contracts rotate while holdings stay fixed.
 func TestRollingHistoryReleasesReferencesAcrossThirtyYears(t *testing.T) {
 	h := newHarness(t)
-	item := h.createIdentity("rolling sources", adapters.PlatformBinance, adapters.StructureBinanceClassic, "um_futures")
+	item := h.createIdentity("rolling sources", adapter.PlatformBinance, adapter.StructureBinanceClassic, "um_futures")
 	var account uuid.UUID
 	for _, a := range item.Accounts {
 		if a.AccountType == "um_futures" {

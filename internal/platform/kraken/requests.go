@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/url"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 	"github.com/rbee3u/plutus/internal/platform/recording"
 )
@@ -18,7 +18,7 @@ func recordingEndpoints() []endpoint {
 func RecordingRequests() recording.Catalogue {
 	out := recording.Catalogue{}
 	for _, ep := range recordingEndpoints() {
-		service := recording.Service(adapters.PlatformKraken, ep.path)
+		service := recording.Service(adapter.PlatformKraken, ep.path)
 		var form, query url.Values
 		if ep.family == familyWebSocket {
 			service = "futures-ws"
@@ -40,9 +40,9 @@ func RecordingRequests() recording.Catalogue {
 	return out
 }
 
-func (a *Adapter) captureRequest(ctx context.Context, creds adapters.Credentials, request fixture.Request) error {
+func (a *Adapter) captureRequest(ctx context.Context, creds adapter.Credentials, request fixture.Request) error {
 	for _, ep := range recordingEndpoints() {
-		service := recording.Service(adapters.PlatformKraken, ep.path)
+		service := recording.Service(adapter.PlatformKraken, ep.path)
 		if ep.family == familyWebSocket {
 			service = "futures-ws"
 		}

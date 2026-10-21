@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 )
 
 // DefaultHost is the global Bybit REST host. Regional services such as Bybit EU, KZ, and GE use
@@ -124,7 +124,7 @@ type client struct {
 	http    *http.Client
 	host    string
 	clock   *clock
-	creds   adapters.Credentials
+	creds   adapter.Credentials
 	capture func(request string, resp response)
 }
 
@@ -176,7 +176,7 @@ func (c *client) syncClock(ctx context.Context) error {
 	if millis <= 0 {
 		seconds, err := strconv.ParseInt(strings.TrimSpace(result.TimeSecond), 10, 64)
 		if err != nil || seconds <= 0 {
-			return adapters.NewError(adapters.ClassNormalization, "Bybit returned no server time.")
+			return adapter.NewError(adapter.ClassNormalization, "Bybit returned no server time.")
 		}
 		millis = seconds * 1000
 	}
@@ -184,12 +184,12 @@ func (c *client) syncClock(ctx context.Context) error {
 	return nil
 }
 
-func (c *client) send(ctx context.Context, ep endpoint, request string, creds adapters.Credentials) (response, error) {
+func (c *client) send(ctx context.Context, ep endpoint, request string, creds adapter.Credentials) (response, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, c.host+request, http.NoBody)
 	if err != nil {
-		return response{}, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: the request could not be built.", ep))
+		return response{}, adapter.NewError(adapter.ClassNormalization, fmt.Sprintf("%s: the request could not be built.", ep))
 	}
 	if ep.signed {
 		timestamp := c.clock.timestamp()
@@ -206,12 +206,12 @@ func (c *client) send(ctx context.Context, ep endpoint, request string, creds ad
 		if ctx.Err() != nil {
 			return response{}, ctx.Err()
 		}
-		return response{}, adapters.NewError(adapters.ClassTemporary, fmt.Sprintf("%s: Bybit could not be reached.", ep))
+		return response{}, adapter.NewError(adapter.ClassTemporary, fmt.Sprintf("%s: Bybit could not be reached.", ep))
 	}
 	defer func() { _ = res.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(res.Body, maxResponseBytes+1))
 	if err != nil || len(body) > maxResponseBytes {
-		return response{}, adapters.NewError(adapters.ClassTemporary, fmt.Sprintf("%s: the Bybit response was cut off.", ep))
+		return response{}, adapter.NewError(adapter.ClassTemporary, fmt.Sprintf("%s: the Bybit response was cut off.", ep))
 	}
 	resp := response{status: res.StatusCode, body: body}
 	if c.capture != nil {
@@ -224,15 +224,15 @@ func (c *client) send(ctx context.Context, ep endpoint, request string, creds ad
 func decode(ep endpoint, resp response, out any) error {
 	var env envelope
 	if json.Unmarshal(resp.body, &env) != nil || env.Code == nil {
-		return adapters.NewError(statusClass(resp.status, adapters.ClassNormalization),
+		return adapter.NewError(statusClass(resp.status, adapter.ClassNormalization),
 			fmt.Sprintf("%s: HTTP %d without a Bybit answer.", ep, resp.status))
 	}
 	if *env.Code != codeOK || resp.status < 200 || resp.status > 299 {
 		// Bybit messages may echo request parameters; the detail carries only the code.
-		return adapters.NewError(classOf(resp.status, *env.Code), fmt.Sprintf("%s: HTTP %d, Bybit code %d.", ep, resp.status, *env.Code))
+		return adapter.NewError(classOf(resp.status, *env.Code), fmt.Sprintf("%s: HTTP %d, Bybit code %d.", ep, resp.status, *env.Code))
 	}
 	if len(env.Result) == 0 || string(env.Result) == "null" || json.Unmarshal(env.Result, out) != nil {
-		return adapters.Malformed(ep.String(), "the result")
+		return adapter.Malformed(ep.String(), "the result")
 	}
 	return nil
 }
@@ -249,30 +249,30 @@ func classOf(status, code int) string {
 	switch code {
 	case 10003, 10004, 10007, 33004, -2015:
 		// Unknown key, wrong signature, failed authentication, or an expired key.
-		return adapters.ClassAuthentication
+		return adapter.ClassAuthentication
 	case 10005, 10010:
 		// The key lacks the permission, or the request comes from an IP the key does not allow.
-		return adapters.ClassAuthorization
+		return adapter.ClassAuthorization
 	case 10006, 10018, 429:
-		return adapters.ClassRateLimited
+		return adapter.ClassRateLimited
 	case 10009, 10028, 100028, 180004, 180024:
 		// A region Bybit does not serve, endpoints for another account structure, regional
 		// sites, or sub-accounts: retrying cannot help and the key itself is fine.
-		return adapters.ClassUnsupported
+		return adapter.ClassUnsupported
 	}
-	return statusClass(status, adapters.ClassTemporary)
+	return statusClass(status, adapter.ClassTemporary)
 }
 
 func statusClass(status int, fallback string) string {
 	switch {
 	case status == http.StatusUnauthorized:
-		return adapters.ClassAuthentication
+		return adapter.ClassAuthentication
 	case status == http.StatusTooManyRequests:
-		return adapters.ClassRateLimited
+		return adapter.ClassRateLimited
 	case status == http.StatusForbidden, status >= 500:
 		// Bybit documents 403 for an IP over its request budget, which is then refused for at
 		// least ten minutes, and for a U.S. IP.
-		return adapters.ClassTemporary
+		return adapter.ClassTemporary
 	default:
 		return fallback
 	}
@@ -299,17 +299,17 @@ func pages[T any](ctx context.Context, c *client, ep endpoint, params url.Values
 			return nil, err
 		}
 		if result.List == nil {
-			return nil, adapters.Malformed(ep.String(), "the list")
+			return nil, adapter.Malformed(ep.String(), "the list")
 		}
 		rows = append(rows, result.List...)
 		if result.Cursor == "" {
 			return rows, nil
 		}
 		if seen[result.Cursor] {
-			return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: Bybit repeated a page cursor, so the list may be incomplete.", ep))
+			return nil, adapter.NewError(adapter.ClassNormalization, fmt.Sprintf("%s: Bybit repeated a page cursor, so the list may be incomplete.", ep))
 		}
 		seen[result.Cursor] = true
 		query.Set("cursor", result.Cursor)
 	}
-	return nil, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("%s: the list did not end within %d pages.", ep, maxPages))
+	return nil, adapter.NewError(adapter.ClassNormalization, fmt.Sprintf("%s: the list did not end within %d pages.", ep, maxPages))
 }

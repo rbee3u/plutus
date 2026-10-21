@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
@@ -40,7 +40,7 @@ func TestDemoNormalMajorityAndConcentration(t *testing.T) {
 			for _, b := range r.Balances {
 				shape += fmt.Sprintf("%s/%s=%s;", r.AccountType, b.AssetSymbol, b.Equity)
 			}
-			if r.Status != adapters.StatusSucceeded {
+			if r.Status != adapter.StatusSucceeded {
 				t.Fatalf("normal login %s has a current failure", d.ID)
 			}
 			if len(r.Balances) == 0 {
@@ -60,16 +60,16 @@ func TestDemoNormalMajorityAndConcentration(t *testing.T) {
 				}
 			}
 			for _, p := range r.Positions {
-				if p.Side != adapters.SideShort || p.MarginSetting != "cross" {
+				if p.Side != adapter.SideShort || p.MarginSetting != "cross" {
 					t.Fatal("normal hedges lost the production-shaped short cross mix")
 				}
 				switch p.FuturesContract.Kind {
-				case adapters.KindLinearPerpetual, adapters.KindInversePerpetual:
+				case adapter.KindLinearPerpetual, adapter.KindInversePerpetual:
 					normalPerpetuals++
 					if p.FuturesContract.ExpiryAt != nil {
 						t.Fatal("normal perpetual gained a delivery expiry")
 					}
-				case adapters.KindLinearDelivery, adapters.KindInverseDelivery:
+				case adapter.KindLinearDelivery, adapter.KindInverseDelivery:
 					normalDeliveries++
 					deliveryKinds[p.FuturesContract.Kind] = true
 					if p.FuturesContract.ExpiryAt == nil || !p.FuturesContract.ExpiryAt.After(anchor) {
@@ -90,7 +90,7 @@ func TestDemoNormalMajorityAndConcentration(t *testing.T) {
 		t.Fatalf("wallet/product concentration: empty=%d earn=%d dual=%d", empty, earn, dual)
 	}
 	if normalPerpetuals < 20 || normalDeliveries < 2 || normalDeliveries > 8 ||
-		!deliveryKinds[adapters.KindLinearDelivery] || !deliveryKinds[adapters.KindInverseDelivery] {
+		!deliveryKinds[adapter.KindLinearDelivery] || !deliveryKinds[adapter.KindInverseDelivery] {
 		t.Fatalf("normal futures mix lost its perpetual majority or delivery coverage: perpetual=%d delivery=%d kinds=%v", normalPerpetuals, normalDeliveries, deliveryKinds)
 	}
 	if demoNumber(total).Cmp(demoNumber("200000")) < 0 || demoNumber(total).Cmp(demoNumber("400000")) > 0 {
@@ -111,13 +111,13 @@ func demoByID(t *testing.T, id string) DemoIdentity {
 
 func TestDemoCapabilityMatrix(t *testing.T) {
 	anchor := time.Date(2026, 10, 5, 10, 0, 0, 0, time.UTC)
-	covered := map[adapters.AccountStructure]map[adapters.MarginMode]bool{}
+	covered := map[adapter.AccountStructure]map[adapter.MarginMode]bool{}
 	seen := map[string]bool{}
 	definitions := DemoIdentities()
 	// Scope coverage belongs to explicit fixtures, independently of the seed mix.
-	for _, p := range adapters.NewRegistry().Platforms() {
+	for _, p := range adapter.NewRegistry().Platforms() {
 		for _, s := range p.Structures {
-			modes := []adapters.MarginMode{""}
+			modes := []adapter.MarginMode{""}
 			if len(s.MarginModes) > 0 {
 				modes = nil
 				for _, m := range s.MarginModes {
@@ -138,16 +138,16 @@ func TestDemoCapabilityMatrix(t *testing.T) {
 		}
 		seen[d.ID] = true
 		if covered[d.Structure] == nil {
-			covered[d.Structure] = map[adapters.MarginMode]bool{}
+			covered[d.Structure] = map[adapter.MarginMode]bool{}
 		}
 		covered[d.Structure][d.Mode] = true
 		for _, at := range []time.Time{anchor.AddDate(0, 0, -400), anchor.AddDate(0, 0, -7), anchor, anchor.AddDate(0, 0, 65)} {
-			batch, err := DemoBatch(d, anchor, at, adapters.AccountTypeIDs(d.Structure))
+			batch, err := DemoBatch(d, anchor, at, adapter.AccountTypeIDs(d.Structure))
 			if err != nil {
 				t.Fatal(err)
 			}
 			for _, r := range batch.Reports {
-				if r.Status != adapters.StatusSucceeded {
+				if r.Status != adapter.StatusSucceeded {
 					continue
 				}
 				coins := map[string]bool{}
@@ -158,7 +158,7 @@ func TestDemoCapabilityMatrix(t *testing.T) {
 					coins[b.AssetSymbol] = true
 				}
 				if r.AccountType == "earn" {
-					if err := adapters.CheckEarnPositions(r.EarnPositions, r.Balances); err != nil {
+					if err := adapter.CheckEarnPositions(r.EarnPositions, r.Balances); err != nil {
 						t.Fatalf("%s: %v", d.ID, err)
 					}
 				}
@@ -166,7 +166,7 @@ func TestDemoCapabilityMatrix(t *testing.T) {
 					if !decimal.Valid(p.SourceQuantity) || decimal.ParseOrZero(p.SourceQuantity).Sign() <= 0 {
 						t.Fatal("invalid position quantity")
 					}
-					if p.FuturesContract.Kind == adapters.KindLinearDelivery || p.FuturesContract.Kind == adapters.KindInverseDelivery {
+					if p.FuturesContract.Kind == adapter.KindLinearDelivery || p.FuturesContract.Kind == adapter.KindInverseDelivery {
 						if p.FuturesContract.ExpiryAt == nil {
 							t.Fatal("delivery without expiry")
 						}
@@ -175,7 +175,7 @@ func TestDemoCapabilityMatrix(t *testing.T) {
 			}
 		}
 	}
-	for _, p := range adapters.NewRegistry().Platforms() {
+	for _, p := range adapter.NewRegistry().Platforms() {
 		for _, s := range p.Structures {
 			modes := s.MarginModes
 			if len(modes) == 0 {
@@ -196,8 +196,8 @@ func TestDemoCredentialContinuity(t *testing.T) {
 	anchor := time.Date(2026, 10, 5, 10, 0, 0, 0, time.UTC)
 	d := demoByID(t, "daily-kraken")
 	key := DemoKey(d.ID, anchor)
-	creds := adapters.Credentials{APIKey: key, APISecret: "offline-secret", Futures: &adapters.KeyPair{APIKey: key, APISecret: "offline-futures"}}
-	if err := adapters.CheckCredentials(d.Platform, d.Structure, adapters.AccountTypeIDs(d.Structure), creds); err != nil {
+	creds := adapter.Credentials{APIKey: key, APISecret: "offline-secret", Futures: &adapter.KeyPair{APIKey: key, APISecret: "offline-futures"}}
+	if err := adapter.CheckCredentials(d.Platform, d.Structure, adapter.AccountTypeIDs(d.Structure), creds); err != nil {
 		t.Fatal(err)
 	}
 	a := New(d.Platform).WithClock(func() time.Time { return anchor.Add(time.Minute) })
@@ -208,11 +208,11 @@ func TestDemoCredentialContinuity(t *testing.T) {
 	if validated.ExternalRef != ExternalRef(DemoKey(d.ID, anchor.AddDate(0, 0, 1))) {
 		t.Fatal("external reference depends on anchor")
 	}
-	runtime, err := a.Collect(context.Background(), creds, d.Structure, adapters.AccountTypeIDs(d.Structure))
+	runtime, err := a.Collect(context.Background(), creds, d.Structure, adapter.AccountTypeIDs(d.Structure))
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected, err := DemoBatch(d, anchor, anchor.Add(time.Minute), adapters.AccountTypeIDs(d.Structure))
+	expected, err := DemoBatch(d, anchor, anchor.Add(time.Minute), adapter.AccountTypeIDs(d.Structure))
 	if err != nil || !reflect.DeepEqual(runtime, expected) {
 		t.Fatalf("runtime diverged from seed generator: %v", err)
 	}
@@ -229,7 +229,7 @@ func TestDemoCredentialContinuity(t *testing.T) {
 func TestDemoEventsAreCoherent(t *testing.T) {
 	anchor := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
 	d := demoByID(t, "daily-classic")
-	amount := func(kind adapters.AccountType, symbol string, at time.Time) string {
+	amount := func(kind adapter.AccountType, symbol string, at time.Time) string {
 		r := demoReport(d, anchor, at, kind)
 		for _, b := range r.Balances {
 			if b.AssetSymbol == symbol {
@@ -240,7 +240,7 @@ func TestDemoEventsAreCoherent(t *testing.T) {
 	}
 	for _, event := range []struct {
 		days        int
-		kind        adapters.AccountType
+		kind        adapter.AccountType
 		coin, delta string
 	}{
 		{-60, "spot", "BTC", "0.1"}, {-30, "funding", "USDT", "5000"}, {-5, "funding", "USDC", "-1000"},
@@ -253,7 +253,7 @@ func TestDemoEventsAreCoherent(t *testing.T) {
 	for _, days := range []int{-33, -10} {
 		at := DemoEventTime(anchor, days)
 		before, after := "0", "0"
-		for _, kind := range []adapters.AccountType{"funding", "earn", adapters.TypeDualInvestment} {
+		for _, kind := range []adapter.AccountType{"funding", "earn", adapter.TypeDualInvestment} {
 			before = demoAdd(before, amount(kind, "USDT", at.Add(-time.Second)))
 			after = demoAdd(after, amount(kind, "USDT", at))
 		}
@@ -263,7 +263,7 @@ func TestDemoEventsAreCoherent(t *testing.T) {
 	}
 	at := DemoEventTime(anchor, -3)
 	before, after := "0", "0"
-	for _, kind := range []adapters.AccountType{"spot", "funding", "earn", adapters.TypeDualInvestment} {
+	for _, kind := range []adapter.AccountType{"spot", "funding", "earn", adapter.TypeDualInvestment} {
 		before = demoAdd(before, amount(kind, "USDT", at.Add(-time.Second)))
 		after = demoAdd(after, amount(kind, "USDT", at))
 	}
@@ -276,7 +276,7 @@ func TestDemoEventsAreCoherent(t *testing.T) {
 		t.Fatal("successful close did not remove historical hedge")
 	}
 	failed := demoReport(demoByID(t, "edge-stale"), anchor, anchor, "cm_futures")
-	if failed.Status != adapters.StatusFailed || len(failed.Positions) != 0 {
+	if failed.Status != adapter.StatusFailed || len(failed.Positions) != 0 {
 		t.Fatal("failure invented a complete set")
 	}
 }
@@ -284,15 +284,15 @@ func TestDemoEventsAreCoherent(t *testing.T) {
 func TestDemoTimeAndMarketDeterminism(t *testing.T) {
 	anchor := time.Date(2026, 10, 5, 10, 0, 0, 0, time.UTC)
 	d := largeDemoIdentity()
-	first, err := DemoBatch(d, anchor, anchor, adapters.AccountTypeIDs(d.Structure))
+	first, err := DemoBatch(d, anchor, anchor, adapter.AccountTypeIDs(d.Structure))
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := DemoBatch(d, anchor, anchor, adapters.AccountTypeIDs(d.Structure))
+	again, err := DemoBatch(d, anchor, anchor, adapter.AccountTypeIDs(d.Structure))
 	if err != nil || !reflect.DeepEqual(first, again) {
 		t.Fatal("same observation differs")
 	}
-	later, err := DemoBatch(d, anchor, anchor.Add(time.Minute), adapters.AccountTypeIDs(d.Structure))
+	later, err := DemoBatch(d, anchor, anchor.Add(time.Minute), adapter.AccountTypeIDs(d.Structure))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,13 +302,13 @@ func TestDemoTimeAndMarketDeterminism(t *testing.T) {
 				t.Fatal("subscription date moved on observation")
 			}
 		}
-		if r.AccountType == adapters.TypeDualInvestment {
+		if r.AccountType == adapter.TypeDualInvestment {
 			if !r.DualPositions[0].ExpiryAt.Equal(*later.Reports[i].DualPositions[0].ExpiryAt) {
 				t.Fatal("expiry moved on observation")
 			}
 		}
 	}
-	future, err := DemoBatch(d, anchor, anchor.AddDate(0, 0, 65), adapters.AccountTypeIDs(d.Structure))
+	future, err := DemoBatch(d, anchor, anchor.AddDate(0, 0, 65), adapter.AccountTypeIDs(d.Structure))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,17 +327,17 @@ func TestDemoTimeAndMarketDeterminism(t *testing.T) {
 			if len(r.EarnPositions) < 60 {
 				t.Fatal("Earn pagination disappeared")
 			}
-		case adapters.TypeDualInvestment:
+		case adapter.TypeDualInvestment:
 			if len(r.DualPositions) < 60 {
 				t.Fatal("Dual pagination disappeared")
 			}
 		}
 	}
-	if DemoPrice(adapters.PlatformBinance, "DEMO-NOPRICE", anchor) != "" {
+	if DemoPrice(adapter.PlatformBinance, "DEMO-NOPRICE", anchor) != "" {
 		t.Fatal("unpriced asset gained price")
 	}
 	bad := d
-	bad.Mode = adapters.MarginOKXPM
+	bad.Mode = adapter.MarginOKXPM
 	if ValidateDemoIdentity(bad) == nil {
 		t.Fatal("unsupported mode accepted")
 	}
@@ -346,9 +346,9 @@ func TestDemoTimeAndMarketDeterminism(t *testing.T) {
 func TestDemoDualStagesAndRollover(t *testing.T) {
 	anchor := time.Date(2026, 10, 5, 10, 0, 0, 0, time.UTC)
 	d := largeDemoIdentity()
-	initial := demoReport(d, anchor, anchor, adapters.TypeDualInvestment)
-	later := demoReport(d, anchor, anchor.AddDate(0, 0, 2), adapters.TypeDualInvestment)
-	rolled := demoReport(d, anchor, anchor.AddDate(0, 0, 4), adapters.TypeDualInvestment)
+	initial := demoReport(d, anchor, anchor, adapter.TypeDualInvestment)
+	later := demoReport(d, anchor, anchor.AddDate(0, 0, 2), adapter.TypeDualInvestment)
+	rolled := demoReport(d, anchor, anchor.AddDate(0, 0, 4), adapter.TypeDualInvestment)
 	if initial.DualPositions[0].Status != "active" || later.DualPositions[0].Status != "redeeming" {
 		t.Fatal("product phase does not follow actual time")
 	}
@@ -364,5 +364,5 @@ func TestDemoDualStagesAndRollover(t *testing.T) {
 }
 
 func largeDemoIdentity() DemoIdentity {
-	return DemoIdentity{ID: "pagination-fixture", Portfolio: "default", Name: "Pagination fixture", Platform: adapters.PlatformBinance, Structure: adapters.StructureBinanceClassic, Profile: "large", Connection: "enabled"}
+	return DemoIdentity{ID: "pagination-fixture", Portfolio: "default", Name: "Pagination fixture", Platform: adapter.PlatformBinance, Structure: adapter.StructureBinanceClassic, Profile: "large", Connection: "enabled"}
 }

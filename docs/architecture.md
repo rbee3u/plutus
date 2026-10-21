@@ -40,27 +40,39 @@ HTTP server, worker, and process lifecycle. Services share sqlc queries and
 transaction helpers without exclusive table ownership. HTTP maps generated wire
 types to application types; services do not depend on Gin or HTTP types.
 
+Use singular nouns or functional names for handwritten Go packages and source
+grouping directories, including `service`, `cycle`, `adapter`, and `seed`.
+Resource collections such as `db/migrations`, established terms, and generated
+code retain their appropriate names.
+
+Name handwritten Go files for their main topic or responsibility, preferring
+singular topic names such as `session.go` and `earn_position.go`. Conventional
+aggregate names such as `errors.go`, `types.go`, and `models.go`, established
+terms such as `credentials` and `holdings`, and generated filenames retain their
+natural form. Matching tests share the implementation's basename with
+`_test.go`; preserve operating-system and architecture build suffixes.
+
 Depguard enforces the [backend boundaries](./adr/0007-backend-architecture.md):
 application code uses the normalized adapter contract, `valuation` cannot import
 `financial`, and HTTP cannot import SQL APIs. Runtime code cannot import
 `internal/testsupport`. Within-layer dependencies remain reviewed choices.
 
-| Module                                                                | Responsibility                                                         |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `internal/app`                                                        | Composition root: every service built on one database handle           |
-| `internal/cli`, `cmd/plutus`                                          | CLI commands; `cmd/plutus` only starts them                            |
-| `internal/seeds`                                                      | Development seed fixtures for `db seed` and `db reset --seed`          |
-| `internal/transport/http`                                             | API bindings, browser security, HTTP conventions, and SPA serving      |
-| `internal/application/auth`                                           | Users, password verification, and sessions                             |
-| `internal/application/portfolio`, `internal/application/identity`     | Ownership, portfolio settings, identity configuration, and connections |
-| `internal/application/catalog`, `internal/application/assetexclusion` | Assets, futures contracts, prices, and exclusion policy                |
-| `internal/application/collection`                                     | Adapter orchestration and normalized report persistence                |
-| `internal/application/valuation`, `internal/application/capital`      | Immutable value writes and manual capital flows                        |
-| `internal/application/financial`                                      | Overview, Holdings, history, periods, and financial presentation       |
-| `internal/application/cycles`, `internal/worker`                      | Cycle queue, scheduling, leases, and portfolio deletion dispatch       |
-| `internal/application/audit`                                          | User and system action records                                         |
-| `internal/platform`                                                   | Typed platform contract, live implementations, and deterministic fake  |
-| `internal/infra`, `internal/shared/decimal`, `internal/infra/secret`  | SQL infrastructure, exact arithmetic, and credential encryption        |
+| Module                                                               | Responsibility                                                         |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `internal/app`                                                       | Composition root: every service built on one database handle           |
+| `internal/cli`, `cmd/plutus`                                         | CLI commands; `cmd/plutus` only starts them                            |
+| `internal/seed`                                                      | Development seed fixtures for `db seed` and `db reset --seed`          |
+| `internal/transport/http`                                            | API bindings, browser security, HTTP conventions, and SPA serving      |
+| `internal/service/auth`                                              | Users, password verification, and sessions                             |
+| `internal/service/portfolio`, `internal/service/identity`            | Ownership, portfolio settings, identity configuration, and connections |
+| `internal/service/catalog`, `internal/service/assetexclusion`        | Assets, futures contracts, prices, and exclusion policy                |
+| `internal/service/collection`                                        | Adapter orchestration and normalized report persistence                |
+| `internal/service/valuation`, `internal/service/capital`             | Immutable value writes and manual capital flows                        |
+| `internal/service/financial`                                         | Overview, Holdings, history, periods, and financial presentation       |
+| `internal/service/cycle`, `internal/worker`                          | Cycle queue, scheduling, leases, and portfolio deletion dispatch       |
+| `internal/service/audit`                                             | User and system action records                                         |
+| `internal/platform`                                                  | Typed platform contract, live implementations, and deterministic fake  |
+| `internal/infra`, `internal/shared/decimal`, `internal/infra/secret` | SQL infrastructure, exact arithmetic, and credential encryption        |
 
 The financial service reads stored points and account valuations through the
 valuation service, sharing decoding, account issues, and an operation-scoped
@@ -104,7 +116,7 @@ active set in SQL.
 
 Readers aggregate stored decimals; writers retain unrounded rationals privately.
 Internal source metadata is excluded from JSON. Product filters, totals, and
-completeness stay separate. `application/ordering` uses the offered platform
+completeness stay separate. `service/ordering` uses the offered platform
 catalog; `shared` has no business dependencies.
 
 Collection loaders feed one valuation evaluator with prepared inputs, without
@@ -516,8 +528,8 @@ Transport failures do not automatically replay a write. Connection enablement's
 422 response uses Problem Details with a typed validation outcome, while an
 executed validation operation returns its outcome with 200.
 
-`application/ordering` supplies catalog-based ordering before pagination; the
-SPA preserves it. Holdings filters remain mounted independently of results. The
+`service/ordering` supplies catalog-based ordering before pagination; the SPA
+preserves it. Holdings filters remain mounted independently of results. The
 shared URL controller debounces search, defers during IME composition, and saves
 outgoing drafts before navigation. Portal menus preserve internal scrolling and
 keyboard input while dismissing on external scroll.

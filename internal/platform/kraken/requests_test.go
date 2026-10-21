@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
@@ -70,7 +70,7 @@ func TestSingleRecordingHasNoPreflightRetryOrPagination(t *testing.T) {
 func TestSingleWebSocketRecordingNeedsNoRESTOrSpotKey(t *testing.T) {
 	r := newReplay(t, "", nil)
 	request := RecordingRequests()["ws_v1_balances_snapshot"].Request
-	f, err := r.adapter.RecordRequest(context.Background(), adapters.Credentials{Futures: testCreds.Futures}, request)
+	f, err := r.adapter.RecordRequest(context.Background(), adapter.Credentials{Futures: testCreds.Futures}, request)
 	if err != nil || f == nil || f.Status != 0 {
 		t.Fatalf("snapshot: %v %v", f, err)
 	}

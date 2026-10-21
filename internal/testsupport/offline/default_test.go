@@ -10,7 +10,7 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/binance"
 	"github.com/rbee3u/plutus/internal/platform/bybit"
 	"github.com/rbee3u/plutus/internal/platform/kraken"
@@ -39,7 +39,7 @@ func TestForbiddenDefaultConnectionHelper(t *testing.T) {
 		t.Skip("subprocess helper")
 	}
 	offline.Install()
-	creds := adapters.Credentials{APIKey: "offline", APISecret: "c2VjcmV0", Passphrase: "offline"}
+	creds := adapter.Credentials{APIKey: "offline", APISecret: "c2VjcmV0", Passphrase: "offline"}
 	ctx := context.Background()
 	switch target {
 	case "http", "https":
@@ -47,12 +47,12 @@ func TestForbiddenDefaultConnectionHelper(t *testing.T) {
 	case "websocket":
 		_, _, _ = websocket.Dial(ctx, "wss://exchange.invalid/ws", nil) //nolint:bodyclose // The offline guard rejects the handshake before returning a response.
 	case "binance":
-		_, _ = binance.New(&binance.Options{Hosts: binance.Hosts{API: "https://exchange.invalid", PAPI: "https://exchange.invalid", FAPI: "https://exchange.invalid", DAPI: "https://exchange.invalid"}}).Validate(ctx, creds, adapters.StructureBinancePM)
+		_, _ = binance.New(&binance.Options{Hosts: binance.Hosts{API: "https://exchange.invalid", PAPI: "https://exchange.invalid", FAPI: "https://exchange.invalid", DAPI: "https://exchange.invalid"}}).Validate(ctx, creds, adapter.StructureBinancePM)
 	case "okx":
-		_, _ = okx.New(&okx.Options{Host: "https://exchange.invalid"}).Validate(ctx, creds, adapters.StructureOKXUnified)
+		_, _ = okx.New(&okx.Options{Host: "https://exchange.invalid"}).Validate(ctx, creds, adapter.StructureOKXUnified)
 	case "bybit":
-		_, _ = bybit.New(&bybit.Options{Host: "https://exchange.invalid"}).Validate(ctx, creds, adapters.StructureBybitUTA2)
+		_, _ = bybit.New(&bybit.Options{Host: "https://exchange.invalid"}).Validate(ctx, creds, adapter.StructureBybitUTA2)
 	case "kraken":
-		_, _ = kraken.New(&kraken.Options{SpotHost: "https://exchange.invalid", FuturesHost: "https://exchange.invalid", WebSocketURL: "wss://exchange.invalid/ws"}).Validate(ctx, creds, adapters.StructureKrakenUnified)
+		_, _ = kraken.New(&kraken.Options{SpotHost: "https://exchange.invalid", FuturesHost: "https://exchange.invalid", WebSocketURL: "wss://exchange.invalid/ws"}).Validate(ctx, creds, adapter.StructureKrakenUnified)
 	}
 }

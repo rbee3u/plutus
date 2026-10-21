@@ -20,7 +20,7 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
@@ -128,7 +128,7 @@ func (n *number) UnmarshalJSON(raw []byte) error {
 // client issues Kraken requests for one credential set. Raw bodies stay inside this package.
 type client struct {
 	a     *Adapter
-	creds adapters.Credentials
+	creds adapter.Credentials
 	// record receives every raw exchange while the fixture recorder runs; it is nil otherwise.
 	record func(ep endpoint, resp response) error
 	// nonce replaces the nonce sequence when set. Only the recorder sets it, to provoke an
@@ -180,7 +180,7 @@ func (c *client) spot(ctx context.Context, ep endpoint, params url.Values) (resp
 	}
 	req, err := http.NewRequestWithContext(ctx, ep.method, target, strings.NewReader(body))
 	if err != nil {
-		return response{}, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("Kraken %s: the request could not be built.", ep))
+		return response{}, adapter.NewError(adapter.ClassNormalization, fmt.Sprintf("Kraken %s: the request could not be built.", ep))
 	}
 	if ep.signed {
 		signature, err := spotSignature(ep.path, values.Get("nonce"), body, c.creds.APISecret)
@@ -204,7 +204,7 @@ func (c *client) futures(ctx context.Context, ep endpoint, params url.Values) (r
 	}
 	req, err := http.NewRequestWithContext(ctx, ep.method, target, http.NoBody)
 	if err != nil {
-		return response{}, adapters.NewError(adapters.ClassNormalization, fmt.Sprintf("Kraken %s: the request could not be built.", ep))
+		return response{}, adapter.NewError(adapter.ClassNormalization, fmt.Sprintf("Kraken %s: the request could not be built.", ep))
 	}
 	if ep.signed {
 		signature, err := futuresSignature(strings.TrimPrefix(ep.path, "/derivatives"), query, c.creds.FuturesSecret())
@@ -223,12 +223,12 @@ func (c *client) send(ctx context.Context, ep endpoint, req *http.Request) (resp
 		if ctx.Err() != nil {
 			return response{}, ctx.Err()
 		}
-		return response{}, adapters.NewError(adapters.ClassTemporary, fmt.Sprintf("Kraken %s: Kraken could not be reached.", ep))
+		return response{}, adapter.NewError(adapter.ClassTemporary, fmt.Sprintf("Kraken %s: Kraken could not be reached.", ep))
 	}
 	defer func() { _ = res.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(res.Body, maxResponseBytes+1))
 	if err != nil || len(body) > maxResponseBytes {
-		return response{}, adapters.NewError(adapters.ClassTemporary, fmt.Sprintf("Kraken %s: the response could not be read.", ep))
+		return response{}, adapter.NewError(adapter.ClassTemporary, fmt.Sprintf("Kraken %s: the response could not be read.", ep))
 	}
 	resp := response{status: res.StatusCode, body: body}
 	if c.record != nil {
@@ -264,7 +264,7 @@ func decodeSpot(ep endpoint, resp response, out any) error {
 		return classify(ep, resp.status, name)
 	}
 	if !parsed || env.Errors == nil {
-		return adapters.Malformed("Kraken "+ep.String(), "the response envelope")
+		return adapter.Malformed("Kraken "+ep.String(), "the response envelope")
 	}
 	if len(*env.Errors) > 0 {
 		return classify(ep, resp.status, (*env.Errors)[0])
@@ -273,7 +273,7 @@ func decodeSpot(ep endpoint, resp response, out any) error {
 		return classify(ep, resp.status, "")
 	}
 	if len(env.Result) == 0 || string(env.Result) == "null" || json.Unmarshal(env.Result, out) != nil {
-		return adapters.Malformed("Kraken "+ep.String(), "result")
+		return adapter.Malformed("Kraken "+ep.String(), "result")
 	}
 	return nil
 }
@@ -291,13 +291,13 @@ func decodeFutures(ep endpoint, resp response, out any) error {
 		return classify(ep, resp.status, env.Error)
 	}
 	if !parsed {
-		return adapters.Malformed("Kraken "+ep.String(), "the response envelope")
+		return adapter.Malformed("Kraken "+ep.String(), "the response envelope")
 	}
 	if resp.status < 200 || resp.status >= 300 || env.Error != "" || (env.Result != "success" && ep != epFuturesKey) {
 		return classify(ep, resp.status, env.Error)
 	}
 	if json.Unmarshal(resp.body, out) != nil {
-		return adapters.Malformed("Kraken "+ep.String(), "the response body")
+		return adapter.Malformed("Kraken "+ep.String(), "the response body")
 	}
 	return nil
 }
@@ -312,24 +312,24 @@ func failedStatus(status int) bool {
 // temporary. A detail carries only the matched name, never arbitrary platform text or an echoed
 // input.
 var errorNames = []struct{ token, class, detail string }{
-	{"Invalid key", adapters.ClassAuthentication, "Invalid key."},
-	{"Invalid signature", adapters.ClassAuthentication, "Invalid signature."},
-	{"authenticationError", adapters.ClassAuthentication, "Authentication failed."},
-	{"api_key_not_found", adapters.ClassAuthentication, "API key not found."},
-	{"request_signature_invalid", adapters.ClassAuthentication, "Invalid signature."},
-	{"Permission denied", adapters.ClassAuthorization, "Read permission denied."},
-	{"Rate limit", adapters.ClassRateLimited, "Rate limit exceeded."},
-	{"Too many requests", adapters.ClassRateLimited, "Too many requests."},
-	{"Throttled", adapters.ClassRateLimited, "Too many concurrent requests."},
-	{"apiLimitExceeded", adapters.ClassRateLimited, "Rate limit exceeded."},
-	{"Invalid nonce", adapters.ClassTemporary, "Invalid nonce."},
-	{"Unavailable", adapters.ClassTemporary, "Service unavailable."},
+	{"Invalid key", adapter.ClassAuthentication, "Invalid key."},
+	{"Invalid signature", adapter.ClassAuthentication, "Invalid signature."},
+	{"authenticationError", adapter.ClassAuthentication, "Authentication failed."},
+	{"api_key_not_found", adapter.ClassAuthentication, "API key not found."},
+	{"request_signature_invalid", adapter.ClassAuthentication, "Invalid signature."},
+	{"Permission denied", adapter.ClassAuthorization, "Read permission denied."},
+	{"Rate limit", adapter.ClassRateLimited, "Rate limit exceeded."},
+	{"Too many requests", adapter.ClassRateLimited, "Too many requests."},
+	{"Throttled", adapter.ClassRateLimited, "Too many concurrent requests."},
+	{"apiLimitExceeded", adapter.ClassRateLimited, "Rate limit exceeded."},
+	{"Invalid nonce", adapter.ClassTemporary, "Invalid nonce."},
+	{"Unavailable", adapter.ClassTemporary, "Service unavailable."},
 }
 
 // classify maps a failed Kraken answer to an adapter error class; the HTTP status decides over
 // the error name for 401, 403, and 429.
 func classify(ep endpoint, status int, name string) error {
-	class, detail := adapters.ClassTemporary, "Platform request failed."
+	class, detail := adapter.ClassTemporary, "Platform request failed."
 	for _, known := range errorNames {
 		if strings.Contains(name, known.token) {
 			class, detail = known.class, known.detail
@@ -338,13 +338,13 @@ func classify(ep endpoint, status int, name string) error {
 	}
 	switch status {
 	case http.StatusUnauthorized:
-		class = adapters.ClassAuthentication
+		class = adapter.ClassAuthentication
 	case http.StatusForbidden:
-		class = adapters.ClassAuthorization
+		class = adapter.ClassAuthorization
 	case http.StatusTooManyRequests:
-		class = adapters.ClassRateLimited
+		class = adapter.ClassRateLimited
 	}
-	return adapters.NewError(class, fmt.Sprintf("Kraken %s: HTTP %d. %s", ep, status, detail))
+	return adapter.NewError(class, fmt.Sprintf("Kraken %s: HTTP %d. %s", ep, status, detail))
 }
 
 // balancesSnapshot subscribes to the futures balances feed, reads the first balances_snapshot,
@@ -357,7 +357,7 @@ func (c *client) balancesSnapshot(ctx context.Context) (snapshot, error) {
 		if res != nil && res.Body != nil {
 			_ = res.Body.Close()
 		}
-		return snapshot{}, adapters.NewError(adapters.ClassTemporary, "Kraken "+epBalancesSnapshot.String()+": the balances feed could not be reached.")
+		return snapshot{}, adapter.NewError(adapter.ClassTemporary, "Kraken "+epBalancesSnapshot.String()+": the balances feed could not be reached.")
 	}
 	defer func() { _ = conn.CloseNow() }()
 	conn.SetReadLimit(maxResponseBytes)
@@ -368,7 +368,7 @@ func (c *client) balancesSnapshot(ctx context.Context) (snapshot, error) {
 	for range snapshotMessages {
 		_, body, err := conn.Read(ctx)
 		if err != nil {
-			return snapshot{}, adapters.NewError(adapters.ClassTemporary, "Kraken "+epBalancesSnapshot.String()+": the balances feed ended before its snapshot.")
+			return snapshot{}, adapter.NewError(adapter.ClassTemporary, "Kraken "+epBalancesSnapshot.String()+": the balances feed ended before its snapshot.")
 		}
 		var env struct {
 			Event   string `json:"event"`
@@ -376,11 +376,11 @@ func (c *client) balancesSnapshot(ctx context.Context) (snapshot, error) {
 			Feed    string `json:"feed"`
 		}
 		if json.Unmarshal(body, &env) != nil {
-			return snapshot{}, adapters.Malformed("Kraken "+epBalancesSnapshot.String(), "the feed message")
+			return snapshot{}, adapter.Malformed("Kraken "+epBalancesSnapshot.String(), "the feed message")
 		}
 		switch {
 		case env.Event == "error" || env.Event == "subscribed_failed":
-			return snapshot{}, adapters.NewError(adapters.ClassAuthorization, "Kraken "+epBalancesSnapshot.String()+": Kraken refused the read-only balances subscription.")
+			return snapshot{}, adapter.NewError(adapter.ClassAuthorization, "Kraken "+epBalancesSnapshot.String()+": Kraken refused the read-only balances subscription.")
 		case env.Event == "challenge" && !subscribed:
 			signature, err := challengeSignature(env.Message, c.creds.FuturesSecret())
 			if err != nil {
@@ -405,12 +405,12 @@ func (c *client) balancesSnapshot(ctx context.Context) (snapshot, error) {
 			}
 			var out snapshot
 			if json.Unmarshal(body, &out) != nil {
-				return snapshot{}, adapters.Malformed("Kraken "+epBalancesSnapshot.String(), "the balances snapshot")
+				return snapshot{}, adapter.Malformed("Kraken "+epBalancesSnapshot.String(), "the balances snapshot")
 			}
 			return out, nil
 		}
 	}
-	return snapshot{}, adapters.Malformed("Kraken "+epBalancesSnapshot.String(), "a balances snapshot within the first messages")
+	return snapshot{}, adapter.Malformed("Kraken "+epBalancesSnapshot.String(), "a balances snapshot within the first messages")
 }
 
 func writeMessage(ctx context.Context, conn *websocket.Conn, value map[string]string) error {
@@ -419,7 +419,7 @@ func writeMessage(ctx context.Context, conn *websocket.Conn, value map[string]st
 		return err
 	}
 	if conn.Write(ctx, websocket.MessageText, body) != nil {
-		return adapters.NewError(adapters.ClassTemporary, "Kraken "+epBalancesSnapshot.String()+": the balances feed request failed.")
+		return adapter.NewError(adapter.ClassTemporary, "Kraken "+epBalancesSnapshot.String()+": the balances feed request failed.")
 	}
 	return nil
 }
@@ -427,7 +427,7 @@ func writeMessage(ctx context.Context, conn *websocket.Conn, value map[string]st
 func spotSignature(path, nonce, body, secret string) (string, error) {
 	key, err := base64.StdEncoding.DecodeString(secret)
 	if err != nil {
-		return "", adapters.NewError(adapters.ClassAuthentication, "The Kraken spot secret is not base64.")
+		return "", adapter.NewError(adapter.ClassAuthentication, "The Kraken spot secret is not base64.")
 	}
 	hash := sha256.Sum256([]byte(nonce + body))
 	mac := hmac.New(sha512.New, key)
@@ -449,7 +449,7 @@ func challengeSignature(challenge, secret string) (string, error) {
 func futuresDigest(message, secret string) (string, error) {
 	key, err := base64.StdEncoding.DecodeString(secret)
 	if err != nil {
-		return "", adapters.NewError(adapters.ClassAuthentication, "The Kraken Futures secret is not base64.")
+		return "", adapter.NewError(adapter.ClassAuthentication, "The Kraken Futures secret is not base64.")
 	}
 	hash := sha256.Sum256([]byte(message))
 	mac := hmac.New(sha512.New, key)

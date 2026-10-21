@@ -17,17 +17,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
 
-var testCreds = adapters.Credentials{APIKey: "fixture-key", APISecret: "fixture-secret"}
+var testCreds = adapter.Credentials{APIKey: "fixture-key", APISecret: "fixture-secret"}
 
 var testNow = time.Date(2026, 9, 25, 19, 55, 34, 0, time.UTC)
 
-func allTypes() []adapters.AccountType {
-	return adapters.AccountTypeIDs(adapters.StructureBybitUTA2)
+func allTypes() []adapter.AccountType {
+	return adapter.AccountTypeIDs(adapter.StructureBybitUTA2)
 }
 
 // replay serves explicitly selected flat interface samples and verifies native authentication.
@@ -234,7 +234,7 @@ func sampleBody(t *testing.T, name string, out any) {
 	}
 }
 
-func reportOf(t *testing.T, batch *adapters.Batch, accountType adapters.AccountType) adapters.AccountReport {
+func reportOf(t *testing.T, batch *adapter.Batch, accountType adapter.AccountType) adapter.AccountReport {
 	t.Helper()
 	for _, report := range batch.Reports {
 		if report.AccountType == accountType {
@@ -242,7 +242,7 @@ func reportOf(t *testing.T, batch *adapters.Batch, accountType adapters.AccountT
 		}
 	}
 	t.Fatalf("no %s report", accountType)
-	return adapters.AccountReport{}
+	return adapter.AccountReport{}
 }
 
 func text(value *string) string {
@@ -263,22 +263,22 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
         ]
     }]}}`})
 	ctx := context.Background()
-	result, err := r.adapter.Validate(ctx, testCreds, adapters.StructureBybitUTA2)
+	result, err := r.adapter.Validate(ctx, testCreds, adapter.StructureBybitUTA2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.ExternalRef != "100001" || result.MarginMode != adapters.MarginBybitPM {
+	if result.ExternalRef != "100001" || result.MarginMode != adapter.MarginBybitPM {
 		t.Fatalf("validation = %+v", result)
 	}
-	batch, err := r.adapter.Collect(ctx, testCreds, adapters.StructureBybitUTA2, allTypes())
+	batch, err := r.adapter.Collect(ctx, testCreds, adapter.StructureBybitUTA2, allTypes())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if batch.MarginMode != adapters.MarginBybitPM || len(batch.Reports) != len(allTypes()) {
+	if batch.MarginMode != adapter.MarginBybitPM || len(batch.Reports) != len(allTypes()) {
 		t.Fatalf("batch margin mode %q with %d reports", batch.MarginMode, len(batch.Reports))
 	}
 	for _, report := range batch.Reports {
-		if report.Status != adapters.StatusSucceeded {
+		if report.Status != adapter.StatusSucceeded {
 			t.Fatalf("%s: %s %s", report.AccountType, report.ErrorClass, report.ErrorDetail)
 		}
 		for _, price := range batch.Prices {
@@ -294,7 +294,7 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 		unified.AdjustedEquity != nil || unified.ReportedMarginRatio != nil {
 		t.Fatalf("Portfolio margin account figures = %+v", unified)
 	}
-	wantBalances := map[string]adapters.Balance{
+	wantBalances := map[string]adapter.Balance{
 		"BTC":  {AssetSymbol: "BTC", Equity: "1", UnrealizedPnl: new("-0.25"), Liability: new("0.2"), Interest: new("0.01")},
 		"USDT": {AssetSymbol: "USDT", Equity: "0", Liability: new("5")},
 		"ETH":  {AssetSymbol: "ETH", Equity: "0", Interest: new("0.02")},
@@ -318,19 +318,19 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 			t.Fatalf("%s: a portfolio margin position has no leverage, liquidation price, or margin of its own", position.PositionKey)
 		}
 		if position.EntryPrice == nil || position.MarkPrice == nil ||
-			(position.FuturesContract.Kind == adapters.KindLinearPerpetual && position.SourceQuantityUnit != adapters.UnitBase) ||
-			(position.FuturesContract.Kind == adapters.KindInversePerpetual && position.SourceQuantityUnit != adapters.UnitQuote) {
+			(position.FuturesContract.Kind == adapter.KindLinearPerpetual && position.SourceQuantityUnit != adapter.UnitBase) ||
+			(position.FuturesContract.Kind == adapter.KindInversePerpetual && position.SourceQuantityUnit != adapter.UnitQuote) {
 			t.Fatalf("linear position = %+v", position)
 		}
 	}
 
 	funding := reportOf(t, &batch, TypeFunding)
-	wantFunding := []adapters.Balance{{AssetSymbol: "USDT", Equity: "100", AvailableToWithdraw: new("90")}}
+	wantFunding := []adapter.Balance{{AssetSymbol: "USDT", Equity: "100", AvailableToWithdraw: new("90")}}
 	if funding.Equity != nil || !reflect.DeepEqual(funding.Balances, wantFunding) {
 		t.Fatalf("Funding = %+v, want calculated balances %+v", funding, wantFunding)
 	}
 	earn := reportOf(t, &batch, TypeEarn)
-	wantEarn := []adapters.Balance{{AssetSymbol: "USDT", Equity: "20"}}
+	wantEarn := []adapter.Balance{{AssetSymbol: "USDT", Equity: "20"}}
 	if !reflect.DeepEqual(earn.Balances, wantEarn) {
 		t.Fatalf("Earn = %+v, want principal %+v without claimable yield", earn.Balances, wantEarn)
 	}
@@ -339,16 +339,16 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 func TestIsolatedMarginIgnoresAccountWideFigures(t *testing.T) {
 	r := newReplay(t, "bybit_isolated", nil)
 	ctx := context.Background()
-	result, err := r.adapter.Validate(ctx, testCreds, adapters.StructureBybitUTA2)
-	if err != nil || result.MarginMode != adapters.MarginBybitIsolated {
+	result, err := r.adapter.Validate(ctx, testCreds, adapter.StructureBybitUTA2)
+	if err != nil || result.MarginMode != adapter.MarginBybitIsolated {
 		t.Fatalf("validation = %+v, %v", result, err)
 	}
-	batch, err := r.adapter.Collect(ctx, testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeUnified})
+	batch, err := r.adapter.Collect(ctx, testCreds, adapter.StructureBybitUTA2, []adapter.AccountType{TypeUnified})
 	if err != nil {
 		t.Fatal(err)
 	}
 	unified := reportOf(t, &batch, TypeUnified)
-	if batch.MarginMode != adapters.MarginBybitIsolated || unified.Status != adapters.StatusSucceeded {
+	if batch.MarginMode != adapter.MarginBybitIsolated || unified.Status != adapter.StatusSucceeded {
 		t.Fatalf("batch = %+v", batch)
 	}
 	if unified.Equity != nil || unified.AvailableEquity != nil || unified.ReportedInitialMarginRatio != nil || unified.ReportedMaintenanceMarginRatio != nil {
@@ -362,8 +362,8 @@ func TestIsolatedMarginIgnoresAccountWideFigures(t *testing.T) {
 		t.Fatalf("positions = %+v", unified.Positions)
 	}
 	position := unified.Positions[0]
-	if position.PositionKey != "BTCUSD:0" || position.Side != adapters.SideShort || position.SourceQuantity != "300" ||
-		position.SourceQuantityUnit != adapters.UnitQuote || position.FuturesContract.Kind != adapters.KindInversePerpetual ||
+	if position.PositionKey != "BTCUSD:0" || position.Side != adapter.SideShort || position.SourceQuantity != "300" ||
+		position.SourceQuantityUnit != adapter.UnitQuote || position.FuturesContract.Kind != adapter.KindInversePerpetual ||
 		position.FuturesContract.SettlementAssetSymbol != "BTC" || text(position.EntryPrice) != "27464.50441675" || text(position.MarkPrice) != "28224.5" ||
 		text(position.LiquidationPrice) != "30191.5" || text(position.Leverage) != "10" || text(position.Margin) != "0.00010923" ||
 		text(position.UnrealizedPnl) != "-0.00029413" {
@@ -373,12 +373,12 @@ func TestIsolatedMarginIgnoresAccountWideFigures(t *testing.T) {
 
 func TestCrossMarginMapsAccountFigures(t *testing.T) {
 	r := newReplay(t, "bybit_cross", nil)
-	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeUnified})
+	batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, []adapter.AccountType{TypeUnified})
 	if err != nil {
 		t.Fatal(err)
 	}
 	unified := reportOf(t, &batch, TypeUnified)
-	if batch.MarginMode != adapters.MarginBybitCross || unified.Status != adapters.StatusSucceeded {
+	if batch.MarginMode != adapter.MarginBybitCross || unified.Status != adapter.StatusSucceeded {
 		t.Fatalf("batch = %+v", batch)
 	}
 	if text(unified.Equity) != "3.31216591" || text(unified.AvailableEquity) != "3.00326056" ||
@@ -400,12 +400,12 @@ func TestCrossMarginMapsAccountFigures(t *testing.T) {
 func TestOtherAccountStructuresStopEveryRead(t *testing.T) {
 	r := newReplay(t, "uta_1_0_pro", nil)
 	ctx := context.Background()
-	_, err := r.adapter.Validate(ctx, testCreds, adapters.StructureBybitUTA2)
-	if class, detail := adapters.Classify(err); class != adapters.ClassUnsupported || !strings.Contains(detail, "Unified Trading Account 1.0 Pro (unifiedMarginStatus 4)") {
+	_, err := r.adapter.Validate(ctx, testCreds, adapter.StructureBybitUTA2)
+	if class, detail := adapter.Classify(err); class != adapter.ClassUnsupported || !strings.Contains(detail, "Unified Trading Account 1.0 Pro (unifiedMarginStatus 4)") {
 		t.Fatalf("validation error = %v", err)
 	}
-	_, err = r.adapter.Collect(ctx, testCreds, adapters.StructureBybitUTA2, allTypes())
-	if class, _ := adapters.Classify(err); class != adapters.ClassUnsupported {
+	_, err = r.adapter.Collect(ctx, testCreds, adapter.StructureBybitUTA2, allTypes())
+	if class, _ := adapter.Classify(err); class != adapter.ClassUnsupported {
 		t.Fatalf("collection error = %v", err)
 	}
 	for _, path := range r.paths() {
@@ -415,10 +415,10 @@ func TestOtherAccountStructuresStopEveryRead(t *testing.T) {
 	}
 
 	other := newReplay(t, "", nil)
-	if _, err := other.adapter.Validate(ctx, testCreds, adapters.StructureOKXUnified); err == nil {
+	if _, err := other.adapter.Validate(ctx, testCreds, adapter.StructureOKXUnified); err == nil {
 		t.Fatal("another platform's structure must be refused")
 	}
-	if _, err := other.adapter.Collect(ctx, testCreds, adapters.StructureKrakenUnified, allTypes()); err == nil {
+	if _, err := other.adapter.Collect(ctx, testCreds, adapter.StructureKrakenUnified, allTypes()); err == nil {
 		t.Fatal("another platform's structure must be refused")
 	}
 	if len(other.paths()) != 0 {
@@ -430,16 +430,16 @@ func TestMarginModeMustBeKnown(t *testing.T) {
 	for _, tc := range []struct {
 		name, answer, class, detail string
 	}{
-		{"unknown mode", `{"retCode":0,"result":{"unifiedMarginStatus":6,"marginMode":"FUTURE_MARGIN"}}`, adapters.ClassUnsupported, "FUTURE_MARGIN"},
-		{"empty mode", `{"retCode":0,"result":{"unifiedMarginStatus":6,"marginMode":""}}`, adapters.ClassNormalization, "marginMode"},
-		{"missing status", `{"retCode":0,"result":{"marginMode":"PORTFOLIO_MARGIN"}}`, adapters.ClassNormalization, "unifiedMarginStatus"},
-		{"classic account", `{"retCode":0,"result":{"unifiedMarginStatus":1,"marginMode":"REGULAR_MARGIN"}}`, adapters.ClassUnsupported, "a classic account (unifiedMarginStatus 1)"},
-		{"undocumented status", `{"retCode":0,"result":{"unifiedMarginStatus":9,"marginMode":"PORTFOLIO_MARGIN"}}`, adapters.ClassUnsupported, "undocumented"},
+		{"unknown mode", `{"retCode":0,"result":{"unifiedMarginStatus":6,"marginMode":"FUTURE_MARGIN"}}`, adapter.ClassUnsupported, "FUTURE_MARGIN"},
+		{"empty mode", `{"retCode":0,"result":{"unifiedMarginStatus":6,"marginMode":""}}`, adapter.ClassNormalization, "marginMode"},
+		{"missing status", `{"retCode":0,"result":{"marginMode":"PORTFOLIO_MARGIN"}}`, adapter.ClassNormalization, "unifiedMarginStatus"},
+		{"classic account", `{"retCode":0,"result":{"unifiedMarginStatus":1,"marginMode":"REGULAR_MARGIN"}}`, adapter.ClassUnsupported, "a classic account (unifiedMarginStatus 1)"},
+		{"undocumented status", `{"retCode":0,"result":{"unifiedMarginStatus":9,"marginMode":"PORTFOLIO_MARGIN"}}`, adapter.ClassUnsupported, "undocumented"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := newReplay(t, "", map[string]string{epAccountInfo.path: tc.answer})
-			_, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, allTypes())
-			if class, detail := adapters.Classify(err); class != tc.class || !strings.Contains(detail, tc.detail) {
+			_, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, allTypes())
+			if class, detail := adapter.Classify(err); class != tc.class || !strings.Contains(detail, tc.detail) {
 				t.Fatalf("error = %v, want %s naming %s", err, tc.class, tc.detail)
 			}
 		})
@@ -458,12 +458,12 @@ func earnAnswers(flexible, overviewUSD string) map[string]string {
 
 func TestDualAssetPrincipalCountsInTheInvestedCoin(t *testing.T) {
 	r := newReplay(t, "dual_investment", nil)
-	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeDualInvestment})
+	batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, []adapter.AccountType{TypeDualInvestment})
 	if err != nil {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, &batch, TypeDualInvestment)
-	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 1 || earn.Balances[0].AssetSymbol != "USDT" || earn.Balances[0].Equity != "20" {
+	if earn.Status != adapter.StatusSucceeded || len(earn.Balances) != 1 || earn.Balances[0].AssetSymbol != "USDT" || earn.Balances[0].Equity != "20" {
 		t.Fatalf("Earn = %+v: only the synthetic 20 USDT dual asset principal", earn)
 	}
 }
@@ -481,12 +481,12 @@ func TestDualAssetPagesAndStates(t *testing.T) {
 	answers[first] = page(redeeming, "page2")
 	answers[second] = page(buyLow, "")
 	r := newReplay(t, "", answers)
-	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeDualInvestment})
+	batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, []adapter.AccountType{TypeDualInvestment})
 	if err != nil {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, &batch, TypeDualInvestment)
-	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 2 || earn.Balances[0].AssetSymbol != "USDC" || earn.Balances[0].Equity != "30" ||
+	if earn.Status != adapter.StatusSucceeded || len(earn.Balances) != 2 || earn.Balances[0].AssetSymbol != "USDC" || earn.Balances[0].Equity != "30" ||
 		earn.Balances[1].AssetSymbol != "USDT" || earn.Balances[1].Equity != "100" {
 		t.Fatalf("Earn = %+v: both pages, Active and Redeeming", earn)
 	}
@@ -500,11 +500,11 @@ func TestDualAssetPagesAndStates(t *testing.T) {
 			answers := earnAnswers("", "0")
 			answers[first], answers[second] = pages[0], pages[1]
 			r := newReplay(t, "", answers)
-			batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeFunding, TypeDualInvestment})
+			batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, []adapter.AccountType{TypeFunding, TypeDualInvestment})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if reportOf(t, &batch, TypeDualInvestment).ErrorClass != adapters.ClassNormalization || reportOf(t, &batch, TypeFunding).Status != adapters.StatusSucceeded {
+			if reportOf(t, &batch, TypeDualInvestment).ErrorClass != adapter.ClassNormalization || reportOf(t, &batch, TypeFunding).Status != adapter.StatusSucceeded {
 				t.Fatalf("only earn fails with normalization: %+v", batch.Reports)
 			}
 		})
@@ -513,12 +513,12 @@ func TestDualAssetPagesAndStates(t *testing.T) {
 
 func TestFixedTermPrincipalIncludesEarlyRedemption(t *testing.T) {
 	r := newReplay(t, "fixed_saving", nil)
-	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeEarn})
+	batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, []adapter.AccountType{TypeEarn})
 	if err != nil {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, &batch, TypeEarn)
-	if earn.Status != adapters.StatusSucceeded || len(earn.Balances) != 1 || earn.Balances[0].Equity != "301" {
+	if earn.Status != adapter.StatusSucceeded || len(earn.Balances) != 1 || earn.Balances[0].Equity != "301" {
 		t.Fatalf("Earn = %+v: the synthetic 20 USDT of savings plus 201 active and 80 redeeming", earn)
 	}
 	for _, path := range r.paths() {
@@ -531,16 +531,16 @@ func TestFixedTermPrincipalIncludesEarlyRedemption(t *testing.T) {
 func TestEarnCheckKeepsUnreadProductsStale(t *testing.T) {
 	savings := `{"coin":"USDT","amount":"20","claimableYield":"0.5"}`
 	r := newReplay(t, "", earnAnswers(savings, "500"))
-	batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, allTypes())
+	batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, allTypes())
 	if err != nil {
 		t.Fatal(err)
 	}
 	earn := reportOf(t, &batch, TypeEarn)
-	if earn.Status != adapters.StatusFailed || earn.ErrorClass != adapters.ClassUnsupported ||
+	if earn.Status != adapter.StatusFailed || earn.ErrorClass != adapter.ClassUnsupported ||
 		!strings.Contains(earn.ErrorDetail, "500.00") || !strings.Contains(earn.ErrorDetail, "20.00") {
 		t.Fatalf("Earn = %+v: Bybit's valuation exceeds the itemized principal", earn)
 	}
-	if reportOf(t, &batch, TypeUnified).Status != adapters.StatusSucceeded || reportOf(t, &batch, TypeFunding).Status != adapters.StatusSucceeded {
+	if reportOf(t, &batch, TypeUnified).Status != adapter.StatusSucceeded || reportOf(t, &batch, TypeFunding).Status != adapter.StatusSucceeded {
 		t.Fatal("the earn check fails only earn")
 	}
 
@@ -551,11 +551,11 @@ func TestEarnCheckKeepsUnreadProductsStale(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			r := newReplay(t, "", answers)
-			batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeEarn})
+			batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, []adapter.AccountType{TypeEarn})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if earn := reportOf(t, &batch, TypeEarn); earn.Status != adapters.StatusSucceeded {
+			if earn := reportOf(t, &batch, TypeEarn); earn.Status != adapter.StatusSucceeded {
 				t.Fatalf("Earn = %+v", earn)
 			}
 		})
@@ -573,15 +573,15 @@ func TestMalformedAccountsFailOnlyThemselves(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			r := newReplay(t, "", answers)
-			batch, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, allTypes())
+			batch, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, allTypes())
 			if err != nil {
 				t.Fatal(err)
 			}
 			failed := 0
 			for _, report := range batch.Reports {
-				if report.Status == adapters.StatusFailed {
+				if report.Status == adapter.StatusFailed {
 					failed++
-					if report.ErrorClass != adapters.ClassNormalization || len(report.Balances) != 0 {
+					if report.ErrorClass != adapter.ClassNormalization || len(report.Balances) != 0 {
 						t.Fatalf("%s: %+v", report.AccountType, report)
 					}
 				}
@@ -600,16 +600,16 @@ func TestMalformedAccountsFailOnlyThemselves(t *testing.T) {
 func TestAuthenticationFailureStopsTheBatch(t *testing.T) {
 	r := newReplay(t, "", nil)
 	r.always(epWallet.path, r.failure(scenarioInvalidKey))
-	_, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, allTypes())
-	if class, _ := adapters.Classify(err); class != adapters.ClassAuthentication {
+	_, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, allTypes())
+	if class, _ := adapter.Classify(err); class != adapter.ClassAuthentication {
 		t.Fatalf("error = %v: an authentication failure of one account fails the whole batch", err)
 	}
 }
 
 func TestEveryRetryableFailureFailsTheBatch(t *testing.T) {
 	r := newReplay(t, "rate_limited", nil)
-	_, err := r.adapter.Collect(context.Background(), testCreds, adapters.StructureBybitUTA2, []adapters.AccountType{TypeUnified, TypeFunding})
-	if class, _ := adapters.Classify(err); class != adapters.ClassRateLimited {
+	_, err := r.adapter.Collect(context.Background(), testCreds, adapter.StructureBybitUTA2, []adapter.AccountType{TypeUnified, TypeFunding})
+	if class, _ := adapter.Classify(err); class != adapter.ClassRateLimited {
 		t.Fatalf("error = %v: the collection service retries a run whose every account was rate limited", err)
 	}
 }
@@ -618,11 +618,11 @@ func TestErrorClasses(t *testing.T) {
 	for _, tc := range []struct {
 		name, failure, scenario, want string
 	}{
-		{"unknown key", scenarioInvalidKey, "", adapters.ClassAuthentication},
-		{"wrong signature", scenarioBadSignature, "", adapters.ClassAuthentication},
-		{"timestamp refused again after one resync", scenarioStaleTimestamp, "", adapters.ClassTemporary},
-		{"region not served", "", "region_restricted", adapters.ClassUnsupported},
-		{"IP over the request budget", "", "ip_rate_limited", adapters.ClassTemporary},
+		{"unknown key", scenarioInvalidKey, "", adapter.ClassAuthentication},
+		{"wrong signature", scenarioBadSignature, "", adapter.ClassAuthentication},
+		{"timestamp refused again after one resync", scenarioStaleTimestamp, "", adapter.ClassTemporary},
+		{"region not served", "", "region_restricted", adapter.ClassUnsupported},
+		{"IP over the request budget", "", "ip_rate_limited", adapter.ClassTemporary},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := newReplay(t, tc.scenario, nil)
@@ -632,16 +632,16 @@ func TestErrorClasses(t *testing.T) {
 				r.always(epAccountInfo.path, answer)
 			}
 			ctx := context.Background()
-			_, err := r.adapter.Validate(ctx, testCreds, adapters.StructureBybitUTA2)
-			class, detail := adapters.Classify(err)
+			_, err := r.adapter.Validate(ctx, testCreds, adapter.StructureBybitUTA2)
+			class, detail := adapter.Classify(err)
 			if class != tc.want || !strings.HasPrefix(detail, epAccountInfo.String()+": HTTP ") {
 				t.Fatalf("validation error = %v, want %s naming the endpoint and status", err, tc.want)
 			}
 			if msg := retMsg(answer); msg != "" && strings.Contains(detail, msg) {
 				t.Fatalf("detail %q repeats Bybit's message, which can echo the request", detail)
 			}
-			_, err = r.adapter.Collect(ctx, testCreds, adapters.StructureBybitUTA2, allTypes())
-			if class, _ := adapters.Classify(err); class != tc.want {
+			_, err = r.adapter.Collect(ctx, testCreds, adapter.StructureBybitUTA2, allTypes())
+			if class, _ := adapter.Classify(err); class != tc.want {
 				t.Fatalf("collection error = %v, want %s for the whole batch", err, tc.want)
 			}
 			for _, path := range r.paths() {
@@ -658,20 +658,20 @@ func TestErrorCodesWithoutAnAnswer(t *testing.T) {
 		status, code int
 		want         string
 	}{
-		{http.StatusOK, 10007, adapters.ClassAuthentication},
-		{http.StatusOK, 33004, adapters.ClassAuthentication},
-		{http.StatusOK, -2015, adapters.ClassAuthentication},
-		{http.StatusUnauthorized, 0, adapters.ClassAuthentication},
-		{http.StatusOK, 10005, adapters.ClassAuthorization},
-		{http.StatusOK, 10010, adapters.ClassAuthorization},
-		{http.StatusOK, 10018, adapters.ClassRateLimited},
-		{http.StatusTooManyRequests, 0, adapters.ClassRateLimited},
-		{http.StatusOK, 10028, adapters.ClassUnsupported},
-		{http.StatusOK, 100028, adapters.ClassUnsupported},
-		{http.StatusOK, 180004, adapters.ClassUnsupported},
-		{http.StatusOK, 180024, adapters.ClassUnsupported},
-		{http.StatusOK, 10016, adapters.ClassTemporary},
-		{http.StatusBadGateway, 0, adapters.ClassTemporary},
+		{http.StatusOK, 10007, adapter.ClassAuthentication},
+		{http.StatusOK, 33004, adapter.ClassAuthentication},
+		{http.StatusOK, -2015, adapter.ClassAuthentication},
+		{http.StatusUnauthorized, 0, adapter.ClassAuthentication},
+		{http.StatusOK, 10005, adapter.ClassAuthorization},
+		{http.StatusOK, 10010, adapter.ClassAuthorization},
+		{http.StatusOK, 10018, adapter.ClassRateLimited},
+		{http.StatusTooManyRequests, 0, adapter.ClassRateLimited},
+		{http.StatusOK, 10028, adapter.ClassUnsupported},
+		{http.StatusOK, 100028, adapter.ClassUnsupported},
+		{http.StatusOK, 180004, adapter.ClassUnsupported},
+		{http.StatusOK, 180024, adapter.ClassUnsupported},
+		{http.StatusOK, 10016, adapter.ClassTemporary},
+		{http.StatusBadGateway, 0, adapter.ClassTemporary},
 	} {
 		if got := classOf(tc.status, tc.code); got != tc.want {
 			t.Errorf("HTTP %d, code %d: class %s, want %s", tc.status, tc.code, got, tc.want)
@@ -682,8 +682,8 @@ func TestErrorCodesWithoutAnAnswer(t *testing.T) {
 func TestClockResynchronizesOnceAfterATimestampRefusal(t *testing.T) {
 	r := newReplay(t, "", nil)
 	r.once(epAccountInfo.path, r.failure(scenarioStaleTimestamp))
-	result, err := r.adapter.Validate(context.Background(), testCreds, adapters.StructureBybitUTA2)
-	if err != nil || result.MarginMode != adapters.MarginBybitPM {
+	result, err := r.adapter.Validate(context.Background(), testCreds, adapter.StructureBybitUTA2)
+	if err != nil || result.MarginMode != adapter.MarginBybitPM {
 		t.Fatalf("validation = %+v, %v", result, err)
 	}
 	if r.count(epTime.path) != 2 || r.count(epAccountInfo.path) != 2 {
@@ -695,16 +695,16 @@ func TestPositionMapping(t *testing.T) {
 	delivery := nativeInstrument{Symbol: "BTCUSDZ26", ContractType: "InverseFutures", BaseCoin: "BTC", QuoteCoin: "USD", SettleCoin: "BTC", DeliveryTime: "1798761600000"}
 	index := 2
 	row := openPosition{Symbol: delivery.Symbol, PositionIdx: &index, Side: "Sell", Size: "300", AvgPrice: "30000", MarkPrice: "29000", Leverage: "5", PositionIM: "0.002", LiqPrice: "0"}
-	position, err := mapPosition(&row, big.NewRat(300, 1), &delivery, adapters.MarginBybitCross)
+	position, err := mapPosition(&row, big.NewRat(300, 1), &delivery, adapter.MarginBybitCross)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if position.SourceQuantityUnit != adapters.UnitQuote || position.FuturesContract.Kind != adapters.KindInverseDelivery || position.FuturesContract.ExpiryAt == nil ||
-		position.Side != adapters.SideShort || position.PositionKey != "BTCUSDZ26:2" || position.LiquidationPrice != nil || text(position.Leverage) != "5" {
+	if position.SourceQuantityUnit != adapter.UnitQuote || position.FuturesContract.Kind != adapter.KindInverseDelivery || position.FuturesContract.ExpiryAt == nil ||
+		position.Side != adapter.SideShort || position.PositionKey != "BTCUSDZ26:2" || position.LiquidationPrice != nil || text(position.Leverage) != "5" {
 		t.Fatalf("inverse delivery hedge position = %+v", position)
 	}
 
-	pm, err := mapPosition(&row, big.NewRat(300, 1), &delivery, adapters.MarginBybitPM)
+	pm, err := mapPosition(&row, big.NewRat(300, 1), &delivery, adapter.MarginBybitPM)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -720,7 +720,7 @@ func TestPositionMapping(t *testing.T) {
 	} {
 		p, i := row, delivery
 		broken(&p, &i)
-		if _, err := mapPosition(&p, big.NewRat(1, 1), &i, adapters.MarginBybitCross); err == nil {
+		if _, err := mapPosition(&p, big.NewRat(1, 1), &i, adapter.MarginBybitCross); err == nil {
 			t.Fatalf("a malformed %s must fail the position", name)
 		}
 	}

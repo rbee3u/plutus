@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 )
 
@@ -35,17 +35,17 @@ func sampleNames(selection string) []string {
 type refusal struct {
 	scenario string
 	ep       endpoint
-	creds    adapters.Credentials
+	creds    adapter.Credentials
 	nonce    string
 }
 
-func refusals(creds adapters.Credentials) []refusal {
+func refusals(creds adapter.Credentials) []refusal {
 	return []refusal{
-		{"invalid_key", epAPIKeyInfo, adapters.Credentials{APIKey: "invalid", APISecret: creds.APISecret}, ""},
-		{"bad_signature", epAPIKeyInfo, adapters.Credentials{APIKey: creds.APIKey, APISecret: "d3Jvbmc="}, ""},
+		{"invalid_key", epAPIKeyInfo, adapter.Credentials{APIKey: "invalid", APISecret: creds.APISecret}, ""},
+		{"bad_signature", epAPIKeyInfo, adapter.Credentials{APIKey: creds.APIKey, APISecret: "d3Jvbmc="}, ""},
 		{"invalid_nonce", epAPIKeyInfo, creds, "1"},
-		{"invalid_key", epFuturesKey, adapters.Credentials{Futures: &adapters.KeyPair{APIKey: "invalid", APISecret: creds.FuturesSecret()}}, ""},
-		{"bad_signature", epFuturesKey, adapters.Credentials{Futures: &adapters.KeyPair{APIKey: creds.FuturesKey(), APISecret: "d3Jvbmc="}}, ""},
+		{"invalid_key", epFuturesKey, adapter.Credentials{Futures: &adapter.KeyPair{APIKey: "invalid", APISecret: creds.FuturesSecret()}}, ""},
+		{"bad_signature", epFuturesKey, adapter.Credentials{Futures: &adapter.KeyPair{APIKey: creds.FuturesKey(), APISecret: "d3Jvbmc="}}, ""},
 	}
 }
 

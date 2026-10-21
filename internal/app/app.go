@@ -6,21 +6,21 @@ import (
 	"database/sql"
 	"log/slog"
 
-	"github.com/rbee3u/plutus/internal/application/audit"
-	"github.com/rbee3u/plutus/internal/application/auth"
-	"github.com/rbee3u/plutus/internal/application/capital"
-	"github.com/rbee3u/plutus/internal/application/catalog"
-	"github.com/rbee3u/plutus/internal/application/collection"
-	"github.com/rbee3u/plutus/internal/application/cycles"
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/manual"
-	"github.com/rbee3u/plutus/internal/application/portfolio"
-	"github.com/rbee3u/plutus/internal/application/retention"
-	"github.com/rbee3u/plutus/internal/application/valuation"
 	"github.com/rbee3u/plutus/internal/config"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/audit"
+	"github.com/rbee3u/plutus/internal/service/auth"
+	"github.com/rbee3u/plutus/internal/service/capital"
+	"github.com/rbee3u/plutus/internal/service/catalog"
+	"github.com/rbee3u/plutus/internal/service/collection"
+	"github.com/rbee3u/plutus/internal/service/cycle"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/manual"
+	"github.com/rbee3u/plutus/internal/service/portfolio"
+	"github.com/rbee3u/plutus/internal/service/retention"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 )
 
 // Services holds every application service built on one database handle.
@@ -28,7 +28,7 @@ import (
 // service themselves.
 type Services struct {
 	DB       *sql.DB
-	Adapters *adapters.Registry
+	Adapters *adapter.Registry
 
 	Auth        *auth.Service
 	Portfolios  *portfolio.Service
@@ -39,16 +39,16 @@ type Services struct {
 	Valuation   *valuation.Service
 	Financial   *financial.Service
 	Collection  *collection.Service
-	Cycles      *cycles.Service
+	Cycles      *cycle.Service
 	Retention   *retention.Service
 	Audit       *audit.Service
 	Idempotency *idempotency.Store
 }
 
 // New builds every service on db and shares one registry across its consumers.
-func New(db *sql.DB, cfg *config.Config, registry *adapters.Registry, logger *slog.Logger) (*Services, error) {
+func New(db *sql.DB, cfg *config.Config, registry *adapter.Registry, logger *slog.Logger) (*Services, error) {
 	if registry == nil {
-		registry = adapters.NewRegistry()
+		registry = adapter.NewRegistry()
 	}
 	identities, err := identity.NewService(db, identity.Options{
 		MasterKey:       cfg.Crypto.MasterKey,
@@ -73,7 +73,7 @@ func New(db *sql.DB, cfg *config.Config, registry *adapters.Registry, logger *sl
 		Valuation:   valuationSvc,
 		Financial:   financial.NewService(db, valuationSvc),
 		Collection:  collection.NewService(db, collection.Options{Adapters: registry, Identities: identities, Catalog: catalogSvc, Manual: manualSvc, Valuation: valuationSvc, Stagger: collection.IdentityDelay, Logger: logger}),
-		Cycles:      cycles.NewService(db),
+		Cycles:      cycle.NewService(db),
 		Retention:   retention.NewService(db),
 		Audit:       audit.NewService(db),
 		Idempotency: idempotency.NewStore(db),

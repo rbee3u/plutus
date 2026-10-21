@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
@@ -15,14 +15,14 @@ import (
 var priceQuotes = []string{"USD", "USDT", "USDC"}
 
 // CollectPrices reads public market data without private credentials or account checks.
-func (a *Adapter) CollectPrices(ctx context.Context, symbols []string) ([]adapters.Price, error) {
-	c := a.client(adapters.Credentials{})
+func (a *Adapter) CollectPrices(ctx context.Context, symbols []string) ([]adapter.Price, error) {
+	c := a.client(adapter.Credentials{})
 	assets, err := readAssetNames(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 	prices := readSpotPrices(ctx, c, assets)
-	return adapters.SymbolPrices(symbols, priceQuotes, prices.lookup, a.now()), ctx.Err()
+	return adapter.SymbolPrices(symbols, priceQuotes, prices.lookup, a.now()), ctx.Err()
 }
 
 // assetNames maps Kraken asset codes such as XXBT and ZUSD to the public names assets lists for
@@ -53,7 +53,7 @@ func readAssetNames(ctx context.Context, c *client) (assetNames, error) {
 func (n assetNames) symbol(where, code string) (string, error) {
 	code = strings.TrimSpace(code)
 	if code == "" {
-		return "", adapters.Malformed(where, "an asset code")
+		return "", adapter.Malformed(where, "an asset code")
 	}
 	if name := n[code]; name != "" {
 		code = name
@@ -77,10 +77,10 @@ func (n assetNames) mainSymbol(where, code string) (string, bool, error) {
 }
 
 // spotPrices holds the last Spot price of each asset per quote.
-type spotPrices map[string]map[string]adapters.Quote
+type spotPrices map[string]map[string]adapter.Quote
 
-// lookup is the adapters.QuoteLookup of the Spot prices.
-func (p spotPrices) lookup(symbol, quote string) (adapters.Quote, bool) {
+// lookup is the adapter.QuoteLookup of the Spot prices.
+func (p spotPrices) lookup(symbol, quote string) (adapter.Quote, bool) {
 	price, ok := p[symbol][quote]
 	return price, ok
 }
@@ -118,9 +118,9 @@ func readSpotPrices(ctx context.Context, c *client, assets assetNames) spotPrice
 		}
 		if last, ok := decimal.Parse(string(ticker.Close[0])); ok && decimal.Valid(string(ticker.Close[0])) && last.Sign() > 0 {
 			if out[base] == nil {
-				out[base] = map[string]adapters.Quote{}
+				out[base] = map[string]adapter.Quote{}
 			}
-			out[base][quote] = adapters.Quote{Price: string(ticker.Close[0]), SourceMarketRef: name}
+			out[base][quote] = adapter.Quote{Price: string(ticker.Close[0]), SourceMarketRef: name}
 		}
 	}
 	return out

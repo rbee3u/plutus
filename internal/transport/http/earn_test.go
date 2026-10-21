@@ -12,11 +12,11 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/application/auth"
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/portfolio"
-	"github.com/rbee3u/plutus/internal/application/valuation"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/auth"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/portfolio"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -76,12 +76,12 @@ func TestEarnHTTPReadScopeAndUnknownDetails(t *testing.T) {
 
 // Typed earn details retain explicit source symbols across the API boundary.
 func TestEarnStoredSymbolsBecomeExplicitAPIReferences(t *testing.T) {
-	var details adapters.EarnDetails
+	var details adapter.EarnDetails
 	raw := []byte(`{"assets":[{"assetSymbol":"XBT","canonicalAssetSymbol":"BTC","amount":"1"}],"rates":[{"assetSymbol":"XBT","value":"0.02","kind":"apr","qualifier":"estimated","label":"APR"}],"rewards":[{"assetSymbol":"XBT","amount":"0.1","kind":"cumulative"}]}`)
 	if err := json.Unmarshal(raw, &details); err != nil {
 		t.Fatal(err)
 	}
-	stored := adapters.EarnPosition{Assets: details.Assets, Rates: details.Rates, Rewards: details.Rewards}
+	stored := adapter.EarnPosition{Assets: details.Assets, Rates: details.Rates, Rewards: details.Rewards}
 	rows := toAPIEarnPositions([]financial.EarnPositionRow{{EarnPosition: stored}})
 	if rows[0].Assets[0].AssetSymbol != "XBT" || rows[0].Assets[0].CanonicalAssetSymbol == nil || *rows[0].Assets[0].CanonicalAssetSymbol != "BTC" || rows[0].Rates[0].AssetSymbol == nil || *rows[0].Rates[0].AssetSymbol != "XBT" || rows[0].Rewards[0].AssetSymbol != "XBT" {
 		t.Fatalf("lost stored symbols: %+v", rows[0])

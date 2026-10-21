@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
@@ -15,22 +15,22 @@ import (
 var quotes = []string{"USDT", "USDC"}
 
 // CollectPrices reads public market data without private credentials or account checks.
-func (a *Adapter) CollectPrices(ctx context.Context, symbols []string) ([]adapters.Price, error) {
-	prices, at := a.tickers(ctx, a.client(adapters.Credentials{}))
-	return adapters.SymbolPrices(symbols, quotes, prices.lookup, at), ctx.Err()
+func (a *Adapter) CollectPrices(ctx context.Context, symbols []string) ([]adapter.Price, error) {
+	prices, at := a.tickers(ctx, a.client(adapter.Credentials{}))
+	return adapter.SymbolPrices(symbols, quotes, prices.lookup, at), ctx.Err()
 }
 
 // spotPrices are Bybit spot last prices by pair symbol, such as BTCUSDT.
 type spotPrices map[string]string
 
-func (p spotPrices) lookup(symbol, quote string) (adapters.Quote, bool) {
+func (p spotPrices) lookup(symbol, quote string) (adapter.Quote, bool) {
 	price, ok := p[symbol+quote]
-	return adapters.Quote{Price: price, SourceMarketRef: symbol + quote}, ok
+	return adapter.Quote{Price: price, SourceMarketRef: symbol + quote}, ok
 }
 
 // usd returns the USD value of one unit of symbol, for the earn check.
 func (p spotPrices) usd(symbol string) (*big.Rat, bool) {
-	return adapters.USDPrice(symbol, quotes, p.lookup)
+	return adapter.USDPrice(symbol, quotes, p.lookup)
 }
 
 // tickers reads every spot last price in one call. A failure yields no prices rather than failing

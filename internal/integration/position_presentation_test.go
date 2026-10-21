@@ -3,15 +3,15 @@ package integration
 import (
 	"testing"
 
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/valuation"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 )
 
 func TestPositionCompletenessSeparatesBalanceOmissionsAndMissingSources(t *testing.T) {
 	h := newHarness(t)
-	item := h.createIdentity("Unpriced balance", adapters.PlatformBinance, adapters.StructureBinanceClassic, "spot", "um_futures")
+	item := h.createIdentity("Unpriced balance", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot", "um_futures")
 	item = h.storeCredentials(item, "unpriced-position-completeness")
 	if _, result, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !result.OK {
 		t.Fatalf("enable %+v %v", result, err)
@@ -22,7 +22,7 @@ func TestPositionCompletenessSeparatesBalanceOmissionsAndMissingSources(t *testi
 	if err != nil || first.Point.Completeness() != valuation.CompletenessIncomplete || positions.Completeness != valuation.CompletenessComplete || len(positions.Issues) != 0 {
 		t.Fatalf("balance omission contaminated notional: %+v %v", positions, err)
 	}
-	missing := h.createIdentity("Missing positions", adapters.PlatformBybit, adapters.StructureBybitUTA2, "unified")
+	missing := h.createIdentity("Missing positions", adapter.PlatformBybit, adapter.StructureBybitUTA2, "unified")
 	missing = h.storeCredentials(missing, "position-missing-source")
 	enabled, result, err := h.identities.Enable(h.ctx, h.portfolioID, missing.ID, missing.Version, identity.ActionInput{ActorUserID: h.userID})
 	if err != nil || !result.OK {

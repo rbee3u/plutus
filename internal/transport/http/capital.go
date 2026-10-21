@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/rbee3u/plutus/internal/application/auth"
+	"github.com/rbee3u/plutus/internal/service/auth"
 
-	"github.com/rbee3u/plutus/internal/application/capital"
-	"github.com/rbee3u/plutus/internal/application/financial"
+	"github.com/rbee3u/plutus/internal/service/capital"
+	"github.com/rbee3u/plutus/internal/service/financial"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
 

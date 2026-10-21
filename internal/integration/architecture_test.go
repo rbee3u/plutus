@@ -10,12 +10,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/rbee3u/plutus/internal/application/capital"
-	"github.com/rbee3u/plutus/internal/application/catalog"
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/portfolio"
 	"github.com/rbee3u/plutus/internal/infra/idempotency"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
+	"github.com/rbee3u/plutus/internal/service/capital"
+	"github.com/rbee3u/plutus/internal/service/catalog"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/portfolio"
 	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 )
 
@@ -49,7 +49,7 @@ func populatedPortfolio(t *testing.T, base *harness, name string) (*harness, por
 	copyHarness := *base
 	h := &copyHarness
 	h.portfolioID = p.ID
-	item := h.createIdentity(name, adapters.PlatformBinance, adapters.StructureBinancePM, "spot", "portfolio_margin", "earn", "dual_investment")
+	item := h.createIdentity(name, adapter.PlatformBinance, adapter.StructureBinancePM, "spot", "portfolio_margin", "earn", "dual_investment")
 	item = h.storeCredentials(item, name)
 	item, _, err = h.identities.Enable(h.ctx, p.ID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID})
 	if err != nil {
@@ -58,7 +58,7 @@ func populatedPortfolio(t *testing.T, base *harness, name string) (*harness, por
 	manualSave(t, h, item, "USD", "12")
 	_, firstCycle := h.runCycle()
 	manualSave(t, h, item, "USD", "13")
-	newcomer := h.createIdentity(name+" manual", adapters.PlatformBinance, adapters.StructureBinancePM)
+	newcomer := h.createIdentity(name+" manual", adapter.PlatformBinance, adapter.StructureBinancePM)
 	manualSave(t, h, newcomer, "USD", "1")
 	// Replacing credentials disables private collection; previous reports carry
 	// forward while the manual account continues to produce fresh reports.

@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
@@ -64,11 +64,11 @@ func TestEarnStrategiesReplaysExactCursorSequence(t *testing.T) {
 				_, _ = io.Copy(w, bytes.NewReader(file.Body))
 			}))
 			defer server.Close()
-			adapter := New(&Options{SpotHost: server.URL, HTTP: offline.Client(t, server)})
-			runner := &run{c: adapter.client(testCreds)}
+			platformAdapter := New(&Options{SpotHost: server.URL, HTTP: offline.Client(t, server)})
+			runner := &run{c: platformAdapter.client(testCreds)}
 			strategies, err := runner.earnStrategies(context.Background())
 			if repeated {
-				if class, _ := adapters.Classify(err); err == nil || class != adapters.ClassNormalization {
+				if class, _ := adapter.Classify(err); err == nil || class != adapter.ClassNormalization {
 					t.Fatalf("repeated cursor classification: %v", err)
 				}
 				return

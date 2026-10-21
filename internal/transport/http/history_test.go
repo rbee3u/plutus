@@ -15,12 +15,12 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/rbee3u/plutus/internal/app"
-	"github.com/rbee3u/plutus/internal/application/auth"
-	"github.com/rbee3u/plutus/internal/application/capital"
-	"github.com/rbee3u/plutus/internal/application/cycles"
-	"github.com/rbee3u/plutus/internal/application/financial"
-	"github.com/rbee3u/plutus/internal/application/portfolio"
-	"github.com/rbee3u/plutus/internal/application/valuation"
+	"github.com/rbee3u/plutus/internal/service/auth"
+	"github.com/rbee3u/plutus/internal/service/capital"
+	"github.com/rbee3u/plutus/internal/service/cycle"
+	"github.com/rbee3u/plutus/internal/service/financial"
+	"github.com/rbee3u/plutus/internal/service/portfolio"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 	"github.com/rbee3u/plutus/internal/transport/http/api"
 )
@@ -83,12 +83,12 @@ func TestHistoryHTTPPaginationAndSeries(t *testing.T) {
 	}
 	defer func() { _ = tx.Rollback() }()
 	for i := 0; i < 1101; i++ {
-		cycle := uuid.New()
+		collectionCycle := uuid.New()
 		at := start.Add(time.Duration(i) * 15 * time.Minute)
-		if _, err := tx.ExecContext(ctx, "INSERT INTO collection_cycles (portfolio_id,id,status,trigger_kind,available_at,created_at,collection_finished_at,finished_at) VALUES (?,?,'succeeded','user',?,?,?,?)", p.ID[:], cycle[:], at, at, at, at); err != nil {
+		if _, err := tx.ExecContext(ctx, "INSERT INTO collection_cycles (portfolio_id,id,status,trigger_kind,available_at,created_at,collection_finished_at,finished_at) VALUES (?,?,'succeeded','user',?,?,?,?)", p.ID[:], collectionCycle[:], at, at, at, at); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := tx.ExecContext(ctx, "INSERT INTO valuation_points (portfolio_id,cycle_id,evaluated_at,total_usd,account_count,stale_account_count,incomplete_account_count,calculation_version) VALUES (?,?,?,?,1,0,?,1)", p.ID[:], cycle[:], at, i+1, i%2); err != nil {
+		if _, err := tx.ExecContext(ctx, "INSERT INTO valuation_points (portfolio_id,cycle_id,evaluated_at,total_usd,account_count,stale_account_count,incomplete_account_count,calculation_version) VALUES (?,?,?,?,1,0,?,1)", p.ID[:], collectionCycle[:], at, i+1, i%2); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -238,16 +238,16 @@ func TestCollectionCycleDetailWithoutRetainedHoldings(t *testing.T) {
 		}
 	}
 	service := valuation.NewService(db)
-	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{DB: db, Auth: authentication, Portfolios: portfolios, Valuation: service, Cycles: cycles.NewService(db)}})
-	get := func(cycle uuid.UUID) api.CollectionCycleDetail {
+	engine := Engine(&EngineOptions{Logger: slog.New(slog.DiscardHandler), Ready: StaticReady{}, Services: &app.Services{DB: db, Auth: authentication, Portfolios: portfolios, Valuation: service, Cycles: cycle.NewService(db)}})
+	get := func(collectionCycle uuid.UUID) api.CollectionCycleDetail {
 		t.Helper()
-		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/portfolios/"+p.ID.String()+"/collection-cycles/"+cycle.String(), nil)
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/portfolios/"+p.ID.String()+"/collection-cycles/"+collectionCycle.String(), nil)
 		req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: session.Token, Secure: true, HttpOnly: true, SameSite: http.SameSiteStrictMode})
 		response := httptest.NewRecorder()
 		engine.ServeHTTP(response, req)
 		var detail api.CollectionCycleDetail
 		if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &detail) != nil {
-			t.Fatalf("cycle %s: %d %s", cycle, response.Code, response.Body.String())
+			t.Fatalf("cycle %s: %d %s", collectionCycle, response.Code, response.Body.String())
 		}
 		return detail
 	}

@@ -77,7 +77,7 @@ harness, count application reads and consumed rows, report allocations, and
 inspect scan plans with `EXPLAIN ANALYZE`:
 
 ```sh
-go test ./internal/application/financial -run '^$' \
+go test ./internal/service/financial -run '^$' \
   -bench 'Benchmark(History|Revision|ReadScope|PolicyVersion|ComparisonEvent)Queries' \
   -benchtime=3x -v
 ```

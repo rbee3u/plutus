@@ -14,24 +14,24 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/rbee3u/plutus/internal/application/identity"
-	"github.com/rbee3u/plutus/internal/application/valuation"
-	"github.com/rbee3u/plutus/internal/platform/adapters"
+	"github.com/rbee3u/plutus/internal/platform/adapter"
 	"github.com/rbee3u/plutus/internal/platform/bybit"
 	"github.com/rbee3u/plutus/internal/platform/fixture"
 	"github.com/rbee3u/plutus/internal/platform/kraken"
 	"github.com/rbee3u/plutus/internal/platform/recording"
+	"github.com/rbee3u/plutus/internal/service/identity"
+	"github.com/rbee3u/plutus/internal/service/valuation"
 	"github.com/rbee3u/plutus/internal/testsupport/offline"
 )
 
 // This exercises the database's time-constrained price lookup, not only adapter return values.
 func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 	for _, tc := range []struct {
-		platform adapters.Platform
+		platform adapter.Platform
 		accounts map[string]fixtureAccountValue
 		total    string
 	}{
-		{adapters.PlatformBybit, map[string]fixtureAccountValue{
+		{adapter.PlatformBybit, map[string]fixtureAccountValue{
 			"unified": {valuation.MethodReported, "10000"},
 			"funding": {valuation.MethodCalculated, "100"},
 			"earn":    {valuation.MethodCalculated, "20"},
@@ -39,7 +39,7 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 		}, "10120"},
 		// Main uses portfolio_value; Coin-M uses futures_upnl_cash_value.
 		// Holding = 0.01 BTC at 30000. Earn excludes the flex reward held in main.
-		{adapters.PlatformKraken, map[string]fixtureAccountValue{
+		{adapter.PlatformKraken, map[string]fixtureAccountValue{
 			"main":                {valuation.MethodReported, "1000"},
 			"coin_m":              {valuation.MethodReported, "10"},
 			"derivatives_holding": {valuation.MethodCalculated, "300"},
@@ -100,15 +100,15 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 				_, _ = w.Write(f.Body)
 			}))
 			t.Cleanup(server.Close)
-			structure := adapters.StructureBybitUTA2
-			types := []adapters.AccountType{bybit.TypeUnified, bybit.TypeFunding, bybit.TypeEarn}
-			creds := adapters.Credentials{APIKey: "fixture-key", APISecret: "fixture-secret"}
-			if platform == adapters.PlatformBybit {
+			structure := adapter.StructureBybitUTA2
+			types := []adapter.AccountType{bybit.TypeUnified, bybit.TypeFunding, bybit.TypeEarn}
+			creds := adapter.Credentials{APIKey: "fixture-key", APISecret: "fixture-secret"}
+			if platform == adapter.PlatformBybit {
 				h.registry.Register(platform, bybit.New(&bybit.Options{Host: server.URL, HTTP: offline.Client(t, server)}))
 			} else {
-				structure = adapters.StructureKrakenUnified
-				types = []adapters.AccountType{kraken.TypeMain, kraken.TypeEarn, kraken.TypeCoinM, kraken.TypeDerivativesHolding}
-				creds = adapters.Credentials{APIKey: "spot-fixture", APISecret: "c2VjcmV0", Futures: &adapters.KeyPair{APIKey: "futures-fixture", APISecret: "c2VjcmV0"}}
+				structure = adapter.StructureKrakenUnified
+				types = []adapter.AccountType{kraken.TypeMain, kraken.TypeEarn, kraken.TypeCoinM, kraken.TypeDerivativesHolding}
+				creds = adapter.Credentials{APIKey: "spot-fixture", APISecret: "c2VjcmV0", Futures: &adapter.KeyPair{APIKey: "futures-fixture", APISecret: "c2VjcmV0"}}
 				var snap struct {
 					Timestamp int64 `json:"timestamp"`
 				}
@@ -139,7 +139,7 @@ func TestNewAdapterFixturesStoreAndValue(t *testing.T) {
 
 func TestKrakenSelectionRequiresCredentialGroups(t *testing.T) {
 	h := newHarness(t)
-	item := h.createIdentity("Earn only", adapters.PlatformKraken, adapters.StructureKrakenUnified, "earn")
+	item := h.createIdentity("Earn only", adapter.PlatformKraken, adapter.StructureKrakenUnified, "earn")
 	item = h.storeCredentials(item, "spot-only")
 	item, _, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID})
 	if err != nil {
@@ -178,7 +178,7 @@ func TestKrakenSelectionRequiresCredentialGroups(t *testing.T) {
 		t.Fatal("enabled newly selected main without futures key")
 	}
 	// The same Spot key with a futures key added reaches the same Kraken account.
-	item, err = h.identities.PutCredentials(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}, adapters.Credentials{APIKey: "spot-only", APISecret: "fake", Futures: &adapters.KeyPair{APIKey: "futures", APISecret: "fake"}})
+	item, err = h.identities.PutCredentials(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}, adapter.Credentials{APIKey: "spot-only", APISecret: "fake", Futures: &adapter.KeyPair{APIKey: "futures", APISecret: "fake"}})
 	if err != nil {
 		t.Fatal(err)
 	}
