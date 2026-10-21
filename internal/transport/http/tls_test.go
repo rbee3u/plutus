@@ -87,7 +87,7 @@ func TestHTTPSNegotiatesTLS13AndMTLSGates(t *testing.T) {
 	}
 	host := ts.Listener.Addr().String()
 
-	tls12, err := (&tls.Dialer{Config: &tls.Config{ // #nosec G402 -- Verify that the server rejects TLS 1.2.
+	tls12, err := (&tls.Dialer{Config: &tls.Config{
 		RootCAs:            roots,
 		InsecureSkipVerify: false,
 		MinVersion:         tls.VersionTLS12,

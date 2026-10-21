@@ -214,7 +214,6 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapter.AccountType) 
 	if d.Profile == "empty" {
 		return r
 	}
-	//nolint:exhaustive // manual is application-owned and never enters private adapter collection.
 	switch kind {
 	case "earn":
 		demoEarn(&r, d, anchor, at)
@@ -285,6 +284,7 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapter.AccountType) 
 		}
 	case "portfolio_margin", "trading", "unified", "um_futures", "cm_futures", "multi_m", "coin_m":
 		demoTrading(&r, d, anchor, at)
+	default:
 	}
 	// Equity/availability describe the final quantities, including event deltas.
 	for i := range r.Balances {

@@ -304,7 +304,6 @@ func TestIdentityReportsAndOutcomeRollbackTogether(t *testing.T) {
 			item := enableRecoveryIdentity(h, "Atomic", adapter.PlatformOKX, adapter.StructureOKXUnified, "trading", "funding")
 			claimed := claimRecoveryCycle(h)
 			trigger := "collection_recovery_" + strings.ReplaceAll(uuid.NewString(), "-", "")
-			// #nosec G201 -- The identifier and hex literal contain only test-generated UUIDs; CREATE TRIGGER cannot bind them.
 			statement := fmt.Sprintf("CREATE TRIGGER %s BEFORE UPDATE ON identities FOR EACH ROW BEGIN IF NEW.id = X'%x' AND NOT (NEW.last_collection_finished_at <=> OLD.last_collection_finished_at) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Injected collection outcome failure'; END IF; END", trigger, item.ID[:])
 			if _, err := h.collection.db.ExecContext(h.ctx, statement); err != nil {
 				t.Fatal(err)
@@ -479,7 +478,7 @@ func TestDeletionRejectsInFlightCollectionCommit(t *testing.T) {
 	platformAdapter.collect = func(kinds []adapter.AccountType) (adapter.Batch, error) {
 		for _, table := range []string{"account_reports", "valuation_points", "price_observations"} {
 			var n int
-			if err := h.collection.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM "+table+" WHERE portfolio_id=?", p.ID[:]).Scan(&n); err != nil { // #nosec G202 -- fixed test table allowlist.
+			if err := h.collection.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM "+table+" WHERE portfolio_id=?", p.ID[:]).Scan(&n); err != nil {
 				t.Fatal(err)
 			}
 			before[table] = n
@@ -499,7 +498,7 @@ func TestDeletionRejectsInFlightCollectionCommit(t *testing.T) {
 	}
 	for _, table := range []string{"account_reports", "valuation_points", "price_observations"} {
 		var n int
-		if err := h.collection.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM "+table+" WHERE portfolio_id=?", p.ID[:]).Scan(&n); err != nil || n != before[table] { // #nosec G202 -- fixed test table allowlist.
+		if err := h.collection.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM "+table+" WHERE portfolio_id=?", p.ID[:]).Scan(&n); err != nil || n != before[table] {
 			t.Fatalf("late write to %s: %d %v", table, n, err)
 		}
 	}

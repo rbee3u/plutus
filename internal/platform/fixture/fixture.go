@@ -227,7 +227,7 @@ func decode(raw []byte, target any) error {
 }
 
 func Read(path string) (File, error) {
-	raw, err := os.ReadFile(path) //nolint:gosec // Explicit local sample path.
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		return File{}, err
 	}

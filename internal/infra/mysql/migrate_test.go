@@ -19,7 +19,7 @@ func TestMigrateUpAndSeeds(t *testing.T) {
 	defer cancel()
 
 	// Up is idempotent on an already migrated database.
-	if err := mysql.Up(db); err != nil {
+	if err := mysql.Up(ctx, db); err != nil {
 		t.Fatalf("up: %v", err)
 	}
 	if err := mysql.CheckEnvironment(ctx, db); err != nil {

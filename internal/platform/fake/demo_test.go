@@ -313,7 +313,6 @@ func TestDemoTimeAndMarketDeterminism(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, r := range future.Reports {
-		//nolint:exhaustive // manual is application-owned and outside the private adapter report fixture.
 		switch r.AccountType {
 		case "spot":
 			if len(r.Balances) < 60 {
@@ -331,6 +330,7 @@ func TestDemoTimeAndMarketDeterminism(t *testing.T) {
 			if len(r.DualPositions) < 60 {
 				t.Fatal("Dual pagination disappeared")
 			}
+		default:
 		}
 	}
 	if DemoPrice(adapter.PlatformBinance, "DEMO-NOPRICE", anchor) != "" {

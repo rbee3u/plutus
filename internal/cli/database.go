@@ -78,7 +78,7 @@ func newDBResetCommand() *cobra.Command {
 			if err := mysql.DropAllTables(ctx, db); err != nil {
 				return err
 			}
-			if err := mysql.Up(db); err != nil {
+			if err := mysql.Up(ctx, db); err != nil {
 				return err
 			}
 			if !devSeed {

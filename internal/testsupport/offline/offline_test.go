@@ -30,8 +30,18 @@ func TestReplayRejectsRedirectsAndWebSocketsEvenWhenErrorsAreIgnored(t *testing.
 	guard := client.Transport.(guarded)
 	guard.t = reporter
 	client.Transport = guard
-	_, _ = client.Get(server.URL)                                                                                           //nolint:bodyclose,noctx // The offline guard must reject this convenience entrypoint before returning a response.
-	_, _, _ = websocket.Dial(context.Background(), "wss://exchange.invalid/ws", &websocket.DialOptions{HTTPClient: client}) //nolint:bodyclose // The offline guard rejects the handshake before returning a response.
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, _ := client.Do(request)
+	if response != nil {
+		_ = response.Body.Close()
+	}
+	_, handshake, _ := websocket.Dial(context.Background(), "wss://exchange.invalid/ws", &websocket.DialOptions{HTTPClient: client})
+	if handshake != nil {
+		_ = handshake.Body.Close()
+	}
 	if reporter.failures != 2 {
 		t.Fatalf("ignored prohibited requests produced %d failures", reporter.failures)
 	}
@@ -41,7 +51,14 @@ func TestOriginGuardRejectsBothSchemesBeforeTransport(t *testing.T) {
 	for _, target := range []string{"http://exchange.invalid/account", "https://exchange.invalid/account"} {
 		reporter := &failureCounter{}
 		client := &http.Client{Transport: guarded{t: reporter, origin: "http://127.0.0.1:1", base: forbiddenTransport{}}}
-		_, _ = client.Get(target) //nolint:bodyclose,noctx // The offline guard must reject this convenience entrypoint before returning a response.
+		request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, target, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, _ := client.Do(request)
+		if response != nil {
+			_ = response.Body.Close()
+		}
 		if reporter.failures != 1 {
 			t.Fatal("prohibited request did not fail its test")
 		}

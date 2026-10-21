@@ -83,7 +83,7 @@ func New(opts Options, stderr io.Writer) (*System, error) {
 }
 
 func checkFile(path string) error {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600) //nolint:gosec // Log paths are intentionally supplied by process configuration.
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("open log file: %w", err)
 	}

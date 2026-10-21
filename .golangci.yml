@@ -21,10 +21,8 @@ linters:
     - ineffassign
     - iotamixing
     - makezero
-    - musttag
     - nilerr
     - nilnesserr
-    - nilnil
     - noctx
     - nolintlint
     - nosprintfhostport
@@ -35,26 +33,15 @@ linters:
     - unused
     - wastedassign
   settings:
+    exhaustive:
+      default-signifies-exhaustive: true
     gocritic:
-      enabled-tags:
-        - diagnostic
-      disabled-tags:
-        - style
-      disabled-checks:
-        - builtinShadowDecl
-        - codegenComment
-        - commentedOutCode
-        - deprecatedComment
-        - emptyDecl
-        - unnecessaryDefer
+      enabled-tags: [diagnostic]
+      disabled-tags: [style]
     govet:
-      enable:
-        - nilness
-        - unusedwrite
+      enable: [nilness, unusedwrite]
     staticcheck:
-      checks:
-        - SA*
-        - -SA6*
+      checks: [SA*]
     nolintlint:
       require-explanation: true
       require-specific: true
@@ -62,6 +49,20 @@ linters:
     rules:
       - path: _test\.go$
         linters: [forcetypeassert]
+      # Fixed test credentials, identifiers, paths, cookies, TLS settings, and offline targets.
       - path: _test\.go$
         linters: [gosec]
-        text: "^G(101|304):"
+        text: "^G(101|122|124|201|202|204|304|402|702|704):"
+      # Committed hashes and labels, trusted paths, credential sealing, and CSRF cookies.
+      - path: (internal/seed/builder|internal/platform/adapter/credential_form)\.go
+        linters: [gosec]
+        text: "^G101:"
+      - path: (internal/infra/logging/logging|internal/platform/fixture/fixture)\.go
+        linters: [gosec]
+        text: "^G304:"
+      - path: internal/infra/secret/box\.go
+        linters: [gosec]
+        text: "^G117:"
+      - path: internal/transport/http/cookie\.go
+        linters: [gosec]
+        text: "^G124:"

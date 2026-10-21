@@ -28,7 +28,7 @@ func (c *Column) Scan(src any) error {
 // Value implements driver.Valuer.
 func (c *Column) Value() (driver.Value, error) {
 	if c == nil || *c == nil {
-		return nil, nil //nolint:nilnil // SQL NULL is represented as a nil driver value.
+		return nil, nil
 	}
 	return append([]byte(nil), *c...), nil
 }

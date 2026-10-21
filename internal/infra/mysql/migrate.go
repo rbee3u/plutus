@@ -30,11 +30,10 @@ const migrationLockName = "plutus_migrate"
 
 // Up applies all pending migrations. Concurrent callers sharing one database (for example
 // test packages) serialize on a MySQL advisory lock so the Goose version table is created once.
-func Up(db *sql.DB) error {
+func Up(ctx context.Context, db *sql.DB) error {
 	if err := prepareGoose(); err != nil {
 		return err
 	}
-	ctx := context.Background()
 	conn, err := db.Conn(ctx)
 	if err != nil {
 		return fmt.Errorf("migrate up: %w", err)
@@ -48,7 +47,7 @@ func Up(db *sql.DB) error {
 		return errors.New("migrate up: the migration lock is held by another process")
 	}
 	defer func() { _, _ = conn.ExecContext(ctx, "SELECT RELEASE_LOCK(?)", migrationLockName) }()
-	if err := goose.Up(db, "."); err != nil {
+	if err := goose.UpContext(ctx, db, "."); err != nil {
 		return fmt.Errorf("migrate up: %w", err)
 	}
 	return nil

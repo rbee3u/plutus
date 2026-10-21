@@ -42,7 +42,7 @@ func (a *API) clearSessionCookies(ctx context.Context) {
 }
 
 func writeCookie(c *gin.Context, name, value string, maxAge int, httpOnly, secure bool) {
-	http.SetCookie(c.Writer, &http.Cookie{ //nolint:gosec // CSRF cookies must be readable; session cookies are HttpOnly.
+	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     name,
 		Value:    value,
 		Path:     "/",

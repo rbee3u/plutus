@@ -51,7 +51,7 @@ func runMigrateUp(cmd *cobra.Command, proc *process) error {
 		return err
 	}
 	defer func() { _ = db.Close() }()
-	if err := mysql.Up(db); err != nil {
+	if err := mysql.Up(cmd.Context(), db); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Migrations applied")

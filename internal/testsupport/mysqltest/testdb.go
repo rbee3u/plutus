@@ -127,7 +127,7 @@ func CreateTestDatabase(ctx context.Context, serverDSN string) (*TestDatabase, e
 		return nil, err
 	}
 	tdb := &TestDatabase{Name: name, DSN: cfg.FormatDSN(), DB: db, admin: admin}
-	if err := mysql.Up(db); err != nil { //nolint:contextcheck // Up owns its migration context, as for every other caller.
+	if err := mysql.Up(ctx, db); err != nil {
 		_ = tdb.Drop(ctx)
 		return nil, err
 	}

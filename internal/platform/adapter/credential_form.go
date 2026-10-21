@@ -46,8 +46,7 @@ func bybitCredentialForm() CredentialForm {
 
 func krakenCredentialForm() CredentialForm {
 	return CredentialForm{
-		Primary: CredentialGroup{KeyLabel: "Spot API key", SecretLabel: "Spot API secret", SecretInput: "password", Requirement: CredentialRequirement{Mode: "selected", AccountTypes: []AccountType{"main", "earn"}}},
-		// #nosec G101 -- Public field labels and input metadata, never credential material.
+		Primary:    CredentialGroup{KeyLabel: "Spot API key", SecretLabel: "Spot API secret", SecretInput: "password", Requirement: CredentialRequirement{Mode: "selected", AccountTypes: []AccountType{"main", "earn"}}},
 		Futures:    &CredentialGroup{KeyLabel: "Futures API key", SecretLabel: "Futures API secret", SecretInput: "password", Requirement: CredentialRequirement{Mode: "selected_except", AccountTypes: []AccountType{"earn"}}},
 		Passphrase: "hidden",
 		Help:       "Main requires both key groups to verify the wallet structure. Earn uses spot credentials; independent derivatives accounts use futures credentials.",

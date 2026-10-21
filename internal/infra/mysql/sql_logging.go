@@ -11,6 +11,21 @@ import (
 	"github.com/rbee3u/plutus/internal/infra/logging"
 )
 
+// Local mirrors of deprecated driver interfaces preserve legacy driver support without
+// referencing the deprecated standard symbols.
+type (
+	legacyBeginner interface {
+		Begin() (driver.Tx, error)
+	}
+	legacyStmt interface {
+		Exec(args []driver.Value) (driver.Result, error)
+		Query(args []driver.Value) (driver.Rows, error)
+	}
+	legacyColumnConverter interface {
+		ColumnConverter(index int) driver.ValueConverter
+	}
+)
+
 type loggingConnector struct {
 	driver.Connector
 	logger *slog.Logger
@@ -89,7 +104,8 @@ func (c *loggingConn) BeginTx(ctx context.Context, opts driver.TxOptions) (drive
 		if opts.Isolation != 0 || opts.ReadOnly {
 			return nil, errors.New("driver does not support transaction options")
 		}
-		tx, err = c.Conn.Begin() //nolint:staticcheck // SA1019: preserve compatibility with legacy driver implementations.
+		beginner := legacyBeginner(c.Conn)
+		tx, err = beginner.Begin()
 	}
 	recordSQL(ctx, c.logger, "begin", "BEGIN", nil, start, err)
 	if err != nil {
@@ -134,14 +150,16 @@ type loggingStmt struct {
 
 func (s *loggingStmt) Exec(args []driver.Value) (driver.Result, error) {
 	start := time.Now()
-	result, err := s.Stmt.Exec(args) //nolint:staticcheck // SA1019: preserve compatibility with legacy driver implementations.
+	stmt := legacyStmt(s.Stmt)
+	result, err := stmt.Exec(args)
 	recordSQL(context.Background(), s.logger, "exec", s.query, namedValues(args), start, err)
 	return result, err
 }
 
 func (s *loggingStmt) Query(args []driver.Value) (driver.Rows, error) {
 	start := time.Now()
-	rows, err := s.Stmt.Query(args) //nolint:staticcheck // SA1019: preserve compatibility with legacy driver implementations.
+	stmt := legacyStmt(s.Stmt)
+	rows, err := stmt.Query(args)
 	recordSQL(context.Background(), s.logger, "query", s.query, namedValues(args), start, err)
 	return rows, err
 }
@@ -157,7 +175,7 @@ func (s *loggingStmt) ExecContext(ctx context.Context, args []driver.NamedValue)
 		if conversionErr != nil {
 			return nil, conversionErr
 		}
-		result, err = s.Stmt.Exec(values) //nolint:staticcheck // SA1019: preserve compatibility with legacy driver implementations.
+		result, err = legacyStmt(s.Stmt).Exec(values)
 	}
 	recordSQL(ctx, s.logger, "exec", s.query, args, start, err)
 	return result, err
@@ -174,7 +192,7 @@ func (s *loggingStmt) QueryContext(ctx context.Context, args []driver.NamedValue
 		if conversionErr != nil {
 			return nil, conversionErr
 		}
-		rows, err = s.Stmt.Query(values) //nolint:staticcheck // SA1019: preserve compatibility with legacy driver implementations.
+		rows, err = legacyStmt(s.Stmt).Query(values)
 	}
 	recordSQL(ctx, s.logger, "query", s.query, args, start, err)
 	return rows, err
@@ -188,7 +206,7 @@ func (s *loggingStmt) CheckNamedValue(value *driver.NamedValue) error {
 }
 
 func (s *loggingStmt) ColumnConverter(index int) driver.ValueConverter {
-	if converter, ok := s.Stmt.(driver.ColumnConverter); ok { //nolint:staticcheck // SA1019: preserve compatibility with legacy driver implementations.
+	if converter, ok := s.Stmt.(legacyColumnConverter); ok {
 		return converter.ColumnConverter(index)
 	}
 	return driver.DefaultParameterConverter

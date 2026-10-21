@@ -236,8 +236,8 @@ func TestPasswordAndRevocationRollbackTogether(t *testing.T) {
 	trigger := "revoke_" + strings.ReplaceAll(uuid.NewString(), "-", "")
 	if _, err := db.ExecContext(ctx, "CREATE TRIGGER "+trigger+" BEFORE UPDATE ON sessions FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='test revocation failure'"); err != nil {
 		t.Fatal(err)
-	} // #nosec G202 -- generated internal identifier.
-	defer func() { _, _ = db.ExecContext(ctx, "DROP TRIGGER IF EXISTS "+trigger) }() // #nosec G202 -- generated internal identifier.
+	}
+	defer func() { _, _ = db.ExecContext(ctx, "DROP TRIGGER IF EXISTS "+trigger) }()
 	if err := svc.ResetPassword(ctx, name, "Replacement=123456"); err == nil {
 		t.Fatal("injected failure ignored")
 	}
@@ -251,7 +251,7 @@ func TestPasswordAndRevocationRollbackTogether(t *testing.T) {
 	}
 	if _, err := db.ExecContext(ctx, "DROP TRIGGER "+trigger); err != nil {
 		t.Fatal(err)
-	} // #nosec G202 -- generated internal identifier.
+	}
 	if _, _, err := svc.Authenticate(ctx, session.Token); err != nil {
 		t.Fatalf("session changed after rollback: %v", err)
 	}

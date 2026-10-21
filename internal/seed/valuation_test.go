@@ -99,7 +99,7 @@ func initializedTimeline(ctx context.Context, t *testing.T, db *sql.DB, p uuid.U
 
 func tableRows(ctx context.Context, t *testing.T, db *sql.DB, table string, p uuid.UUID) []string {
 	t.Helper()
-	rows, err := db.QueryContext(ctx, "SELECT * FROM "+table+" WHERE portfolio_id = ?", p[:]) // #nosec G202 -- Callers pass fixed table names.
+	rows, err := db.QueryContext(ctx, "SELECT * FROM "+table+" WHERE portfolio_id = ?", p[:])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func valuationSnapshot(ctx context.Context, t *testing.T, v *valuation.Service, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := json.Marshal(struct { //nolint:musttag // Internal models are serialized only for complete test snapshots, not an API contract.
+	data, err := json.Marshal(struct {
 		Point    valuation.Point              `json:"point"`
 		Accounts []valuation.AccountValuation `json:"accounts"`
 	}{point, accounts})

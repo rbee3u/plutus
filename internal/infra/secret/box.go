@@ -94,7 +94,7 @@ func (b *Box) Seal(connectionID, portfolioID [16]byte, keyVersion uint16, cred C
 		Passphrase:    strings.TrimSpace(cred.Passphrase),
 		FuturesAPIKey: futuresKey, FuturesAPISecret: futuresSecret,
 	}
-	plain, err := json.Marshal(doc) //nolint:gosec // G117: plaintext exists only until AES-GCM seal.
+	plain, err := json.Marshal(doc)
 	if err != nil {
 		return nil, nil, err
 	}

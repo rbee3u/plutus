@@ -428,7 +428,7 @@ func TestFixturesHaveNoCredentialOrIdentityEcho(t *testing.T) {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		raw, err := os.ReadFile(path) //nolint:gosec // committed fixture
+		raw, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}

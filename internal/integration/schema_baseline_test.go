@@ -218,7 +218,7 @@ func TestProductConstraintsMatchNormalizedTerms(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, change := range []string{"target_price=0", "annualized_rate=-1", "rate_kind=NULL", "annualized_rate=NULL", "status='unknown'", "base_asset_symbol='USDT'", "principal_asset_symbol='ETH'", "direction='buy_low'"} {
-		if _, err := h.db.ExecContext(h.ctx, "UPDATE dual_positions SET "+change+" WHERE report_id=?", report[:]); err == nil { // #nosec G202 -- The SET clauses are fixed test cases, never external input.
+		if _, err := h.db.ExecContext(h.ctx, "UPDATE dual_positions SET "+change+" WHERE report_id=?", report[:]); err == nil {
 			t.Fatalf("accepted contradictory terms: %s", change)
 		}
 	}
@@ -297,7 +297,7 @@ func TestFinancialReferencesRejectForeignPortfolio(t *testing.T) {
 		}
 	}
 	for _, change := range []string{"pricing_method='market_price',price_observation_id=NULL", "pricing_method='unavailable',value_usd=1", "pricing_method='zero_equity',value_usd=1,price_observation_id=NULL"} {
-		if _, err := h.db.ExecContext(h.ctx, "UPDATE balance_valuations SET "+change+" WHERE portfolio_id=? LIMIT 1", a.ID[:]); err == nil { // #nosec G202 -- SET clauses are fixed test cases, never input.
+		if _, err := h.db.ExecContext(h.ctx, "UPDATE balance_valuations SET "+change+" WHERE portfolio_id=? LIMIT 1", a.ID[:]); err == nil {
 			t.Fatalf("contradictory evidence accepted: %s", change)
 		}
 	}

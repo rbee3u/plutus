@@ -24,7 +24,7 @@ func OptionalText(value string) *string {
 // OptionalMillis reads milliseconds since epoch without treating missing terms as zero.
 func OptionalMillis(where, name, value string) (*time.Time, error) {
 	if strings.TrimSpace(value) == "" {
-		return nil, nil //nolint:nilnil // An absent product term remains null without failing known principal.
+		return nil, nil
 	}
 	ms, err := strconv.ParseInt(value, 10, 64)
 	if err != nil || ms <= 0 {

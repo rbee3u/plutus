@@ -543,7 +543,7 @@ func BenchmarkPolicyVersionQueries(b *testing.B) {
 			rows = append(rows, "(?,?,?,TRUE,'Reviewed',?)")
 			args = append(args, p.ID[:], asset[:], i+1, start.Add(time.Duration(i)*time.Minute))
 		}
-		if _, err := db.ExecContext(b.Context(), "INSERT INTO asset_exclusion_versions(portfolio_id,asset_id,version,excluded,reason,effective_at) VALUES "+strings.Join(rows, ","), args...); err != nil { // #nosec G202 -- Only fixed placeholders are concatenated; fixture values are bound.
+		if _, err := db.ExecContext(b.Context(), "INSERT INTO asset_exclusion_versions(portfolio_id,asset_id,version,excluded,reason,effective_at) VALUES "+strings.Join(rows, ","), args...); err != nil {
 			b.Fatal(err)
 		}
 	}

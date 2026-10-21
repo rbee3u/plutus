@@ -176,7 +176,6 @@ func (a *Adapter) Collect(ctx context.Context, creds adapter.Credentials, struct
 		return a.earn(ctx, c, usdPrice)
 	})
 	reports, err := adapter.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapter.AccountType) (adapter.AccountReport, error) {
-		//nolint:exhaustive // manual is application-owned and outside the private adapter report fixture.
 		switch accountType {
 		case TypeTrading:
 			return a.trading(ctx, c, mode)

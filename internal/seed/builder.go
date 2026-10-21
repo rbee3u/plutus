@@ -19,7 +19,6 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
-//nolint:gosec // G101: deterministic Argon2id hashes of the documented scratch-login passwords.
 const (
 	alicePasswordHash = `$argon2id$v=19$m=65536,t=3,p=2$4ZKp/JFnZmxIWjXk18zPWA$3wK/YAxLVIGX9PZpBe9MxZGrZpC+pw3nVpWfK6q2s2I`
 	timestampLayout   = "2006-01-02 15:04:05.000000"

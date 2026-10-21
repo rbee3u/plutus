@@ -147,7 +147,6 @@ func (a *Adapter) Collect(ctx context.Context, creds adapter.Credentials, struct
 		return a.earn(ctx, c, prices, slices.Contains(accounts, TypeEarn))
 	})
 	reports, err := adapter.CollectAccounts(ctx, accounts, a.now, func(ctx context.Context, accountType adapter.AccountType) (adapter.AccountReport, error) {
-		//nolint:exhaustive // manual is application-owned and never enters private adapter collection.
 		switch accountType {
 		case TypeUnified:
 			return a.unified(ctx, c, mode)

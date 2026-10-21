@@ -133,7 +133,7 @@ func (s *Service) prepareReport(ctx context.Context, book priceResolver, row *sq
 func (s *Service) previousAccounts(ctx context.Context, portfolioID uuid.UUID, evaluatedAt time.Time, cycleID uuid.UUID) (map[uuid.UUID]previousAccount, error) {
 	prev, err := mysql.Queries(ctx, s.db).GetValuationPointBefore(ctx, sqlcgen.GetValuationPointBeforeParams{PortfolioID: portfolioID[:], At: evaluatedAt, CycleID: cycleID[:]})
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, nil //nolint:nilnil // a nil map means "no previous point", which disables boundary event derivation.
+		return nil, nil
 	}
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (s *Service) previousAccounts(ctx context.Context, portfolioID uuid.UUID, e
 		return nil, err
 	}
 	if prevCycle == cycleID {
-		return nil, nil //nolint:nilnil // the first point has no predecessor.
+		return nil, nil
 	}
 	rows, err := s.accountsByCycles(ctx, portfolioID, [][]byte{prev.CycleID})
 	if err != nil {
