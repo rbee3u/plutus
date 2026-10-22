@@ -19,7 +19,7 @@ import (
 )
 
 func TestRetentionPreservesSummariesSourcesAndDailyFallback(t *testing.T) {
-	h := newHarness(t)
+	h := newIsolatedHarness(t)
 	item := h.createIdentity("archive", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	account := item.Accounts[0].ID
 	for _, a := range item.Accounts {
@@ -207,7 +207,7 @@ func TestRetentionPreservesSummariesSourcesAndDailyFallback(t *testing.T) {
 }
 
 func TestRetentionResumesManualRevisionsAfterCutoffAndReportRelease(t *testing.T) {
-	h := newHarness(t)
+	h := newIsolatedHarness(t)
 	item := h.createIdentity("manual retention", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	var account uuid.UUID
 	for _, a := range item.Accounts {
@@ -278,7 +278,7 @@ func TestRetentionResumesManualRevisionsAfterCutoffAndReportRelease(t *testing.T
 }
 
 func TestRetentionBatchesReportsAndResumesOversizedChildren(t *testing.T) {
-	h := newHarness(t)
+	h := newIsolatedHarness(t)
 	item := h.createIdentity("retention pages", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	var account uuid.UUID
 	for _, a := range item.Accounts {

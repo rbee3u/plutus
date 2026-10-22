@@ -43,22 +43,33 @@ type harness struct {
 	fakes       map[adapter.Platform]*fake.Adapter
 }
 
+// newIsolatedHarness gives a scenario its own migrated database for
+// whole-database sweeps, schema changes, or global table assertions that cannot
+// share state with other scenarios.
+func newIsolatedHarness(t *testing.T) *harness {
+	t.Helper()
+	database, err := mysqltest.CreateTestDatabase(t.Context(), mysqltest.GotestDSN(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := database.Drop(context.Background()); err != nil {
+			t.Error(err)
+		}
+	})
+	return newHarness(t, database.DB)
+}
+
+// newHarness shares the migrated package database created by RunTestMain.
+// Scenarios must scope reads and writes to their own user or portfolio and
+// cannot run in parallel. Use newIsolatedHarness for whole-database effects.
 func newHarness(t *testing.T, databases ...*sql.DB) *harness {
 	t.Helper()
 	var db *sql.DB
 	if len(databases) > 0 {
 		db = databases[0]
 	} else {
-		database, err := mysqltest.CreateTestDatabase(t.Context(), mysqltest.GotestDSN(t))
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() {
-			if err := database.Drop(context.Background()); err != nil {
-				t.Error(err)
-			}
-		})
-		db = database.DB
+		db = mysqltest.OpenTestDB(t)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	t.Cleanup(cancel)

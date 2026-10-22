@@ -160,6 +160,10 @@ real coverage.
 - `internal/integration` owns adapter-to-report-to-read workflows, cross-module
   presentation, and migration continuity. Its harness shares collaborators from
   `app.New`; fast retry scenarios explicitly replace only the collection runner.
+  Scenarios normally share the `TestMain` database and must scope reads and
+  writes by user or portfolio. Retention sweeps, schema changes, and global
+  table assertions use `newIsolatedHarness` for a dedicated temporary database;
+  shared-database scenarios cannot run in parallel.
 - `internal/testsupport` contains reusable database and offline network helpers.
   Do not import it from runtime code or move CLI-used fake/recording code there.
 - `web/e2e/support` contains common API routing and generated-type-checked

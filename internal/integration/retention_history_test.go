@@ -21,7 +21,7 @@ import (
 )
 
 func TestRollingHistoryPreservesWindowAndCurrentDependencies(t *testing.T) {
-	h := newHarness(t)
+	h := newIsolatedHarness(t)
 	item := h.createIdentity("rolling", adapter.PlatformBinance, adapter.StructureBinanceClassic, "spot")
 	var manualID uuid.UUID
 	for _, a := range item.Accounts {
@@ -181,7 +181,7 @@ func TestRollingHistoryPreservesWindowAndCurrentDependencies(t *testing.T) {
 }
 
 func TestRollingHistoryKeepsExactCutoffFlowWithoutOpeningPoint(t *testing.T) {
-	h := newHarness(t)
+	h := newIsolatedHarness(t)
 	if _, err := h.db.ExecContext(h.ctx, "UPDATE portfolios SET timezone='UTC' WHERE id=?", h.portfolioID[:]); err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestRollingHistoryKeepsExactCutoffFlowWithoutOpeningPoint(t *testing.T) {
 }
 
 func TestDormantCurrentPositionsSurviveHistoryExpiry(t *testing.T) {
-	h := newHarness(t)
+	h := newIsolatedHarness(t)
 	item := h.createIdentity("Dormant", adapter.PlatformBinance, adapter.StructureBinanceClassic, "um_futures")
 	item = h.storeCredentials(item, "dormant-positions")
 	if _, result, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !result.OK {
@@ -265,7 +265,7 @@ func TestDormantCurrentPositionsSurviveHistoryExpiry(t *testing.T) {
 }
 
 func TestRollingHistoryPreservesPolicyForCycleCrossingCutoff(t *testing.T) {
-	h := newHarness(t)
+	h := newIsolatedHarness(t)
 	at := time.Date(2026, 10, 11, 0, 0, 0, 0, time.UTC)
 	exec := func(query string, args ...any) {
 		t.Helper()
@@ -300,7 +300,7 @@ func TestRollingHistoryPreservesPolicyForCycleCrossingCutoff(t *testing.T) {
 // Repeated window advancement exercises release of pins, not just deletion of
 // an initially old fixture. Assets and contracts rotate while holdings stay fixed.
 func TestRollingHistoryReleasesReferencesAcrossThirtyYears(t *testing.T) {
-	h := newHarness(t)
+	h := newIsolatedHarness(t)
 	item := h.createIdentity("rolling sources", adapter.PlatformBinance, adapter.StructureBinanceClassic, "um_futures")
 	var account uuid.UUID
 	for _, a := range item.Accounts {

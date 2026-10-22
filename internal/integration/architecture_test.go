@@ -16,7 +16,6 @@ import (
 	"github.com/rbee3u/plutus/internal/service/catalog"
 	"github.com/rbee3u/plutus/internal/service/identity"
 	"github.com/rbee3u/plutus/internal/service/portfolio"
-	"github.com/rbee3u/plutus/internal/testsupport/mysqltest"
 )
 
 // Keep this inventory independent of the implementation. A new scoped table
@@ -28,16 +27,7 @@ var portfolioTables = []string{
 // Exercise the complete owned graph in a dedicated temporary database.
 func architectureHarness(t *testing.T) *harness {
 	t.Helper()
-	database, err := mysqltest.CreateTestDatabase(t.Context(), mysqltest.GotestDSN(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := database.Drop(context.Background()); err != nil {
-			t.Error(err)
-		}
-	})
-	return newHarness(t, database.DB)
+	return newIsolatedHarness(t)
 }
 
 func populatedPortfolio(t *testing.T, base *harness, name string) (*harness, portfolio.Portfolio, uuid.UUID) {

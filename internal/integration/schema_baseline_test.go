@@ -48,11 +48,11 @@ func TestFuturesContractsReuseObservedTermsAndPreserveObservationBounds(t *testi
 	}
 	put(at.Add(-time.Hour))
 	var count int
-	if err := h.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM futures_contracts").Scan(&count); err != nil || count != 2 {
+	if err := h.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM futures_contracts WHERE portfolio_id=?", h.portfolioID[:]).Scan(&count); err != nil || count != 2 {
 		t.Fatalf("contracts=%d %v", count, err)
 	}
 	var from, to time.Time
-	if err := h.db.QueryRowContext(h.ctx, "SELECT first_observed_at,last_observed_at FROM futures_contracts WHERE id=?", first[:]).Scan(&from, &to); err != nil || !from.Equal(at.Add(-time.Hour)) || !to.Equal(at.Add(2*time.Hour)) {
+	if err := h.db.QueryRowContext(h.ctx, "SELECT first_observed_at,last_observed_at FROM futures_contracts WHERE portfolio_id=? AND id=?", h.portfolioID[:], first[:]).Scan(&from, &to); err != nil || !from.Equal(at.Add(-time.Hour)) || !to.Equal(at.Add(2*time.Hour)) {
 		t.Fatalf("bounds=%v %v %v", from, to, err)
 	}
 }
@@ -124,13 +124,13 @@ func TestIdempotencyCommitsBusinessAndResponseTogether(t *testing.T) {
 		t.Fatal("invalid response committed")
 	}
 	var count int
-	if err := h.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM portfolios WHERE name='must-rollback'").Scan(&count); err != nil || count != 0 {
+	if err := h.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM portfolios WHERE user_id=? AND name='must-rollback'", h.userID[:]).Scan(&count); err != nil || count != 0 {
 		t.Fatalf("business write leaked: %d %v", count, err)
 	}
-	if err := h.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM idempotency_records WHERE idempotency_key='rollback'").Scan(&count); err != nil || count != 0 {
+	if err := h.db.QueryRowContext(h.ctx, "SELECT COUNT(*) FROM idempotency_records WHERE user_id=? AND idempotency_key='rollback'", h.userID[:]).Scan(&count); err != nil || count != 0 {
 		t.Fatalf("key leaked: %d %v", count, err)
 	}
-	if _, err := h.db.ExecContext(h.ctx, "UPDATE idempotency_records SET expires_at=? WHERE idempotency_key='same-key'", time.Now().UTC().Add(-time.Second)); err != nil {
+	if _, err := h.db.ExecContext(h.ctx, "UPDATE idempotency_records SET expires_at=? WHERE user_id=? AND idempotency_key='same-key'", time.Now().UTC().Add(-time.Second), h.userID[:]); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.Run(h.ctx, h.userID, "POST", "/portfolios", "same-key", []byte(`{}`), create); err != nil || calls.Load() != 2 {
@@ -171,7 +171,7 @@ func TestIdempotencyRejectsKeysOutsideStorageDomain(t *testing.T) {
 }
 
 func TestMappingRollsBackWhenAuditCannotBeWritten(t *testing.T) {
-	h := newHarness(t)
+	h := newIsolatedHarness(t)
 	item := manualEnabled(t, h, &manualTestAdapter{usd: "0", btc: "30000"})
 	state := manualSave(t, h, item, "BTC", "1")
 	h.runCycle()
@@ -182,7 +182,11 @@ func TestMappingRollsBackWhenAuditCannotBeWritten(t *testing.T) {
 	if _, err := h.db.ExecContext(h.ctx, "CREATE TRIGGER reject_mapping_audit BEFORE INSERT ON audit_events FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='injected audit failure'"); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _, _ = h.db.ExecContext(context.Background(), "DROP TRIGGER IF EXISTS reject_mapping_audit") })
+	t.Cleanup(func() {
+		if _, err := h.db.ExecContext(context.Background(), "DROP TRIGGER IF EXISTS reject_mapping_audit"); err != nil {
+			t.Errorf("drop injected trigger: %v", err)
+		}
+	})
 	_, err = h.catalog.PutMapping(h.ctx, asset.ID, catalog.MappingInput{ActorUserID: h.userID, PortfolioID: h.portfolioID, MappingVersion: asset.MappingVersion, CanonicalAssetSymbol: "ETH"})
 	if err == nil {
 		t.Fatal("injected failure ignored")
@@ -312,7 +316,7 @@ func TestMaintenanceKeepsLiveSessionsAndUnexpiredReplay(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := h.db.ExecContext(h.ctx, "UPDATE idempotency_records SET expires_at=DATE_SUB(UTC_TIMESTAMP(6),INTERVAL 1 SECOND) WHERE idempotency_key='expired'"); err != nil {
+	if _, err := h.db.ExecContext(h.ctx, "UPDATE idempotency_records SET expires_at=DATE_SUB(UTC_TIMESTAMP(6),INTERVAL 1 SECOND) WHERE user_id=? AND idempotency_key='expired'", h.userID[:]); err != nil {
 		t.Fatal(err)
 	}
 	for _, revoked := range []bool{false, true} {
