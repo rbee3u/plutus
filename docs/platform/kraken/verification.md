@@ -2,8 +2,10 @@
 
 Current evidence and pending exchange-app checks. See the
 [adapter mapping](./mapping.md) for field semantics,
-[evidence workflow](../evidence-workflow.md) for recording and promotion, and
-[earn delivery report](../earn-presentation-delivery.md) for metadata coverage.
+[evidence workflow](../evidence-workflow.md) for recording and promotion,
+[earn delivery report](../earn-presentation-delivery.md) for metadata coverage,
+and [unrealized PnL delivery](../kraken-unrealized-pnl-delivery.md) for the
+balance result.
 
 ## Current evidence
 
@@ -275,7 +277,9 @@ minutes of a collection:
    wallets): `Equity` equals the wallet's portfolio value in USD, `AdjEq` its
    margin equity, and `AvailEq` its available margin; the margin ratios equal
    initial and maintenance margin ÷ margin equity; each currency's quantity
-   matches the wallet.
+   matches the wallet, the USD balance's `Equity` is its quantity plus the
+   wallet's unrealized result, its `Unrealized PnL` is that result, and the
+   other currencies report `0`.
 4. **Positions**: every open flexible futures position, including delivery
    contracts, appears under that wallet with Both and signed base size, entry
    price, and mark price; inverse and vanilla contracts, perpetual or delivery,
@@ -283,15 +287,19 @@ minutes of a collection:
    contract counts. Isolated margin excludes PnL and cross wallet risk is not
    assigned to individual positions.
 5. **Coin-M**: each single-collateral wallet's balance in its own coin matches,
-   and `Equity` equals their USD value with unrealized profit.
-6. **Derivatives holding**: coin amounts match the holding wallet.
+   and `Equity` equals their USD value with unrealized profit. Each wallet row's
+   `Unrealized PnL` equals its `pnl` plus `unrealized_funding`, so
+   `Equity = balance + Unrealized PnL` holds without a hidden funding residual.
+6. **Derivatives holding**: coin amounts match the holding wallet, and each row
+   reports an unrealized result of `0`.
 7. **Earn**: allocated amounts per coin match the earn page, including bonding
    and unbonding amounts; Kraken Rewards (Auto Earn) stays in main and does not
-   appear under earn.
+   appear under earn. Earn rows keep a null unrealized result.
 8. **Separate wallets**: on a separate-wallet account, main's coins match the
-   Spot wallet, with Kraken Rewards and without earn allocations, and its equity
-   equals those coins at their USD prices plus the open Spot margin result;
-   repeat 3–7.
+   Spot wallet, with Kraken Rewards and without earn allocations; the USD
+   balance's `Equity` equals the USD balance plus the open Spot margin result
+   and that result is its `Unrealized PnL`, while the other coins keep a null
+   unrealized result; repeat 3–7.
 9. **Structure switch**: after unified wallet is switched on or off, the next
    cycle fails with `unsupported` naming both structures and the accounts turn
    stale; a new identity with the new structure collects normally.

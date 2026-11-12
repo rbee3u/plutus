@@ -223,9 +223,13 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapter.AccountType) 
 		r.Balances = []adapter.Balance{demoBalance("USDT", "2500"), demoBalance("BTC", "0.06"), demoBalance("USDC", "0"), demoBalance("SHIB", "0.00000000000002")}
 		if d.Profile == "daily" {
 			r.Balances = demoWallet(d, kind)
-			if kind == "main" && d.Structure == adapter.StructureKrakenUnified {
+			switch {
+			case kind == "main" && d.Structure == adapter.StructureKrakenUnified:
 				r.Balances = nil
 				demoTrading(&r, d, anchor, at)
+			case kind == "main" && d.Platform == adapter.PlatformKraken && d.Structure == adapter.StructureKrakenSeparate:
+				// Kraken reports one Spot margin net result for the wallet, not per coin.
+				demoSpotMargin(&r)
 			}
 		}
 		if d.ID == "daily-classic" {
@@ -301,6 +305,23 @@ func demoBalance(symbol, amount string) adapter.Balance {
 	return adapter.Balance{AssetSymbol: symbol, Equity: amount, AvailableToTrade: adapter.OptionalText(amount), AvailableToWithdraw: adapter.OptionalText(amount)}
 }
 
+// demoSpotMarginResult is the separate-wallet Kraken main's Spot margin net result in USD. The
+// platform reports it as one account figure, so it belongs to the USD row, as the adapter maps it.
+const demoSpotMarginResult = "12.34"
+
+// demoSpotMargin folds the synthetic Spot margin result into the USD row.
+func demoSpotMargin(r *adapter.AccountReport) {
+	for i := range r.Balances {
+		if r.Balances[i].AssetSymbol != "USD" {
+			continue
+		}
+		r.Balances[i].Equity = demoAdd(r.Balances[i].Equity, demoSpotMarginResult)
+		r.Balances[i].UnrealizedPnl = adapter.OptionalText(demoSpotMarginResult)
+		return
+	}
+	r.Balances = append(r.Balances, adapter.Balance{AssetSymbol: "USD", Equity: demoSpotMarginResult, UnrealizedPnl: adapter.OptionalText(demoSpotMarginResult)})
+}
+
 func demoTrading(r *adapter.AccountReport, d DemoIdentity, anchor, at time.Time) {
 	mode := demoMode(d, anchor, at)
 	inverse := r.AccountType == "cm_futures" || r.AccountType == "coin_m" || d.ID == "daily-okx-coin"
@@ -358,6 +379,7 @@ func demoTrading(r *adapter.AccountReport, d DemoIdentity, anchor, at time.Time)
 		r.Positions = append(r.Positions, p)
 	}
 	amounts := map[string]string{}
+	pnls := map[string]string{}
 	if d.Profile == "daily" {
 		for _, b := range wallet {
 			amounts[b.AssetSymbol] = b.Equity
@@ -380,11 +402,24 @@ func demoTrading(r *adapter.AccountReport, d DemoIdentity, anchor, at time.Time)
 				amounts[coin] = "0.05"
 			}
 		}
-		amounts[coin] = demoAdd(amounts[coin], demoString(p.UnrealizedPnl))
+		pnl := demoString(p.UnrealizedPnl)
+		amounts[coin] = demoAdd(amounts[coin], pnl)
+		if _, ok := pnls[coin]; !ok {
+			pnls[coin] = "0"
+		}
+		pnls[coin] = demoAdd(pnls[coin], pnl)
 	}
 	for _, asset := range demoAssets {
 		if amount, ok := amounts[asset.Symbol]; ok {
 			balance := demoBalance(asset.Symbol, amount)
+			// A margin balance holds its settlement coin's unrealized result; every other
+			// collateral coin's own result is zero. Spot and earn have no positions, so they
+			// keep the column empty.
+			if pnl, ok := pnls[asset.Symbol]; ok {
+				balance.UnrealizedPnl = adapter.OptionalText(pnl)
+			} else {
+				balance.UnrealizedPnl = adapter.OptionalText("0")
+			}
 			if demoNumber(amount).Sign() < 0 {
 				balance.AvailableToTrade, balance.AvailableToWithdraw = nil, nil
 			}
@@ -392,7 +427,9 @@ func demoTrading(r *adapter.AccountReport, d DemoIdentity, anchor, at time.Time)
 		}
 	}
 	if d.Profile == "large" && r.AccountType == "um_futures" {
-		r.Balances[0] = demoBalance("USDT", demoAdd(r.Balances[0].Equity, "250000"))
+		balance := demoBalance("USDT", demoAdd(r.Balances[0].Equity, "250000"))
+		balance.UnrealizedPnl = r.Balances[0].UnrealizedPnl
+		r.Balances[0] = balance
 	}
 	if !inverse && mode != adapter.MarginBybitIsolated {
 		value := "0"

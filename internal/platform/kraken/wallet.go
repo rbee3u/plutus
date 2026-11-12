@@ -3,6 +3,7 @@ package kraken
 import (
 	"context"
 	"maps"
+	"math/big"
 	"net/url"
 	"slices"
 	"time"
@@ -41,6 +42,9 @@ type multiWallet struct {
 	AvailableMargin   number                        `json:"available_margin"`
 	InitialMargin     number                        `json:"initial_margin"`
 	MaintenanceMargin number                        `json:"maintenance_margin"`
+	// TotalUnrealized is the wallet's unrealized profit and funding in USD, which Kraken adds to
+	// the collateral value to report PortfolioValue.
+	TotalUnrealized number `json:"total_unrealized"`
 }
 
 type isolatedWallet struct {
@@ -53,20 +57,29 @@ type collateralCurrency struct {
 	Available number `json:"available"`
 }
 
-// singleWallet is one single-collateral (Coin-M) wallet, valued in its own unit.
+// singleWallet is one single-collateral (Coin-M) wallet, valued in its own unit. PortfolioValue
+// already holds Pnl and UnrealizedFunding, as Kraken documents for the wallet.
 type singleWallet struct {
-	Unit           string `json:"unit"`
-	PortfolioValue number `json:"portfolio_value"`
+	Unit              string `json:"unit"`
+	PortfolioValue    number `json:"portfolio_value"`
+	Pnl               number `json:"pnl"`
+	UnrealizedFunding number `json:"unrealized_funding"`
 }
 
 // multiCollateral maps the multi-collateral wallet: main in unified wallet, Multi-M in separate
 // wallets. Its equity is portfolio_value, which already holds unrealized profit and funding;
 // margin_equity is the haircut-adjusted collateral Kraken margins against. Each currency is a
-// balance in coin units; the wallet's derivative profit is not split among currencies.
+// balance in coin units. Only flexible linear contracts belong to this wallet and they settle in
+// USD, so Kraken reports one USD unrealized result: the settlement currency's row carries it in
+// its equity and in its UnrealizedPnl, and every collateral currency's own result is zero.
 func (r *run) multiCollateral(ctx context.Context, accountType adapter.AccountType) (adapter.AccountReport, error) {
 	where := "Kraken " + epBalancesSnapshot.String()
 	wallet := &r.snapshot.Flex
 	if _, err := adapter.Decimal(where, "flex_futures.portfolio_value", string(wallet.PortfolioValue)); err != nil {
+		return adapter.AccountReport{}, err
+	}
+	unrealized, err := adapter.Decimal(where, "flex_futures.total_unrealized", string(wallet.TotalUnrealized))
+	if err != nil {
 		return adapter.AccountReport{}, err
 	}
 	if wallet.Currencies == nil {
@@ -78,6 +91,10 @@ func (r *run) multiCollateral(ctx context.Context, accountType adapter.AccountTy
 		if err != nil {
 			return adapter.AccountReport{}, err
 		}
+	}
+	settlement, err := r.assets.symbol(where, "USD")
+	if err != nil {
+		return adapter.AccountReport{}, err
 	}
 	report := adapter.AccountReport{
 		AccountType:      accountType,
@@ -91,23 +108,47 @@ func (r *run) multiCollateral(ctx context.Context, accountType adapter.AccountTy
 	report.InitialMarginRequirementUSD = adapter.Plain(string(wallet.InitialMargin))
 	report.MaintenanceMarginRequirementUSD = adapter.Plain(string(wallet.MaintenanceMargin))
 
+	settled := false
 	for _, code := range slices.Sorted(maps.Keys(wallet.Currencies)) {
 		row := wallet.Currencies[code]
 		quantity, err := adapter.Decimal(where, "flex_futures.currencies."+code+".quantity", string(row.Quantity))
 		if err != nil {
 			return adapter.AccountReport{}, err
 		}
-		if quantity.Sign() == 0 {
-			continue
-		}
 		symbol, err := r.assets.symbol(where, code)
 		if err != nil {
 			return adapter.AccountReport{}, err
+		}
+		if symbol == settlement {
+			settled = true
+			if quantity.Sign() == 0 && unrealized.Sign() == 0 {
+				continue
+			}
+			report.Balances = append(report.Balances, adapter.Balance{
+				AssetSymbol:      symbol,
+				Equity:           decimal.Format(decimal.Add(quantity, unrealized)),
+				AvailableToTrade: adapter.Plain(string(row.Available)),
+				UnrealizedPnl:    decimal.FormatPtr(unrealized),
+			})
+			continue
+		}
+		if quantity.Sign() == 0 {
+			continue
 		}
 		report.Balances = append(report.Balances, adapter.Balance{
 			AssetSymbol:      symbol,
 			Equity:           decimal.Format(quantity),
 			AvailableToTrade: adapter.Plain(string(row.Available)),
+			UnrealizedPnl:    decimal.FormatPtr(decimal.Zero()),
+		})
+	}
+	// A wallet whose settlement currency holds nothing still reports a USD result. Binance lists a
+	// coin whose margin balance is nonzero while its wallet balance is zero, so this row is created.
+	if !settled && unrealized.Sign() != 0 {
+		report.Balances = append(report.Balances, adapter.Balance{
+			AssetSymbol:   settlement,
+			Equity:        decimal.Format(unrealized),
+			UnrealizedPnl: decimal.FormatPtr(unrealized),
 		})
 	}
 	positions, err := r.positions(ctx, true)
@@ -118,8 +159,15 @@ func (r *run) multiCollateral(ctx context.Context, accountType adapter.AccountTy
 	return report, nil
 }
 
+// walletTotal aggregates the single-collateral wallets of one settlement unit.
+type walletTotal struct {
+	value, unrealized *big.Rat
+}
+
 // coinM maps the single-collateral wallets: one balance per settlement unit in coin units, and
-// futures_upnl_cash_value, already in USD with unrealized profit, as the equity.
+// futures_upnl_cash_value, already in USD with unrealized profit, as the equity. Each wallet's
+// portfolio_value already holds its unrealized result, so its row reports that result without
+// adding it again.
 func (r *run) coinM(ctx context.Context) (adapter.AccountReport, error) {
 	where := "Kraken " + epBalancesSnapshot.String()
 	if r.snapshot.Futures == nil {
@@ -128,10 +176,18 @@ func (r *run) coinM(ctx context.Context) (adapter.AccountReport, error) {
 	if _, err := adapter.Decimal(where, "futures_upnl_cash_value", string(r.snapshot.FuturesUPnLCashValue)); err != nil {
 		return adapter.AccountReport{}, err
 	}
-	totals := adapter.Totals{}
+	bySymbol := map[string]*walletTotal{}
 	for _, name := range slices.Sorted(maps.Keys(r.snapshot.Futures)) {
 		wallet := r.snapshot.Futures[name]
 		value, err := adapter.Decimal(where, "futures."+name+".portfolio_value", string(wallet.PortfolioValue))
+		if err != nil {
+			return adapter.AccountReport{}, err
+		}
+		pnl, err := adapter.Decimal(where, "futures."+name+".pnl", string(wallet.Pnl))
+		if err != nil {
+			return adapter.AccountReport{}, err
+		}
+		funding, err := adapter.Decimal(where, "futures."+name+".unrealized_funding", string(wallet.UnrealizedFunding))
 		if err != nil {
 			return adapter.AccountReport{}, err
 		}
@@ -139,9 +195,22 @@ func (r *run) coinM(ctx context.Context) (adapter.AccountReport, error) {
 		if err != nil {
 			return adapter.AccountReport{}, err
 		}
-		if err := totals.Add(where, symbol, value); err != nil {
-			return adapter.AccountReport{}, err
+		if bySymbol[symbol] == nil {
+			bySymbol[symbol] = &walletTotal{value: decimal.Zero(), unrealized: decimal.Zero()}
 		}
+		bySymbol[symbol].value = decimal.Add(bySymbol[symbol].value, value)
+		bySymbol[symbol].unrealized = decimal.Add(bySymbol[symbol].unrealized, decimal.Add(pnl, funding))
+	}
+	balances := make([]adapter.Balance, 0, len(bySymbol))
+	for _, symbol := range slices.Sorted(maps.Keys(bySymbol)) {
+		if bySymbol[symbol].value.Sign() == 0 {
+			continue
+		}
+		balances = append(balances, adapter.Balance{
+			AssetSymbol:   symbol,
+			Equity:        decimal.Format(bySymbol[symbol].value),
+			UnrealizedPnl: decimal.FormatPtr(bySymbol[symbol].unrealized),
+		})
 	}
 	positions, err := r.positions(ctx, false)
 	if err != nil {
@@ -153,13 +222,13 @@ func (r *run) coinM(ctx context.Context) (adapter.AccountReport, error) {
 		CollectedAt:      r.a.now(),
 		SourceObservedAt: r.snapshot.observedAt(),
 		Equity:           adapter.Plain(string(r.snapshot.FuturesUPnLCashValue)),
-		Balances:         totals.Balances(),
+		Balances:         balances,
 		Positions:        positions,
 	}, nil
 }
 
 // derivativesHolding maps the holding wallet, which only stores coins for the derivatives
-// wallets and never trades.
+// wallets and never trades. Its coins therefore carry no unrealized result: zero, not unknown.
 func (r *run) derivativesHolding() (adapter.AccountReport, error) {
 	where := "Kraken " + epBalancesSnapshot.String()
 	if r.snapshot.Holding == nil {
@@ -179,12 +248,16 @@ func (r *run) derivativesHolding() (adapter.AccountReport, error) {
 			return adapter.AccountReport{}, err
 		}
 	}
+	balances := totals.Balances()
+	for i := range balances {
+		balances[i].UnrealizedPnl = decimal.FormatPtr(decimal.Zero())
+	}
 	return adapter.AccountReport{
 		AccountType:      TypeDerivativesHolding,
 		Status:           adapter.StatusSucceeded,
 		CollectedAt:      r.a.now(),
 		SourceObservedAt: r.snapshot.observedAt(),
-		Balances:         totals.Balances(),
+		Balances:         balances,
 	}, nil
 }
 
@@ -199,10 +272,11 @@ type extendedBalance struct {
 // shown as Auto Earn) earns on main balances and stays in main.
 var allocatedSuffixes = []string{".B", ".S", ".M"}
 
-// separateMain maps main in separate wallets: its BalanceEx coins, and an equity that adds the
-// net result of open Spot margin positions (TradeBalance `n`) to the coins valued at their USD
-// prices. TradeBalance `e` is never used, because it values the whole balance with Kraken's own
-// rules. Spot margin positions are not itemized, as with OKX.
+// separateMain maps main in separate wallets: its BalanceEx coins, and the net result of open Spot
+// margin positions (TradeBalance `n`) folded into the USD row, as the settlement currency of that
+// result. TradeBalance `e` is never used, because it values the whole balance with Kraken's own
+// rules. Spot margin positions are not itemized, as with OKX, so other coins' own result is
+// unknown and stays null.
 func (r *run) separateMain(ctx context.Context) (adapter.AccountReport, error) {
 	where := "Kraken " + epBalanceEx.String()
 	var rows map[string]extendedBalance
@@ -246,7 +320,20 @@ func (r *run) separateMain(ctx context.Context) (adapter.AccountReport, error) {
 	if err != nil {
 		return adapter.AccountReport{}, err
 	}
-	report := adapter.AccountReport{AccountType: TypeMain, Status: adapter.StatusSucceeded, CollectedAt: r.a.now(), Balances: totals.Balances()}
-	report.SpotMarginUnrealizedPnlUSD = decimal.FormatPtr(net)
-	return report, nil
+	settlement, err := r.assets.symbol(where, "USD")
+	if err != nil {
+		return adapter.AccountReport{}, err
+	}
+	if net.Sign() != 0 || totals[settlement] != nil {
+		if err := totals.Add(where, settlement, net); err != nil {
+			return adapter.AccountReport{}, err
+		}
+	}
+	balances := totals.Balances()
+	for i := range balances {
+		if balances[i].AssetSymbol == settlement {
+			balances[i].UnrealizedPnl = decimal.FormatPtr(net)
+		}
+	}
+	return adapter.AccountReport{AccountType: TypeMain, Status: adapter.StatusSucceeded, CollectedAt: r.a.now(), Balances: balances}, nil
 }

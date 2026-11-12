@@ -85,33 +85,41 @@ earn is the same account in both structures.
 
 ## Account report
 
-| Stored fact or read projection        | Multi-collateral wallet: `main` in unified wallet, `multi_m` (`flex_futures`)                               | `coin_m`                                                                                                 | `main` in separate wallets                                    | `earn`, `derivatives_holding`                                               |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `reported_equity_usd`                 | `portfolio_value` (USD, with unrealized profit and funding); required                                       | `futures_upnl_cash_value` (USD value of every single-collateral wallet with unrealized profit); required | `null`; calculated value includes `TradeBalance.n`, see below | `null`, so the value is `calculated` from balances                          |
-| `adjusted_equity_usd`                 | `margin_equity` (after collateral haircuts)                                                                 | `null`                                                                                                   | `null`                                                        | `null`                                                                      |
-| `available_equity_usd`                | `available_margin`                                                                                          | `null`                                                                                                   | `null`                                                        | `null`                                                                      |
-| Initial margin ratio (projection)     | Derived: `initial_margin ÷ margin_equity`, 8 decimals; null when `margin_equity ≤ 0` or the field is absent | `null`                                                                                                   | `null`                                                        | `null`                                                                      |
-| Maintenance margin ratio (projection) | Derived: `maintenance_margin ÷ margin_equity`, same rules                                                   | `null`                                                                                                   | `null`                                                        | `null`                                                                      |
-| `reported_margin_ratio`               | `null`                                                                                                      | `null`                                                                                                   | `null`                                                        | `null`                                                                      |
-| `collected_at`                        | Local time after the account collection completes                                                           | Same                                                                                                     | Same                                                          | Same                                                                        |
-| `source_observed_at`                  | Snapshot `timestamp` when supplied                                                                          | Same                                                                                                     | `null`                                                        | `null` (`earn`); snapshot `timestamp` when supplied (`derivatives_holding`) |
+| Stored fact or read projection        | Multi-collateral wallet: `main` in unified wallet, `multi_m` (`flex_futures`)                               | `coin_m`                                                                                                 | `main` in separate wallets                                                       | `earn`, `derivatives_holding`                                               |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `reported_equity_usd`                 | `portfolio_value` (USD, with unrealized profit and funding); required                                       | `futures_upnl_cash_value` (USD value of every single-collateral wallet with unrealized profit); required | `null`; calculated from balances whose USD row holds `TradeBalance.n`, see below | `null`, so the value is `calculated` from balances                          |
+| `adjusted_equity_usd`                 | `margin_equity` (after collateral haircuts)                                                                 | `null`                                                                                                   | `null`                                                                           | `null`                                                                      |
+| `available_equity_usd`                | `available_margin`                                                                                          | `null`                                                                                                   | `null`                                                                           | `null`                                                                      |
+| Initial margin ratio (projection)     | Derived: `initial_margin ÷ margin_equity`, 8 decimals; null when `margin_equity ≤ 0` or the field is absent | `null`                                                                                                   | `null`                                                                           | `null`                                                                      |
+| Maintenance margin ratio (projection) | Derived: `maintenance_margin ÷ margin_equity`, same rules                                                   | `null`                                                                                                   | `null`                                                                           | `null`                                                                      |
+| `reported_margin_ratio`               | `null`                                                                                                      | `null`                                                                                                   | `null`                                                                           | `null`                                                                      |
+| `collected_at`                        | Local time after the account collection completes                                                           | Same                                                                                                     | Same                                                                             | Same                                                                        |
+| `source_observed_at`                  | Snapshot `timestamp` when supplied                                                                          | Same                                                                                                     | `null`                                                                           | `null` (`earn`); snapshot `timestamp` when supplied (`derivatives_holding`) |
 
 - `portfolio_value` already holds unrealized profit and funding and is used
   alone. The haircut-adjusted `margin_equity` is only the adjusted equity.
 - Main in separate wallets never uses `TradeBalance.e`, which values the whole
-  balance by Kraken's own rules. The report stores `TradeBalance.n`, the net
-  result of open Spot margin positions in USD, in
-  `spot_margin_unrealized_pnl_usd`. Valuation adds that fact to the known
-  balance subtotal. An unpriced balance marks the calculated value incomplete
-  even when the margin result is nonzero; it does not discard the known subtotal
-  or fail normalization. Spot margin positions are not itemized, as with OKX.
+  balance by Kraken's own rules. Its USD balance adds `TradeBalance.n`, the net
+  result of open Spot margin positions in USD, to its equity and reports it as
+  that row's `unrealized_pnl`; the account measure
+  `spot_margin_unrealized_pnl_usd` stays empty. Valuation adds the result once,
+  through the balance, so excluding that balance excludes it. An unpriced
+  balance marks the calculated value incomplete even when the margin result is
+  nonzero; it does not discard the known subtotal or fail normalization. Spot
+  margin positions are not itemized, as with OKX, so other coins keep a null
+  unrealized result.
+- Reports collected before this mapping keep `spot_margin_unrealized_pnl_usd`
+  and a USD balance without the result, and valuation still adds that measure.
+  Both report shapes add the result exactly once.
 - A nonzero `credit_used` on any BalanceEx row fails main with `unsupported`:
   Plutus does not support Kraken credit.
-- Not stored: `flex_futures` `balance_value`, `collateral_value`, `pnl`,
-  `unrealized_funding`, `total_unrealized`, `total_unrealized_as_margin`,
+- Not stored as account measures: `flex_futures` `balance_value`,
+  `collateral_value`, `total_unrealized_as_margin`,
   `initial_margin_without_orders` at wallet level, `total_position_size`,
   `isolated_list`, and `cross`; isolated position allocation is mapped below;
   the snapshot's `futures_cash_value`; TradeBalance fields other than `n`.
+  Wallet-level `total_unrealized`, `pnl`, and `unrealized_funding` are mapped
+  into balances, not repeated as account measures.
 
 Raw initial and maintenance requirements (`initial_margin` /
 `maintenance_margin`) are stored in `initial_margin_requirement_usd` and
@@ -121,12 +129,13 @@ as reported ratios. Missing or nonpositive denominators produce null.
 
 ## Balance
 
-| Plutus column         | Multi-collateral wallet (`flex_futures.currencies`) | `coin_m` (snapshot `futures`)      | `derivatives_holding` (snapshot `holding`) | `main` in separate wallets (`BalanceEx`) | `earn` (`Earn/Allocations`)                                                                     |
-| --------------------- | --------------------------------------------------- | ---------------------------------- | ------------------------------------------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `AssetSymbol`         | Currency code                                       | The wallet's `unit`                | Currency code                              | Asset code                               | `native_asset`                                                                                  |
-| `equity` (coin units) | `quantity`                                          | `portfolio_value`, summed per unit | The amount, summed per symbol              | `balance`, summed with its `.F` row      | `amount_allocated.total.native` of `instant`, `bonded`, and `timed` strategies, summed per coin |
-| `available_to_trade`  | `available`                                         | `null`                             | `null`                                     | `null`                                   | `null`                                                                                          |
-| Other columns         | `null`                                              | `null`                             | `null`                                     | `null`                                   | `null`                                                                                          |
+| Plutus column         | Multi-collateral wallet (`flex_futures.currencies`)             | `coin_m` (snapshot `futures`)                          | `derivatives_holding` (snapshot `holding`) | `main` in separate wallets (`BalanceEx`)                               | `earn` (`Earn/Allocations`)                                                                     |
+| --------------------- | --------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------ | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `AssetSymbol`         | Currency code                                                   | The wallet's `unit`                                    | Currency code                              | Asset code                                                             | `native_asset`                                                                                  |
+| `equity` (coin units) | `quantity`, plus `total_unrealized` on the USD row              | `portfolio_value`, summed per unit (already holds PnL) | The amount, summed per symbol              | `balance`, summed with its `.F` row; the USD row adds `TradeBalance.n` | `amount_allocated.total.native` of `instant`, `bonded`, and `timed` strategies, summed per coin |
+| `unrealized_pnl`      | `total_unrealized` on the USD row; `0` on other collateral rows | `pnl + unrealized_funding`, summed per unit            | `0`                                        | `TradeBalance.n` on the USD row; `null` on other coins                 | `null`                                                                                          |
+| `available_to_trade`  | `available`                                                     | `null`                                                 | `null`                                     | `null`                                                                 | `null`                                                                                          |
+| Other columns         | `null`                                                          | `null`                                                 | `null`                                     | `null`                                                                 | `null`                                                                                          |
 
 - A code assets lists becomes its `altname` (`XXBT` → `XBT`, `ZUSD` → `USD`),
   then the aliases `XBT` → `BTC` and `XDG` → `DOGE` apply
@@ -136,8 +145,26 @@ as reported ratios. Missing or nonpositive denominators produce null.
 - Zero totals are dropped. Every amount is required: a missing or non-decimal
   one fails its account with `normalization`, naming the field; it is never read
   as zero.
-- The multi-collateral wallet's derivative profit is in its equity only; it is
-  not split among currencies.
+- A balance's `equity` is the wallet's equity in that coin, including its
+  unrealized result where the platform reports margins that way. This matches
+  Binance's margin balance and OKX's `eq`, where the unrealized measure is also
+  a separate column.
+- Kraken reports one unrealized result per futures wallet, not per currency.
+  Only flexible linear contracts belong to the multi-collateral wallet and they
+  settle in USD, so the USD row carries `total_unrealized` in both its equity
+  and its `unrealized_pnl`; the wallet's other collateral rows report `0`, a
+  known zero rather than an omitted value. A settlement row that holds no
+  quantity is created when the result is nonzero, because the wallet's margin
+  balance is nonzero there.
+- A `coin_m` wallet's `portfolio_value` already holds its unrealized result, so
+  its row does not add it again. Its `unrealized_pnl` is
+  `pnl + unrealized_funding`, which makes `equity = balance + unrealized_pnl`
+  hold without a hidden funding residual.
+- The derivatives holding wallet never trades, so its rows report `0`. Earn
+  allocations are not margin positions and keep `null`.
+- `total_unrealized`, `pnl`, and `unrealized_funding` are required: Kraken
+  reports zero values explicitly, and a missing or non-decimal one fails its
+  account with `normalization` rather than reading as zero.
 - BalanceEx rows ending in `.B` (yield-bearing), `.S` (staked), and `.M` (opt-in
   rewards) are earn allocations and are left to `earn`. `.F` rows are Kraken
   Rewards (Auto Earn), which earn on main balances and stay in main.

@@ -17,7 +17,9 @@
     "futures": {
       "F-XBT:USD": {
         "unit": "XBT",
-        "portfolio_value": 0.02
+        "portfolio_value": 0.02,
+        "pnl": 0.0,
+        "unrealized_funding": 0.0
       }
     },
     "flex_futures": {
@@ -27,6 +29,9 @@
       "available_margin": 800,
       "initial_margin": 100,
       "maintenance_margin": 10,
+      "pnl": 200,
+      "unrealized_funding": 0,
+      "total_unrealized": 200,
       "currencies": {
         "USD": {
           "quantity": 500,

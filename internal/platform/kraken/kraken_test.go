@@ -327,6 +327,17 @@ func balances(report *adapter.AccountReport) map[string]string {
 	return out
 }
 
+func balanceAt(t *testing.T, report *adapter.AccountReport, symbol string) adapter.Balance {
+	t.Helper()
+	for _, balance := range report.Balances {
+		if balance.AssetSymbol == symbol {
+			return balance
+		}
+	}
+	t.Fatalf("%s balance is missing", symbol)
+	return adapter.Balance{}
+}
+
 func value(s *string) string {
 	if s == nil {
 		return "<nil>"
@@ -360,8 +371,14 @@ func TestReplayUnifiedWallet(t *testing.T) {
 		mainReport.ReportedInitialMarginRatio != nil || mainReport.ReportedMaintenanceMarginRatio != nil || value(mainReport.InitialMarginRequirementUSD) != "100" || value(mainReport.MaintenanceMarginRequirementUSD) != "10" || mainReport.ReportedMarginRatio != nil {
 		t.Fatalf("Unified main figures: %s %s %s %s %s", value(mainReport.Equity), value(mainReport.AdjustedEquity), value(mainReport.AvailableEquity), value(mainReport.ReportedInitialMarginRatio), value(mainReport.ReportedMaintenanceMarginRatio))
 	}
-	if got := balances(&mainReport); len(got) != 2 || got["USD"] != "500" || got["BTC"] != "0.01" {
+	if got := balances(&mainReport); len(got) != 2 || got["USD"] != "700" || got["BTC"] != "0.01" {
 		t.Fatalf("Unified main balances: %v", got)
+	}
+	if usd := balanceAt(t, &mainReport, "USD"); value(usd.UnrealizedPnl) != "200" {
+		t.Fatalf("Unified main USD unrealized PnL: %s", value(usd.UnrealizedPnl))
+	}
+	if btc := balanceAt(t, &mainReport, "BTC"); value(btc.UnrealizedPnl) != "0" {
+		t.Fatalf("Unified main collateral unrealized PnL: %s", value(btc.UnrealizedPnl))
 	}
 	for _, balance := range mainReport.Balances {
 		if balance.AvailableToTrade == nil {
@@ -379,13 +396,13 @@ func TestReplayUnifiedWallet(t *testing.T) {
 		t.Fatalf("Unified main position: %+v", position)
 	}
 
-	if earn := reports[TypeEarn]; len(earn.Balances) != 1 || balances(&earn)["USDT"] != "20" {
+	if earn := reports[TypeEarn]; len(earn.Balances) != 1 || balances(&earn)["USDT"] != "20" || earn.Balances[0].UnrealizedPnl != nil {
 		t.Fatalf("Earn: %v", balances(&earn))
 	}
-	if holding := reports[TypeDerivativesHolding]; len(holding.Balances) != 1 || balances(&holding)["BTC"] != "0.01" {
+	if holding := reports[TypeDerivativesHolding]; len(holding.Balances) != 1 || balances(&holding)["BTC"] != "0.01" || value(holding.Balances[0].UnrealizedPnl) != "0" {
 		t.Fatalf("Derivatives holding: %v", balances(&holding))
 	}
-	if coin := reports[TypeCoinM]; value(coin.Equity) != "10" || balances(&coin)["BTC"] != "0.02" || len(coin.Positions) != 2 {
+	if coin := reports[TypeCoinM]; value(coin.Equity) != "10" || balances(&coin)["BTC"] != "0.02" || len(coin.Positions) != 2 || value(coin.Balances[0].UnrealizedPnl) != "0" {
 		t.Fatalf("Coin-M: %+v", coin)
 	}
 	if len(batch.Prices) != 1 || batch.Prices[0].CanonicalAssetSymbol != "BTC" || batch.Prices[0].QuoteCanonicalAssetSymbol != "USD" || batch.Prices[0].Price != "30000" {
@@ -421,18 +438,28 @@ func TestReplaySeparateWallets(t *testing.T) {
 	}
 
 	// Main: ZUSD and its Kraken Rewards row ZUSD.F merge; the USDT.B allocation belongs to earn;
-	// the equity is the priced coins plus the open Spot margin result n = -10.0232.
+	// the open Spot margin result n = -10.0232 is folded into the USD row, not into a separate
+	// account measure.
 	mainReport := reports[TypeMain]
-	if got := balances(&mainReport); len(got) != 2 || got["USD"] != "25445.21" || got["BTC"] != "1.2435" {
+	if got := balances(&mainReport); len(got) != 2 || got["USD"] != "25435.1868" || got["BTC"] != "1.2435" {
 		t.Fatalf("Separate main balances: %v", got)
 	}
-	if mainReport.Equity != nil || value(mainReport.SpotMarginUnrealizedPnlUSD) != "-10.0232" || mainReport.AdjustedEquity != nil {
+	if mainReport.Equity != nil || mainReport.SpotMarginUnrealizedPnlUSD != nil || mainReport.AdjustedEquity != nil {
 		t.Fatalf("Separate main equity: %s", value(mainReport.Equity))
+	}
+	if usd := balanceAt(t, &mainReport, "USD"); value(usd.UnrealizedPnl) != "-10.0232" {
+		t.Fatalf("Separate main USD unrealized PnL: %s", value(usd.UnrealizedPnl))
+	}
+	if btc := balanceAt(t, &mainReport, "BTC"); btc.UnrealizedPnl != nil {
+		t.Fatalf("Separate main collateral unrealized PnL: %s", value(btc.UnrealizedPnl))
 	}
 
 	multi := reports[TypeMultiM]
 	if value(multi.Equity) != "5000" || value(multi.AdjustedEquity) != "5000" || multi.ReportedInitialMarginRatio != nil || value(multi.InitialMarginRequirementUSD) != "0" || balances(&multi)["USD"] != "5000" {
 		t.Fatalf("Multi-M: %+v", multi)
+	}
+	if usd := balanceAt(t, &multi, "USD"); value(usd.UnrealizedPnl) != "0" {
+		t.Fatalf("Multi-M unrealized PnL: %s", value(usd.UnrealizedPnl))
 	}
 	if len(multi.Positions) != 1 || multi.Positions[0].PositionKey != "PF_XBTUSD:long" || multi.Positions[0].FuturesContract.BaseAssetSymbol != "BTC" ||
 		multi.Positions[0].UnrealizedPnl != nil || value(multi.Positions[0].MarkPrice) != "30209.9" {
@@ -440,7 +467,7 @@ func TestReplaySeparateWallets(t *testing.T) {
 	}
 
 	coin := reports[TypeCoinM]
-	if value(coin.Equity) != "3683.7011" || len(coin.Balances) != 1 || balances(&coin)["BTC"] != "0.1219368845" {
+	if value(coin.Equity) != "3683.7011" || len(coin.Balances) != 1 || balances(&coin)["BTC"] != "0.1219368845" || value(coin.Balances[0].UnrealizedPnl) != "0" {
 		t.Fatalf("Coin-M: equity %s, balances %v", value(coin.Equity), balances(&coin))
 	}
 	positions := map[string]adapter.Position{}
@@ -461,8 +488,57 @@ func TestReplaySeparateWallets(t *testing.T) {
 	if got := balances(&holding); len(got) != 10 || got["BTC"] != "0.1285407184" || got["USD"] != "5000" {
 		t.Fatalf("Derivatives holding: %v", got)
 	}
+	for _, balance := range holding.Balances {
+		if value(balance.UnrealizedPnl) != "0" {
+			t.Fatalf("Derivatives holding %s unrealized PnL: %s", balance.AssetSymbol, value(balance.UnrealizedPnl))
+		}
+	}
 	if earn := reports[TypeEarn]; balances(&earn)["USDT"] != "20" {
 		t.Fatal("Separate earn lost its allocations")
+	}
+}
+
+// Kraken reports one unrealized result per wallet, not per currency: only the settlement row
+// carries it, other collateral rows are a known zero, and an absent result fails instead of
+// reading as zero.
+func TestUnrealizedPnlAttribution(t *testing.T) {
+	ctx := context.Background()
+	snapshot := func(flex string) string {
+		return `{"feed":"balances_snapshot","timestamp":1700000000000,"seq":1,` +
+			`"holding":{"XBT":0.01},` +
+			`"futures":{"F-XBT:USD":{"unit":"XBT","portfolio_value":0.02,"pnl":0,"unrealized_funding":0}},` +
+			`"flex_futures":{` + flex + `},` +
+			`"futures_upnl_cash_value":10}`
+	}
+	collect := func(t *testing.T, flex string) adapter.AccountReport {
+		t.Helper()
+		r := newReplay(t, "", map[string]string{epBalancesSnapshot.String(): snapshot(flex)})
+		batch, err := r.adapter.Collect(ctx, testCreds, adapter.StructureKrakenUnified, []adapter.AccountType{TypeMain})
+		if err != nil || len(batch.Reports) != 1 {
+			t.Fatalf("collect: %v %d", err, len(batch.Reports))
+		}
+		return batch.Reports[0]
+	}
+
+	created := collect(t, `"unified_balances":true,"portfolio_value":330,"total_unrealized":30,"currencies":{"XBT":{"quantity":0.01,"available":0.01}}`)
+	if created.Status != adapter.StatusSucceeded || value(created.Equity) != "330" {
+		t.Fatalf("a wallet without USD collateral: %+v", created)
+	}
+	if usd := balanceAt(t, &created, "USD"); usd.Equity != "30" || value(usd.UnrealizedPnl) != "30" {
+		t.Fatalf("created settlement row: %+v", usd)
+	}
+	if btc := balanceAt(t, &created, "BTC"); btc.Equity != "0.01" || value(btc.UnrealizedPnl) != "0" {
+		t.Fatalf("collateral row: %+v", btc)
+	}
+
+	zero := collect(t, `"unified_balances":true,"portfolio_value":500,"total_unrealized":0,"currencies":{"USD":{"quantity":500,"available":400}}`)
+	if value(balanceAt(t, &zero, "USD").UnrealizedPnl) != "0" {
+		t.Fatal("a reported zero result must stay zero")
+	}
+
+	missing := collect(t, `"unified_balances":true,"portfolio_value":500,"currencies":{"USD":{"quantity":500,"available":400}}`)
+	if missing.Status != adapter.StatusFailed || missing.ErrorClass != adapter.ClassNormalization || !strings.Contains(missing.ErrorDetail, "total_unrealized") {
+		t.Fatalf("an absent result must fail normalization: %+v", missing)
 	}
 }
 
@@ -599,11 +675,17 @@ func TestSeparateMainRules(t *testing.T) {
 		t.Fatalf("used credit: %+v", used)
 	}
 	margin := collectMain(t, map[string]string{epBalanceEx.String(): unpriced})
-	if margin.Status != adapter.StatusSucceeded || margin.Equity != nil || margin.SpotMarginUnrealizedPnlUSD == nil || balances(&margin)["XTZ"] != "3" {
+	if margin.Status != adapter.StatusSucceeded || margin.Equity != nil || margin.SpotMarginUnrealizedPnlUSD != nil || balances(&margin)["XTZ"] != "3" || balances(&margin)["USD"] != "89.9768" {
 		t.Fatalf("a margin result with an unpriced coin: %+v", margin)
 	}
+	if usd := balanceAt(t, &margin, "USD"); value(usd.UnrealizedPnl) != "-10.0232" {
+		t.Fatalf("the margin result belongs to the USD row: %s", value(usd.UnrealizedPnl))
+	}
+	if xtz := balanceAt(t, &margin, "XTZ"); xtz.UnrealizedPnl != nil {
+		t.Fatalf("a Spot margin result does not itemize other coins: %s", value(xtz.UnrealizedPnl))
+	}
 	flat := collectMain(t, map[string]string{epBalanceEx.String(): unpriced, epTradeBalance.String(): `{"error":[],"result":{"n":"0.0000"}}`})
-	if flat.Status != adapter.StatusSucceeded || flat.Equity != nil || balances(&flat)["XTZ"] != "3" {
+	if flat.Status != adapter.StatusSucceeded || flat.Equity != nil || balances(&flat)["XTZ"] != "3" || value(balanceAt(t, &flat, "USD").UnrealizedPnl) != "0" {
 		t.Fatalf("without a margin result the value is calculated from balances: %+v", flat)
 	}
 }

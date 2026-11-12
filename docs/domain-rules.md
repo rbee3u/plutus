@@ -74,11 +74,13 @@ double counts.
 
 ### Contract quantities and margin
 
-Opposing long and short positions remain separate. A position does not add
-another balance to account equity. Linear position size is base quantity;
-inverse size is quote face amount. Source contract counts require the futures
-contract's effective per-contract size exactly once; normalized quantities do
-not. Mark price does not change size.
+Opposing long and short positions remain separate. A position never adds a
+balance row; its unrealized result is part of the settlement currency's balance
+equity where the platform reports margins that way, and each platform mapping
+states the source. Linear position size is base quantity; inverse size is quote
+face amount. Source contract counts require the futures contract's effective
+per-contract size exactly once; normalized quantities do not. Mark price does
+not change size.
 
 Cross position margin means the initial requirement excluding orders. Isolated
 margin means allocated funds excluding unrealized PnL. Requirements follow
