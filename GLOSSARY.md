@@ -68,8 +68,16 @@ equity and account measures when available, balances, positions, earn positions,
 and dual positions. _Avoid_: equity, snapshot.
 
 **balance**: An asset's equity in an account report, accompanied by
-availability, liability, and unrealized-profit measures where known. _Avoid_:
-quantity, holding as synonyms for its equity measure.
+availability, liability, interest, and unrealized-profit measures where known.
+_Avoid_: quantity, holding as synonyms for its equity measure.
+
+**liability**: A balance's total debt in its asset: borrowed principal, unpaid
+interest, and a negative balance the platform attributes to debt. _Avoid_:
+principal or borrowed amount when interest is excluded.
+
+**interest**: The accrued unpaid interest already included in a balance's
+liability, reported separately only for disclosure. _Avoid_: fee, yield, an
+amount to add to the liability.
 
 **price observation**: One stored market quote, retaining the requested
 canonical asset, actual source market, retrieval time, and optional source time.

@@ -84,7 +84,8 @@ func (a *Adapter) isolatedMargin(ctx context.Context, c *client) (adapter.Accoun
 }
 
 // marginTotals sums margin wallet rows by coin. A coin's equity is its netAsset, the free and
-// locked amount less the borrowed principal and interest, and may be negative.
+// locked amount less the borrowed principal and interest, and may be negative. Its liability is
+// the total debt, the borrowed principal plus the accrued interest that Binance reports beside it.
 type marginTotals struct {
 	net, borrowed, interest adapter.Totals
 }
@@ -125,7 +126,7 @@ func (t *marginTotals) balances() []adapter.Balance {
 		out = append(out, adapter.Balance{
 			AssetSymbol: symbol,
 			Equity:      decimal.Format(t.net[symbol]),
-			Liability:   decimal.FormatPtr(t.borrowed[symbol]),
+			Liability:   decimal.FormatPtr(decimal.Add(t.borrowed[symbol], t.interest[symbol])),
 			Interest:    decimal.FormatPtr(t.interest[symbol]),
 		})
 	}

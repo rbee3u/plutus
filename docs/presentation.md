@@ -325,6 +325,12 @@ hover and disclosing carried-forward source observation times when applicable.
 Missing-price hints and page-level Issues remain visible; balances do not add
 position-style row issue counts.
 
+Liability is the coin's total debt, so reported unpaid interest is disclosed on
+pointer hover, keyboard focus, or click as
+`Of which unpaid interest: <amount> <asset>`. It stays inside the liability
+rather than adding a column: interest is a component, never a second amount to
+add.
+
 ### Futures
 
 Columns are `Platform`, `Identity`, `Account`, `Symbol`, `Side`, `Size`,

@@ -123,7 +123,7 @@ Binance keeps coins that were once held.
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------- |
 | `AssetSymbol`           | `asset`                                                                                                               | `asset`                                | `asset`                                                             | `asset`                                                               | `asset`, dual investment `investCoin` |
 | `equity` (coin units)   | `totalWalletBalance + umUnrealizedPNL + cmUnrealizedPNL − crossMarginBorrowed − crossMarginInterest`, may be negative | `free + locked + freeze + withdrawing` | `netAsset` (`free + locked − borrowed − interest`), may be negative | `marginBalance` (`walletBalance + unrealizedProfit`), may be negative | See [Earn](#earn)                     |
-| `liability`             | `crossMarginBorrowed`                                                                                                 | `null`                                 | `borrowed`                                                          | `null`                                                                | `null`                                |
+| `liability`             | `crossMarginBorrowed + crossMarginInterest + max(0, −(umWalletBalance + cmWalletBalance))`                            | `null`                                 | `borrowed + interest`                                               | `null`                                                                | `null`                                |
 | `interest`              | `crossMarginInterest`                                                                                                 | `null`                                 | `interest`                                                          | `null`                                                                | `null`                                |
 | `unrealized_pnl`        | `umUnrealizedPNL + cmUnrealizedPNL`                                                                                   | `null`                                 | `null`                                                              | `unrealizedProfit`                                                    | `null`                                |
 | `available_to_trade`    | See position presentation provenance                                                                                  | `free`                                 | Not mapped                                                          | `availableBalance`                                                    | `null`                                |
@@ -133,6 +133,17 @@ Binance keeps coins that were once held.
   `crossMarginFree + crossMarginLocked + umWalletBalance + cmWalletBalance`.
   `negativeBalance` is the negative part already inside it and is not subtracted
   again.
+- PM `liability` is Binance's Total Debts: the cross margin borrowing and its
+  accrued interest plus futures debt, the negative part of
+  `umWalletBalance + cmWalletBalance`. `negativeBalance` is not that debt: it
+  nets a futures debt against the cross margin funds of the same coin, so using
+  it would hide a futures debt whenever the cross margin side is positive. The
+  per-asset negative-balance threshold only reduces the interest Binance
+  charges, so it does not change the debt.
+- A classic margin coin's `liability` is its borrowed principal plus accrued
+  interest, the debt Binance repays. Classic `um_futures` and `cm_futures`
+  report no borrowing, so a negative wallet balance stays a negative equity with
+  no liability; that is a known gap.
 - Isolated margin holds every pair apart. The account sums the base and quote
   rows of all pairs per coin, so USDT held in BTCUSDT and ETHUSDT becomes one
   USDT balance.

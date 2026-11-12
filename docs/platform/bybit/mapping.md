@@ -110,21 +110,27 @@ hold, which fails only its own account. `ExternalRef` is `userID` from
 
 ## Balance
 
-| Plutus column           | `unified` (`wallet-balance` `coin[]`)        | `funding` (`query-account-coins-balance`) | `earn`                                         |
-| ----------------------- | -------------------------------------------- | ----------------------------------------- | ---------------------------------------------- |
-| `AssetSymbol`           | `coin`                                       | `coin`                                    | `coin`; dual asset `investCoin`                |
-| `equity` (coin units)   | `equity` as reported, may be negative        | `walletBalance`                           | Principal, see [Earn](#earn), one row per coin |
-| `available_to_trade`    | `null`                                       | `null`                                    | `null`                                         |
-| `available_to_withdraw` | `null`                                       | `transferBalance`                         | `null`                                         |
-| `liability`             | `borrowAmount`, stored as its absolute value | `null`                                    | `null`                                         |
-| `interest`              | `accruedInterest`                            | `null`                                    | `null`                                         |
-| `unrealized_pnl`        | `unrealisedPnl`                              | `null`                                    | `null`                                         |
-| `name`                  | Not mapped: Bybit gives no full coin name    | Not mapped                                | Not mapped                                     |
+| Plutus column           | `unified` (`wallet-balance` `coin[]`)       | `funding` (`query-account-coins-balance`) | `earn`                                         |
+| ----------------------- | ------------------------------------------- | ----------------------------------------- | ---------------------------------------------- |
+| `AssetSymbol`           | `coin`                                      | `coin`                                    | `coin`; dual asset `investCoin`                |
+| `equity` (coin units)   | `equity` as reported, may be negative       | `walletBalance`                           | Principal, see [Earn](#earn), one row per coin |
+| `available_to_trade`    | `null`                                      | `null`                                    | `null`                                         |
+| `available_to_withdraw` | `null`                                      | `transferBalance`                         | `null`                                         |
+| `liability`             | `borrowAmount + accruedInterest`, see below | `null`                                    | `null`                                         |
+| `interest`              | `accruedInterest`                           | `null`                                    | `null`                                         |
+| `unrealized_pnl`        | `unrealisedPnl`                             | `null`                                    | `null`                                         |
+| `name`                  | Not mapped: Bybit gives no full coin name   | Not mapped                                | Not mapped                                     |
 
 - `equity` is Bybit's per-coin equity: the wallet balance minus spot borrowing,
   plus unrealized PnL and option value. It is taken as reported and never
   rebuilt, so borrowing and PnL are not added or subtracted again.
   `walletBalance` includes borrowed coins and is not used.
+- `liability` is the total debt: `borrowAmount` as a positive amount plus
+  `accruedInterest`. Bybit reports the two separately and `equity` already nets
+  both. A negative `walletBalance` and `spotBorrow` are not added: recorded rows
+  carry a negative `walletBalance` with no `borrowAmount`, and one carries both,
+  so counting it would double the same debt. That is a known gap until an app
+  check establishes how a spot borrowing appears.
 - `equity`, `walletBalance`, and each earn `amount` are required. An empty one
   fails its account with `normalization`, naming the coin: read as zero, it
   would drop the coin under the complete set rule. The other fields may be empty

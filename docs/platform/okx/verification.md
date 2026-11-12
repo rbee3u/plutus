@@ -224,7 +224,10 @@ few minutes of a collection.
 8. **Portfolio margin and Multi-currency margin**: `AdjEq` equals the adjusted
    equity and `Margin ratio` the margin ratio the app shows, possibly as a
    percentage. In portfolio margin, cross positions show no leverage and no
-   liquidation price.
+   liquidation price. Each coin's `Liability` equals the app's liability for it,
+   interest included; with an isolated-margin position open, confirm that the
+   currency's `liab` also covers the isolated borrowing, which Plutus does not
+   read separately.
 9. **Spot mode**: with spot borrowing on, `AdjEq` and `Margin ratio` match the
    app. Each borrowed coin shows its borrowing, interest included, and its
    interest alone. Without borrowing, the margin figures may stay empty.

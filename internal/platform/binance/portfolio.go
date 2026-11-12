@@ -95,7 +95,11 @@ func mapPMAccount(in *pmAccount) (adapter.AccountReport, error) {
 
 // mapPMBalances maps /papi/v1/balance rows. Equity is the net coin amount: wallet balance across
 // cross margin, UM, and CM, plus unrealized PnL, minus borrowed principal and interest. It may be
-// negative. negativeBalance is already inside totalWalletBalance and is not subtracted again.
+// negative. Liability is the total debt Binance lists as Total Debts: the cross margin borrowing,
+// its accrued interest, and futures debt, the negative part of the UM and CM wallet balances.
+// negativeBalance is already inside totalWalletBalance and is not subtracted again; it also nets a
+// futures debt against the cross margin funds of the same coin, so Liability uses it only through
+// those wallet balances and never as the debt itself.
 func mapPMBalances(rows []pmBalance) ([]adapter.Balance, error) {
 	where := epPMBalance.String()
 	out := make([]adapter.Balance, 0, len(rows))
@@ -118,10 +122,14 @@ func mapPMBalances(rows []pmBalance) ([]adapter.Balance, error) {
 		}
 		pnl := decimal.Add(parsed["umUnrealizedPNL"], parsed["cmUnrealizedPNL"])
 		equity := decimal.Sub(decimal.Sub(decimal.Add(parsed["totalWalletBalance"], pnl), parsed["crossMarginBorrowed"]), parsed["crossMarginInterest"])
+		futuresDebt := decimal.Zero()
+		if futures := decimal.Add(parsed["umWalletBalance"], parsed["cmWalletBalance"]); futures.Sign() < 0 {
+			futuresDebt = new(big.Rat).Neg(futures)
+		}
 		out = append(out, adapter.Balance{
 			AssetSymbol:   symbol,
 			Equity:        decimal.Format(equity),
-			Liability:     decimal.FormatPtr(parsed["crossMarginBorrowed"]),
+			Liability:     decimal.FormatPtr(decimal.Add(decimal.Add(parsed["crossMarginBorrowed"], parsed["crossMarginInterest"]), futuresDebt)),
 			Interest:      decimal.FormatPtr(parsed["crossMarginInterest"]),
 			UnrealizedPnl: decimal.FormatPtr(pnl),
 		})

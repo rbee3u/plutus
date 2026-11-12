@@ -295,9 +295,9 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 		t.Fatalf("Portfolio margin account figures = %+v", unified)
 	}
 	wantBalances := map[string]adapter.Balance{
-		"BTC":  {AssetSymbol: "BTC", Equity: "1", UnrealizedPnl: new("-0.25"), Liability: new("0.2"), Interest: new("0.01")},
+		"BTC":  {AssetSymbol: "BTC", Equity: "1", UnrealizedPnl: new("-0.25"), Liability: new("0.21"), Interest: new("0.01")},
 		"USDT": {AssetSymbol: "USDT", Equity: "0", Liability: new("5")},
-		"ETH":  {AssetSymbol: "ETH", Equity: "0", Interest: new("0.02")},
+		"ETH":  {AssetSymbol: "ETH", Equity: "0", Liability: new("0.02"), Interest: new("0.02")},
 	}
 	if len(unified.Balances) != len(wantBalances) {
 		t.Fatalf("PM balances = %+v", unified.Balances)

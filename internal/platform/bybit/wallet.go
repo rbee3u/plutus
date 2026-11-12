@@ -82,7 +82,9 @@ func mapUnifiedAccount(in *walletAccount, mode adapter.MarginMode) (adapter.Acco
 // mapUnifiedBalances maps coin[] rows. Equity is Bybit's own per-coin `equity`, which already
 // nets spot borrowing and includes unrealized PnL, so neither is added or subtracted again. An
 // empty `equity` fails the account: read as zero, it would drop the coin under the complete set
-// rule. Bybit reports no full coin name, so Name stays empty.
+// rule. Liability is the total debt, the borrowed amount plus the interest accrued but not yet
+// repaid; Bybit reports the two separately and the coin equity already nets both. Bybit reports no
+// full coin name, so Name stays empty.
 func mapUnifiedBalances(rows []walletCoin) ([]adapter.Balance, error) {
 	where := epWallet.String()
 	out := make([]adapter.Balance, 0, len(rows))
@@ -113,10 +115,16 @@ func mapUnifiedBalances(rows []walletCoin) ([]adapter.Balance, error) {
 		if !nonzero {
 			continue
 		}
+		// A missing borrow keeps the interest as the whole debt; a missing interest is zero, so
+		// the liability stays unknown only when Bybit reports neither.
+		rawLiability := row.BorrowAmount
+		if strings.TrimSpace(rawLiability) == "" {
+			rawLiability = row.AccruedInterest
+		}
 		out = append(out, adapter.Balance{
 			AssetSymbol:   symbol,
 			Equity:        decimal.Format(equity),
-			Liability:     adapter.Reported(row.BorrowAmount, decimal.Abs(parsed["borrowAmount"])),
+			Liability:     adapter.Reported(rawLiability, decimal.Add(decimal.Abs(parsed["borrowAmount"]), parsed["accruedInterest"])),
 			Interest:      adapter.Reported(row.AccruedInterest, parsed["accruedInterest"]),
 			UnrealizedPnl: adapter.Reported(row.UnrealisedPnl, parsed["unrealisedPnl"]),
 		})

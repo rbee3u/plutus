@@ -73,6 +73,18 @@ describe("shared balance cells", () => {
     expect(html).toContain("Stale</span>");
   });
 
+  it("discloses unpaid interest inside the liability and never adds a column", () => {
+    const row = balanceRow({ ...balance, liability: "10.5", interest: "0.5" }, "Asia/Shanghai");
+    const html = renderToStaticMarkup(<>{row.liability}</>);
+    expect(html).toContain('aria-label="XBT liability 10.5"');
+    expect(html).toContain("10.5");
+    const withoutInterest = balanceRow(
+      { ...balance, liability: "10.5", interest: "0" },
+      "Asia/Shanghai",
+    );
+    expect(withoutInterest.liability).toBe("10.5");
+  });
+
   it("keeps healthy issue column quiet and unpriced equity explicit", () => {
     const row = balanceRow(
       {

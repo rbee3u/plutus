@@ -180,6 +180,11 @@ as reported ratios. Missing or nonpositive denominators produce null.
   does an allocation list with a `next_cursor`, which Kraken documents as
   unpaged. Skipping such a holding would violate the complete set rule.
 - `name` is never set: these endpoints report no full asset name.
+- Kraken never supplies `liability` or `interest`: these endpoints report no
+  borrowing, and the only credit signal the adapter reads, a nonzero
+  `BalanceEx.credit_used`, fails `main` as `unsupported`. A negative
+  `balance`/`quantity` is kept as a negative equity with an unknown liability,
+  not read as debt.
 
 ## Earn position descriptions
 

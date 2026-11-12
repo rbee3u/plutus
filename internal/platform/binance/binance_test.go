@@ -592,7 +592,7 @@ func TestCollectMapsPortfolioMarginAccount(t *testing.T) {
 	}
 
 	wantBalances := map[string]adapter.Balance{
-		"USDT": {AssetSymbol: "USDT", Equity: "999", Liability: new("10"), Interest: new("1"), UnrealizedPnl: new("10")},
+		"USDT": {AssetSymbol: "USDT", Equity: "999", Liability: new("11"), Interest: new("1"), UnrealizedPnl: new("10")},
 		"BTC":  {AssetSymbol: "BTC", Equity: "-0.001", Liability: new("0"), Interest: new("0"), UnrealizedPnl: new("-0.002")},
 	}
 	if len(report.Balances) != len(wantBalances) {
@@ -618,8 +618,32 @@ func TestCollectPMBorrowingAndInterest(t *testing.T) {
 		t.Fatalf("synthetic borrowing report %+v", report)
 	}
 	b := balanceOf(t, report, "USDT")
-	if b.Equity != "-16.5" || deref(b.Liability) != "10" || deref(b.Interest) != "0.5" || deref(b.UnrealizedPnl) != "-1" {
+	if b.Equity != "-16.5" || deref(b.Liability) != "10.5" || deref(b.Interest) != "0.5" || deref(b.UnrealizedPnl) != "-1" {
 		t.Fatalf("borrowing and interest must reduce equity without subtracting negativeBalance twice: %+v", b)
+	}
+}
+
+func TestCollectPMFuturesDebtIsLiability(t *testing.T) {
+	t.Parallel()
+
+	r, a := newReplay(t, "")
+	// Futures debt is the negative part of the UM and CM wallets. It counts even while cross
+	// margin funds hold the same coin, which is why negativeBalance cannot supply the liability.
+	r.always(epPMBalance, status(http.StatusOK, `[
+		{"asset":"USDT","totalWalletBalance":"-5","crossMarginFree":"8","crossMarginBorrowed":"10","crossMarginInterest":"0.5","umWalletBalance":"-3","cmWalletBalance":"0","negativeBalance":"-5"},
+		{"asset":"BTC","totalWalletBalance":"0","crossMarginFree":"1","crossMarginBorrowed":"0","crossMarginInterest":"0","umWalletBalance":"-3","cmWalletBalance":"2","negativeBalance":"0"}
+	]`))
+	report := reportOf(t, collect(t, a, adapter.StructureBinancePM, TypePortfolioMargin), TypePortfolioMargin)
+	if report.Status != adapter.StatusSucceeded || len(report.Balances) != 2 {
+		t.Fatalf("synthetic futures debt report %+v", report)
+	}
+	usdt := balanceOf(t, report, "USDT")
+	if usdt.Equity != "-15.5" || deref(usdt.Liability) != "13.5" || deref(usdt.Interest) != "0.5" {
+		t.Fatalf("cross margin borrowing, interest, and futures debt %+v", usdt)
+	}
+	btc := balanceOf(t, report, "BTC")
+	if btc.Equity != "0" || deref(btc.Liability) != "1" {
+		t.Fatalf("netting UM and CM wallets leaves one futures debt %+v", btc)
 	}
 }
 
@@ -969,7 +993,7 @@ func TestClassicCrossMargin(t *testing.T) {
 		t.Fatalf("balances %+v: the all-zero ETH row is omitted", report.Balances)
 	}
 	usdt := balanceOf(t, report, "USDT")
-	if usdt.Equity != "-50.00416667" || deref(usdt.Liability) != "100" || deref(usdt.Interest) != "0.00416667" || usdt.AvailableToTrade != nil {
+	if usdt.Equity != "-50.00416667" || deref(usdt.Liability) != "100.00416667" || deref(usdt.Interest) != "0.00416667" || usdt.AvailableToTrade != nil {
 		t.Fatalf("USDT %+v", usdt)
 	}
 	if btc := balanceOf(t, report, "BTC"); btc.Equity != "0.004995" || deref(btc.Liability) != "0" {
@@ -997,7 +1021,7 @@ func TestClassicIsolatedMarginSumsCoinsAcrossPairs(t *testing.T) {
 		t.Fatalf("report %+v", report)
 	}
 	usdt := balanceOf(t, report, "USDT")
-	if usdt.Equity != "699.97916667" || deref(usdt.Liability) != "500" || deref(usdt.Interest) != "0.02083333" {
+	if usdt.Equity != "699.97916667" || deref(usdt.Liability) != "500.02083333" || deref(usdt.Interest) != "0.02083333" {
 		t.Fatalf("USDT across BTCUSDT and ETHUSDT %+v", usdt)
 	}
 	if balanceOf(t, report, "BTC").Equity != "0.1" || balanceOf(t, report, "ETH").Equity != "1" {

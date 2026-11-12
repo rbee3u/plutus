@@ -123,16 +123,16 @@ Missing or nonpositive denominators produce null.
 
 `trading` reads `account/balance` `details[]`:
 
-| Plutus column           | Source                                                          | Spot mode | Futures mode | Multi-currency, portfolio margin |
-| ----------------------- | --------------------------------------------------------------- | --------- | ------------ | -------------------------------- |
-| `AssetSymbol`           | `ccy`                                                           | Yes       | Yes          | Yes                              |
-| `equity` (coin units)   | `eq` as reported, may be negative                               | Yes       | Yes          | Yes                              |
-| `available_to_trade`    | `availEq`                                                       | `null`    | Yes          | Yes                              |
-| `available_to_withdraw` | `availBal`                                                      | Yes       | Yes          | Yes                              |
-| `liability`             | `liab`, documented as positive and stored as its absolute value | Yes       | `null`       | Yes                              |
-| `interest`              | `interest`                                                      | Yes       | `null`       | Yes                              |
-| `unrealized_pnl`        | `upl`                                                           | `null`    | Yes          | Yes                              |
-| `name`                  | Not mapped                                                      |           |              |                                  |
+| Plutus column           | Source                                                            | Spot mode | Futures mode | Multi-currency, portfolio margin |
+| ----------------------- | ----------------------------------------------------------------- | --------- | ------------ | -------------------------------- |
+| `AssetSymbol`           | `ccy`                                                             | Yes       | Yes          | Yes                              |
+| `equity` (coin units)   | `eq` as reported, may be negative                                 | Yes       | Yes          | Yes                              |
+| `available_to_trade`    | `availEq`                                                         | `null`    | Yes          | Yes                              |
+| `available_to_withdraw` | `availBal`                                                        | Yes       | Yes          | Yes                              |
+| `liability`             | `liab`, the total debt: positive and stored as its absolute value | Yes       | `null`       | Yes                              |
+| `interest`              | `interest`                                                        | Yes       | `null`       | Yes                              |
+| `unrealized_pnl`        | `upl`                                                             | `null`    | Yes          | Yes                              |
+| `name`                  | Not mapped                                                        |           |              |                                  |
 
 `funding` reads `asset/balances`: `AssetSymbol` from `ccy`, `equity` from `bal`,
 and `available_to_withdraw` from `availBal`.

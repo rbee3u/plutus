@@ -230,7 +230,7 @@ and preparation deferrals are listed above.
    margin ratios the IM and MM rates the app shows, possibly as percentages.
 4. **Unified balances**: each coin's equity matches the app's per-coin equity,
    including unrealized PnL and net of spot borrowing. `liability` matches the
-   borrowed amount.
+   app's liability: the borrowed amount plus accrued interest.
 5. **Cross margin**: the account figures appear as in item 3. Positions show
    leverage and margin, and Bybit's estimated liquidation price when provided;
    empty liquidation fields remain null.

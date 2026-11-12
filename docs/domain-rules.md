@@ -61,6 +61,14 @@ measures, and holdings. Measures are mapped by meaning; unsupported values
 remain unknown. Observations are immutable source facts, distinct from raw
 platform responses and derived results.
 
+Each holding carries availability, liability, interest, and unrealized-profit
+measures where its platform reports them. Liability is the coin's total debt:
+borrowed principal, unpaid interest, and a negative balance the platform
+attributes to debt, as its mapping defines. Interest is the accrued unpaid part
+already included in that liability; it is disclosed, never added again. A
+mapping that drops a debt component understates the liability, so each mapping
+states its total-debt formula and its known gaps.
+
 Only a successful account report establishes a complete set. Absent holdings are
 no longer held; failure cannot clear them. A failed account uses its latest
 earlier successful report for the same account, retaining its observation time

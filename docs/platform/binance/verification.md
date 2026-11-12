@@ -351,14 +351,19 @@ account.
    page.
 3. **Portfolio margin balances**: each coin's equity matches the app's per-asset
    balance including unrealized PnL. A coin with a COIN-M loss can be negative.
+   The account's `Liability` amounts match the app's "Total Debts", including
+   the cross margin interest and a futures negative balance, which the app shows
+   under Cross Margin debt and Futures debt. A coin whose cross margin funds
+   exceed its futures debt reports no app debt but may still carry liability:
+   that mismatch is expected.
 4. **Positions**: every open USDⓈ-M and COIN-M position appears with the same
    direction, normalized size (USDⓈ-M in base coins, COIN-M in quote face
    currency), entry price, and leverage. Liquidation prices agree within
    rounding.
 5. **Classic margin**: each cross margin coin's equity equals its net asset and
-   its liability equals its borrowed amount, and the margin level matches the
-   app's. Isolated margin shows each coin once, summed over its pairs. A user
-   without margin sees both accounts ok and empty.
+   its liability equals its borrowed amount plus accrued interest, and the
+   margin level matches the app's. Isolated margin shows each coin once, summed
+   over its pairs. A user without margin sees both accounts ok and empty.
 6. **Classic futures**: USDⓈ-M per-asset margin balances match the futures
    wallet. In Multi-Assets Mode, `AdjEq` equals the margin balance and the
    maintenance margin ratio equals the margin ratio of the futures page. In

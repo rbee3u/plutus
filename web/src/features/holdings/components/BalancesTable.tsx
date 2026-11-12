@@ -111,6 +111,25 @@ function balancePnl(value: string | null | undefined) {
   );
 }
 
+/** Liability already contains the unpaid interest, so the interest is disclosed rather than added. */
+function balanceLiability(item: BalanceRow) {
+  const interest = parseDecimal(item.interest);
+  if (item.liability == null || !interest || interest.isZero()) {
+    return formatDecimal(item.liability);
+  }
+  return (
+    <HoverDetails
+      name={`${item.assetSymbol} liability ${formatDecimal(item.liability)}`}
+      label={<NumericText>{formatDecimal(item.liability)}</NumericText>}
+    >
+      <p>
+        Of which unpaid interest: <NumericText>{formatDecimal(item.interest)}</NumericText>{" "}
+        {item.assetSymbol}
+      </p>
+    </HoverDetails>
+  );
+}
+
 export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] = []): DataRow {
   const quantity = item.manualChange === "added" ? item.manualQuantity : item.equity;
   const stale = issues.find(
@@ -152,7 +171,7 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
       ) : (
         formatDecimal(quantity)
       ),
-    liability: formatDecimal(item.liability),
+    liability: balanceLiability(item),
     unrealizedPnl: balancePnl(item.unrealizedPnl),
     priceUsd: item.noPrice ? (
       <span className={shared.cellMeta}>Missing price</span>

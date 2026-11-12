@@ -275,7 +275,7 @@ func (s ScenarioValues) report(accountType adapter.AccountType, at time.Time, em
 		report.Balances = []adapter.Balance{
 			{AssetSymbol: "USDT", Equity: amountString(usdt), AvailableToWithdraw: amountPtr(round(2, usdt*0.5)), AvailableToTrade: amountPtr(round(2, usdt*0.9))},
 			{AssetSymbol: "BTC", Equity: amountString(btc), AvailableToWithdraw: amountPtr(round(6, btc*0.5)), AvailableToTrade: amountPtr(btc)},
-			{AssetSymbol: "ETH", Equity: amountString(eth), AvailableToWithdraw: amountPtr(eth), AvailableToTrade: amountPtr(eth), Liability: amountPtr(round(4, 0.4*f)), Interest: amountPtr(round(6, 0.0012*f))},
+			{AssetSymbol: "ETH", Equity: amountString(eth), AvailableToWithdraw: amountPtr(eth), AvailableToTrade: amountPtr(eth), Liability: amountPtr(round(6, 0.4012*f)), Interest: amountPtr(round(6, 0.0012*f))},
 		}
 		short := round(3, 0.5*f)
 		entry := round(2, btcPrice*0.98)
@@ -309,12 +309,12 @@ func (s ScenarioValues) report(accountType adapter.AccountType, at time.Time, em
 		report.ReportedMarginRatio = amountPtr(round(4, 4.2+0.5*math.Sin(hours/9+f)))
 		report.Balances = []adapter.Balance{
 			{AssetSymbol: "USDT", Equity: amountString(round(2, 3000*f*wave)), AvailableToWithdraw: amountPtr(round(2, 2000*f)), AvailableToTrade: amountPtr(round(2, 3000*f))},
-			{AssetSymbol: "BTC", Equity: amountString(round(6, 0.02*f)), Liability: amountPtr(round(6, 0.01*f)), Interest: amountPtr(round(8, 0.00001*f))},
+			{AssetSymbol: "BTC", Equity: amountString(round(6, 0.02*f)), Liability: amountPtr(round(8, 0.01001*f)), Interest: amountPtr(round(8, 0.00001*f))},
 		}
 	case "isolated_margin":
 		// Binance classic isolated margin: coins summed across pairs, with the pair's loan.
 		report.Balances = []adapter.Balance{
-			{AssetSymbol: "SOL", Equity: amountString(round(3, 8*f)), Liability: amountPtr(round(3, 2*f)), Interest: amountPtr(round(6, 0.001*f))},
+			{AssetSymbol: "SOL", Equity: amountString(round(3, 8*f)), Liability: amountPtr(round(6, 2.001*f)), Interest: amountPtr(round(6, 0.001*f))},
 			{AssetSymbol: "USDT", Equity: amountString(round(2, 400*f))},
 		}
 	case "um_futures":

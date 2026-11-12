@@ -3185,8 +3185,15 @@ components:
           $ref: "#/components/schemas/NullableDecimal"
         liability:
           $ref: "#/components/schemas/NullableDecimal"
+          description:
+            Total debt in the asset's units, including borrowed principal,
+            unpaid interest, and a negative balance the platform attributes to
+            debt. Null when the platform reports none.
         interest:
           $ref: "#/components/schemas/NullableDecimal"
+          description:
+            Accrued unpaid interest already included in liability. Disclosed, not
+            added to it.
         unrealizedPnl:
           $ref: "#/components/schemas/NullableDecimal"
         priceUsd:
