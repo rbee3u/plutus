@@ -1,9 +1,9 @@
 import { useAuthenticatedWrite } from "@/shared/lib/useAuthenticatedWrite";
 import { type FormEvent, useId, useRef, useState } from "react";
 import { createCapitalFlow, getCapitalFlow, patchCapitalFlow, problemMessage } from "@/api";
-import { usePlatforms } from "@/shared/lib/usePlatforms";
+import { platformLabel, usePlatforms } from "@/shared/lib/usePlatforms";
 import type { CapitalFlow } from "@/api";
-import type { AccountOption } from "@/shared/lib/useIdentities";
+import { accountPathLabel, type AccountOption } from "@/shared/lib/useIdentities";
 import {
   fromDatetimeLocalValue,
   toDateTimeDisplay,
@@ -128,6 +128,13 @@ function FlowForm({
   const [busy, setBusy] = useState(false);
   const editingId = request.mode === "edit" ? request.item.id : null;
   const knownAccount = !form.accountId || accounts.some((account) => account.id === form.accountId);
+  // The flow's account may be gone from the offered options with its identity archived.
+  const unknownAccountLabel =
+    accountPathLabel(
+      baseline?.platform ? platformLabel(platforms.data?.items, baseline.platform) : null,
+      baseline?.identityName,
+      baseline?.accountName,
+    ) ?? "Current account";
 
   function set(patch: Partial<FlowFields>) {
     setForm((current) => ({ ...current, ...patch }));
@@ -354,7 +361,7 @@ function FlowForm({
           onChange={(event) => set({ accountId: event.target.value })}
         >
           <option value="">Portfolio level</option>
-          {!knownAccount ? <option value={form.accountId}>Current account</option> : null}
+          {!knownAccount ? <option value={form.accountId}>{unknownAccountLabel}</option> : null}
           {accounts.map((account) => (
             <option key={account.id} value={account.id}>
               {account.label}

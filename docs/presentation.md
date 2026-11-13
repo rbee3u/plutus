@@ -481,10 +481,14 @@ remain available in the raw table.
 Capital flows columns are `Effective at`, `Platform`, `Identity`, `Account`,
 `Direction`, `Amount`, `Value (USD)`, and `Note`. Unallocated flows display `—`
 for platform, identity, and account. Amount combines quantity and canonical
-asset symbol. Boundary events columns are `Evaluated at`, `Platform`,
-`Identity`, `Account`, `Direction`, `Value (USD)`, and `Issues`. Issues remains
-quiet (`—`) during complete intervals, showing an `Incomplete` badge when
-incomplete.
+asset symbol. The flow dialog's Account selector labels every option
+`Platform · identity · account`, for example `Binance · main · Spot`, so
+identities that share a display name across platforms stay distinct. A flow
+whose account is no longer offered keeps its stored label, falling back to
+`Current account` when the stored platform, identity, or account is unknown.
+Boundary events columns are `Evaluated at`, `Platform`, `Identity`, `Account`,
+`Direction`, `Value (USD)`, and `Issues`. Issues remains quiet (`—`) during
+complete intervals, showing an `Incomplete` badge when incomplete.
 
 The `Valuation points` view shows filters, the full-window chart,
 `Period closes`, then raw points. Period closes shares the window. Both calendar

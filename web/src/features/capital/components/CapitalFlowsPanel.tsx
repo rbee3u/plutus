@@ -58,7 +58,7 @@ export function CapitalFlowsPanel({
 
   const platforms = usePlatforms();
   const identities = useIdentities(portfolioId);
-  const accounts = accountOptions(identities.data?.items);
+  const accounts = accountOptions(identities.data?.items, platforms.data?.items);
   const nonce = useRef(0);
   const [dialog, setDialog] = useState<FlowDialogRequest | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CapitalFlow | null>(null);

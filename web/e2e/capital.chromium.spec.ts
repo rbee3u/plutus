@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import type { BoundaryEvent, CapitalFlow } from "../src/api";
+import type { Account, BoundaryEvent, CapitalFlow, Identity, Platform } from "../src/api";
 import { mockApi } from "./support/api";
 import { sessionFixture } from "./support/session";
 
@@ -7,7 +7,13 @@ test.use({ timezoneId: "UTC" });
 
 async function fixture(
   page: Page,
-  options: { timezone?: string; effectiveAt?: string; extraFlows?: number } = {},
+  options: {
+    timezone?: string;
+    effectiveAt?: string;
+    extraFlows?: number;
+    identities?: Identity[];
+    platforms?: Platform[];
+  } = {},
 ) {
   const timezone = options.timezone ?? "UTC";
   const session = sessionFixture({ portfolio: { timezone } });
@@ -61,8 +67,10 @@ async function fixture(
       },
     });
     if (path.endsWith("/boundary-events")) return route.fulfill({ json: listing([]) });
-    if (path.endsWith("/identities") || path.endsWith("/platforms"))
-      return route.fulfill({ json: { items: [] } });
+    if (path.endsWith("/identities"))
+      return route.fulfill({ json: { items: options.identities ?? [] } });
+    if (path.endsWith("/platforms"))
+      return route.fulfill({ json: { items: options.platforms ?? [] } });
     if (path.endsWith("/history-window")) {
       state.windowReads += 1;
       const url = new URL(request.url());
@@ -145,6 +153,110 @@ async function openFlowAction(page: Page, action: "Edit" | "Delete") {
     .click();
   await page.getByRole("menuitem", { name: action, exact: true }).click();
 }
+
+function platformFixture(
+  id: string,
+  name: string,
+  structure: string,
+  accountTypes: { id: string; name: string }[],
+): Platform {
+  return {
+    id,
+    name,
+    adapterAvailable: true,
+    accountStructures: [{ id: structure, name: structure, marginModes: [], accountTypes }],
+    credentialForm: {
+      primary: {
+        keyLabel: "API key",
+        secretLabel: "API secret",
+        secretInput: "password",
+        requirement: { mode: "always", accountTypes: [] },
+      },
+      passphrase: "optional",
+      help: "",
+    },
+  };
+}
+
+function accountFixture(
+  identityId: string,
+  id: string,
+  accountType: string,
+  displayName: string,
+): Account {
+  return { id, identityId, accountType, displayName, selected: true };
+}
+
+function identityFixture(
+  id: string,
+  platform: string,
+  accountStructure: string,
+  accounts: Account[],
+): Identity {
+  return {
+    id,
+    portfolioId: "00000000-0000-7000-8000-000000000001",
+    platform,
+    displayName: "main",
+    accountStructure,
+    marginMode: null,
+    externalRef: null,
+    status: "enabled",
+    connection: { status: "enabled", credentialsConfigured: true },
+    accounts,
+    version: 1,
+    createdAt: "2026-10-01T00:00:00Z",
+    updatedAt: "2026-10-01T00:00:00Z",
+  };
+}
+
+test("Account options name the platform before repeated identity names", async ({ page }) => {
+  await fixture(page, {
+    platforms: [
+      platformFixture("binance", "Binance", "binance_classic", [
+        { id: "spot", name: "Spot" },
+        { id: "funding", name: "Funding" },
+      ]),
+      platformFixture("okx", "OKX", "okx_unified", [{ id: "trading", name: "Trading" }]),
+    ],
+    identities: [
+      identityFixture("00000000-0000-7000-8000-000000000031", "okx", "okx_unified", [
+        accountFixture(
+          "00000000-0000-7000-8000-000000000031",
+          "00000000-0000-7000-8000-000000000041",
+          "trading",
+          "Trading",
+        ),
+      ]),
+      identityFixture("00000000-0000-7000-8000-000000000032", "binance", "binance_classic", [
+        accountFixture(
+          "00000000-0000-7000-8000-000000000032",
+          "00000000-0000-7000-8000-000000000043",
+          "funding",
+          "Funding",
+        ),
+        accountFixture(
+          "00000000-0000-7000-8000-000000000032",
+          "00000000-0000-7000-8000-000000000042",
+          "spot",
+          "Spot",
+        ),
+      ]),
+    ],
+  });
+  await page.getByRole("button", { name: "Record flow", exact: true }).click();
+  // The wrapping label text includes the option texts, so address the select by its role.
+  const accounts = page
+    .getByRole("dialog")
+    .getByRole("combobox", { name: "Account (optional)", exact: true })
+    .locator("option");
+  await expect(accounts).toHaveText([
+    "Portfolio level",
+    "Binance · main · Spot",
+    "Binance · main · Funding",
+    "OKX · main · Trading",
+  ]);
+});
 
 test("Capital views default to 1W and expose presets", async ({ page }) => {
   await fixture(page);
