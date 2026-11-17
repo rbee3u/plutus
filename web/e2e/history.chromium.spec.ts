@@ -1,7 +1,11 @@
 import { mockApi } from "./support/api";
 import { sessionFixture } from "./support/session";
 import { expect, test, type Page } from "@playwright/test";
-import type { ValuationPointSummary, ValueChange } from "../src/api/generated/types.gen";
+import type {
+  AccountValuation,
+  ValuationPointSummary,
+  ValueChange,
+} from "../src/api/generated/types.gen";
 
 test.use({ timezoneId: "America/Los_Angeles" });
 
@@ -23,6 +27,31 @@ const point = (index: number): ValuationPointSummary => ({
   boundaryContributionUsd: "0",
   boundaryWithdrawalUsd: "0",
 });
+
+const treeAccount: AccountValuation = {
+  sourceReportId: null,
+  reportId: "00000000-0000-7000-8000-000000000301",
+  reportObservedAt: "2026-10-04T04:00:00Z",
+  reportedEquityUsd: "100560",
+  adjustedEquityUsd: "100560",
+  availableEquityUsd: "100560",
+  initialMarginRatio: null,
+  maintenanceMarginRatio: null,
+  marginRatio: null,
+  accountId: "00000000-0000-7000-8000-000000000101",
+  accountName: "Portfolio margin",
+  accountType: "portfolio_margin",
+  selected: true,
+  identityId: "00000000-0000-7000-8000-000000000201",
+  identityName: "isn",
+  platform: "binance",
+  status: "succeeded",
+  method: "reported",
+  freshness: "fresh",
+  completeness: "complete",
+  valueUsd: "100560",
+  omitted: [],
+};
 
 async function fixture(page: Page) {
   const state = {
@@ -196,13 +225,14 @@ async function fixture(page: Page) {
       };
       await route.fulfill({ json: summary });
     } else if (path.startsWith(`${base}/valuation-points/`)) {
+      const index = Number(path.split("point-")[1]);
       await route.fulfill({
         json: {
           context,
           point: {
-            ...point(Number(path.split("point-")[1])),
+            ...point(index),
           },
-          accounts: [],
+          accounts: index === 560 ? [treeAccount] : [],
           issues: [],
           boundaryEvents: [],
         },
@@ -220,6 +250,36 @@ const rawTable = (page: Page) =>
   page.getByRole("table", { name: "Raw valuation points", exact: true });
 const pager = (page: Page, label: string) =>
   page.getByLabel(`${label} pagination`, { exact: true });
+
+test("expanded point shows the platform, identity, and account tree", async ({ page }) => {
+  await fixture(page);
+  await page.goto(historyPath);
+  await rawTable(page)
+    .getByRole("button", { name: /Expand the valuation point/ })
+    .first()
+    .click();
+
+  const tree = page.getByRole("region", { name: "Accounts", exact: true });
+  await expect(tree.getByRole("heading", { name: "Accounts", exact: true })).toBeVisible();
+  await expect(tree.getByRole("button", { name: "Collapse binance", exact: true })).toBeVisible();
+  await expect(tree.getByRole("button", { name: "Collapse isn", exact: true })).toBeVisible();
+  await expect(tree).toContainText("$100,560");
+
+  const account = tree.getByRole("button", {
+    name: "Expand balances and positions for Portfolio margin",
+    exact: true,
+  });
+  await expect(account).toHaveAttribute("aria-expanded", "false");
+
+  await tree.getByRole("button", { name: "Collapse isn", exact: true }).click();
+  await expect(
+    tree.getByRole("button", { name: "Expand balances and positions for Portfolio margin" }),
+  ).toHaveCount(0);
+  await expect(tree.getByRole("button", { name: "Expand isn", exact: true })).toBeVisible();
+
+  await tree.getByRole("button", { name: "Collapse binance", exact: true }).click();
+  await expect(tree.getByRole("button", { name: "Expand binance", exact: true })).toBeVisible();
+});
 
 test("561 raw points are paged independently of the curve and closes", async ({ page }) => {
   const state = await fixture(page);
@@ -656,9 +716,7 @@ test("Expanding an immutable point does not refresh the raw record page", async 
     .getByRole("button", { name: /Expand the valuation point/ })
     .first()
     .click();
-  await expect(rawTable(page)).toContainText(
-    "No non-empty accounts at this point; confirmed-empty accounts are hidden.",
-  );
+  await expect(rawTable(page).getByRole("region", { name: "Accounts", exact: true })).toBeVisible();
   expect(state.requests.filter((url) => url.pathname === `${base}/valuation-points`)).toHaveLength(
     before,
   );

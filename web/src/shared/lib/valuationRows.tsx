@@ -2,21 +2,82 @@ import type { AccountValuation, BoundaryEvent, Issue, Platform } from "@/api";
 import { formatAmount, formatCount, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { platformLabel } from "@/shared/lib/usePlatforms";
-import { Badge, CompletenessBadge, DirectionBadge } from "@/shared/ui/Badge";
+import { CompletenessBadge, DirectionBadge } from "@/shared/ui/Badge";
 import type { DataRow } from "@/shared/ui/DataTable";
-import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { NumericText } from "@/shared/ui/NumericText";
 import styles from "@/shared/styles/page.module.css";
-
-export const ACCOUNT_VALUATION_COLUMNS = [
-  { key: "account", header: "Account" },
-  { key: "valueUsd", header: "Value (USD)", numeric: true, width: "160px" },
-  { key: "issues", header: "Issues", nowrap: true, width: "120px" },
-];
 
 export function isAccountReportMissing(item: AccountValuation): boolean {
   // Successful sources retain an observation time, even outside the valuation boundary.
   return item.method === "missing" && !item.reportObservedAt;
+}
+
+export type AccountBadge = {
+  key: string;
+  tone: "warn" | "bad";
+  label: string;
+  title?: string;
+};
+
+/**
+ * Health labels for a collapsed account-tree node. Supporting explanations stay
+ * in the expanded account detail; these are plain labels with hover titles.
+ */
+export function accountValuationBadges(item: AccountValuation, timezone?: string): AccountBadge[] {
+  const missingReport = isAccountReportMissing(item);
+  const badges: AccountBadge[] = [];
+  if (item.status === "failed") {
+    badges.push({
+      key: "failed",
+      tone: "bad",
+      label: "Failed",
+      title:
+        [item.errorClass, item.errorDetail].filter(Boolean).join(": ") ||
+        "Account valuation failed.",
+    });
+  }
+  if (missingReport) {
+    badges.push({
+      key: "missing",
+      tone: "warn",
+      label: "Missing report",
+      title: "No compatible successful account report; holdings and value are unknown.",
+    });
+  } else if (item.freshness === "stale") {
+    badges.push({
+      key: "stale",
+      tone: "warn",
+      label: "Stale",
+      title: item.reportObservedAt
+        ? `Earlier successful account report carried forward. Observed ${formatInstant(item.reportObservedAt, timezone)}.`
+        : "Earlier successful account report carried forward.",
+    });
+  }
+  if (item.completeness === "incomplete") {
+    badges.push({
+      key: "incomplete",
+      tone: "warn",
+      label: "Incomplete",
+      title: "Some or all of the account value is unknown.",
+    });
+  }
+  if (item.errorClass && item.status !== "failed") {
+    badges.push({
+      key: "error",
+      tone: "warn",
+      label: item.errorClass,
+      title: item.errorDetail ?? "Account issue.",
+    });
+  }
+  if (item.omitted.length > 0) {
+    badges.push({
+      key: "omitted",
+      tone: "warn",
+      label: `${formatCount(item.omitted.length)} omitted`,
+      title: item.omitted.map((om) => `${om.assetSymbol}: ${om.reason}`).join("\n"),
+    });
+  }
+  return badges;
 }
 
 /** Resolve cross-account issues from the metadata belonging to the displayed view. */
@@ -39,78 +100,6 @@ export function accountIssueScope(
   };
 }
 
-export function accountValuationRow(item: AccountValuation, timezone?: string): DataRow {
-  const missingReport = isAccountReportMissing(item);
-  const isHealthy =
-    item.status === "succeeded" &&
-    item.freshness === "fresh" &&
-    item.completeness === "complete" &&
-    !item.errorClass &&
-    item.omitted.length === 0;
-
-  return {
-    id: item.accountId,
-    account: item.accountName,
-    valueUsd: item.valueUsd ? formatAmount(item.valueUsd) : "—",
-    issues: isHealthy ? (
-      <span className={styles.muted}>—</span>
-    ) : (
-      <span className={styles.statusGroup}>
-        {item.status === "failed" ? (
-          <HoverDetails
-            label={<Badge tone="bad">Failed</Badge>}
-            name={`Valuation failure for ${item.accountName}`}
-          >
-            <p>{item.errorClass ?? "Account valuation failed."}</p>
-            {item.errorDetail ? <p className={styles.cellMeta}>{item.errorDetail}</p> : null}
-          </HoverDetails>
-        ) : null}
-        {missingReport ? (
-          <HoverDetails
-            label={<Badge tone="warn">Missing report</Badge>}
-            name={`Missing report for ${item.accountName}`}
-          >
-            <p>No compatible successful account report; holdings and value are unknown.</p>
-          </HoverDetails>
-        ) : item.freshness === "stale" ? (
-          <HoverDetails
-            label={<Badge tone="warn">Stale</Badge>}
-            name={`Stale report for ${item.accountName}`}
-          >
-            <p>Earlier successful account report carried forward.</p>
-            {item.reportObservedAt ? (
-              <p className={styles.cellMeta}>
-                Observed {formatInstant(item.reportObservedAt, timezone)}
-              </p>
-            ) : null}
-          </HoverDetails>
-        ) : null}
-        {item.completeness === "incomplete" ? <Badge tone="warn">Incomplete</Badge> : null}
-        {item.errorClass && item.status !== "failed" ? (
-          <HoverDetails
-            label={<Badge tone="warn">{item.errorClass}</Badge>}
-            name={`Issue for ${item.accountName}`}
-          >
-            {item.errorDetail ? <p>{item.errorDetail}</p> : null}
-          </HoverDetails>
-        ) : null}
-        {item.omitted.length > 0 ? (
-          <HoverDetails
-            label={<Badge tone="warn">{formatCount(item.omitted.length)} omitted</Badge>}
-            name={`Omitted balances for ${item.accountName}`}
-          >
-            {item.omitted.map((om) => (
-              <p key={om.assetSymbol}>
-                {om.assetSymbol}: {om.reason}
-              </p>
-            ))}
-          </HoverDetails>
-        ) : null}
-      </span>
-    ),
-  };
-}
-
 export type AccountValuationGroup = {
   key: string;
   platform: string;
@@ -118,6 +107,7 @@ export type AccountValuationGroup = {
   identityId: string;
   identityName: string;
   totalUsd: string | null;
+  incomplete: boolean;
   accounts: AccountValuation[];
   issuesCount: number;
 };
@@ -140,6 +130,7 @@ export function groupAccountValuations(
         identityId: item.identityId,
         identityName: item.identityName,
         totalUsd: null,
+        incomplete: false,
         accounts: [],
         issuesCount: 0,
       };
@@ -147,6 +138,9 @@ export function groupAccountValuations(
       groups.push(group);
     }
     group.accounts.push(item);
+    if (item.completeness === "incomplete" || item.valueUsd == null) {
+      group.incomplete = true;
+    }
     const hasIssue =
       item.status === "failed" ||
       item.freshness === "stale" ||
@@ -169,6 +163,59 @@ export function groupAccountValuations(
           hasAnyVal = true;
         }
       }
+    }
+    group.totalUsd = hasAnyVal && sum ? sum.toFixed() : null;
+  }
+
+  return groups;
+}
+
+export type AccountValuationPlatformGroup = {
+  key: string;
+  platform: string;
+  label: string;
+  totalUsd: string | null;
+  incomplete: boolean;
+  identities: AccountValuationGroup[];
+};
+
+/** Platform → identity grouping over the same account order the API returned. */
+export function groupAccountValuationsByPlatform(
+  items: AccountValuation[],
+  platforms?: Platform[],
+): AccountValuationPlatformGroup[] {
+  const groups: AccountValuationPlatformGroup[] = [];
+  const map = new Map<string, AccountValuationPlatformGroup>();
+
+  for (const identity of groupAccountValuations(items, platforms)) {
+    let group = map.get(identity.platform);
+    if (!group) {
+      group = {
+        key: identity.platform,
+        platform: identity.platform,
+        label: identity.platformLabel,
+        totalUsd: null,
+        incomplete: false,
+        identities: [],
+      };
+      map.set(identity.platform, group);
+      groups.push(group);
+    }
+    group.identities.push(identity);
+    if (identity.incomplete) {
+      group.incomplete = true;
+    }
+  }
+
+  for (const group of groups) {
+    let sum = parseDecimal("0");
+    let hasAnyVal = false;
+    for (const identity of group.identities) {
+      if (!identity.totalUsd) continue;
+      const d = parseDecimal(identity.totalUsd);
+      if (!d) continue;
+      sum = sum ? sum.plus(d) : d;
+      hasAnyVal = true;
     }
     group.totalUsd = hasAnyVal && sum ? sum.toFixed() : null;
   }

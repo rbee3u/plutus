@@ -10,7 +10,7 @@ import { capitalize } from "@/shared/lib/text";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
 import { accountIssueScope } from "@/shared/lib/valuationRows";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
-import { AccountValuationsGrouped } from "@/shared/ui/AccountValuationsGrouped";
+import { AccountValuationsTree } from "@/features/holdings/display";
 import { Badge, CompletenessBadge, StatusBadge } from "@/shared/ui/Badge";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IconButton } from "@/shared/ui/IconButton";
@@ -287,17 +287,15 @@ function CycleDetail({ cycleId, timezone }: { cycleId: string; timezone?: string
               />
             </>
           ) : null}
-          <div className={manageStyles.cycleSectionHeader}>
-            <h3 className={manageStyles.cycleSectionTitle}>
-              {cycle.point?.detailState === "expired"
-                ? "Accounts"
-                : `Accounts (${formatCount(detail?.accounts.length ?? 0)})`}
-            </h3>
-          </div>
-          <AccountValuationsGrouped
+          <AccountValuationsTree
             accounts={detail?.accounts ?? []}
             timezone={timezone}
             platforms={platforms.data?.items}
+            title={
+              cycle.point?.detailState === "expired"
+                ? "Accounts"
+                : `Accounts (${formatCount(detail?.accounts.length ?? 0)})`
+            }
             empty={
               cycle.status === "queued" || cycle.status === "running"
                 ? "The cycle is still running; account valuations appear when it finishes."

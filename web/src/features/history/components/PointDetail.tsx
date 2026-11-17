@@ -10,13 +10,11 @@ import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { boundaryEventCountText } from "@/shared/lib/text";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
-import { AccountDetail } from "@/features/holdings/display";
+import { AccountDetail, AccountValuationsTree } from "@/features/holdings/display";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssueList } from "@/shared/ui/IssueList";
-import { AccountValuationsGrouped } from "@/shared/ui/AccountValuationsGrouped";
 import { accountIssueScope, BOUNDARY_COLUMNS, boundaryEventRow } from "@/shared/lib/valuationRows";
 import styles from "@/features/history/styles.module.css";
-import shared from "@/shared/styles/page.module.css";
 
 export const POINT_DETAIL_ID = "valuation-point-detail";
 
@@ -28,7 +26,6 @@ export function PointDetail({
   detail: ValuationPointDetail;
   timezone?: string;
 }) {
-  const [openAccount, setOpenAccount] = useState<string | undefined>();
   const platforms = usePlatforms();
   const { portfolioId = "" } = useParams<{ portfolioId: string }>();
   const point = detail.point;
@@ -85,49 +82,28 @@ export function PointDetail({
         </div>
       </div>
 
-      <h3>Accounts</h3>
-      {hiddenEmpty > 0 ? (
-        <p className={shared.muted}>
-          {hiddenEmpty} confirmed-empty {hiddenEmpty === 1 ? "account is" : "accounts are"} hidden,
-          matching Overview. The Accounts card still counts every account inside the boundary.
-        </p>
-      ) : null}
       {point.detailState === "expired" ? (
         <SnapshotFallback at={point.evaluatedAt} timezone={timezone} />
       ) : (
-        <AccountValuationsGrouped
+        <AccountValuationsTree
           accounts={detail.accounts}
           timezone={timezone}
           platforms={platforms.data?.items}
-          openKey={openAccount}
-          onRowClick={(key) => setOpenAccount((current) => (current === key ? undefined : key))}
-          detailId={`historical-account-${point.cycleId}`}
-          renderDetail={(row) => {
-            const account = detail.accounts.find((item) => item.accountId === row.id);
-            return account ? (
-              <AccountDetail
-                portfolioId={portfolioId}
-                account={account}
-                cycleId={point.cycleId}
-                timezone={timezone}
-                historical
-              />
-            ) : null;
-          }}
-          renderAccountAction={(item) => (
-            <button
-              type="button"
-              className={styles.inlineButton}
-              aria-expanded={openAccount === item.accountId}
-              aria-controls={`historical-account-${point.cycleId}`}
-              onClick={() =>
-                setOpenAccount((current) =>
-                  current === item.accountId ? undefined : item.accountId,
-                )
-              }
-            >
-              {item.accountName}
-            </button>
+          note={
+            hiddenEmpty > 0
+              ? `${hiddenEmpty} confirmed-empty ${
+                  hiddenEmpty === 1 ? "account is" : "accounts are"
+                } hidden, matching Overview. The Accounts metric still counts every account inside the boundary.`
+              : undefined
+          }
+          renderDetail={(account) => (
+            <AccountDetail
+              portfolioId={portfolioId}
+              account={account}
+              cycleId={point.cycleId}
+              timezone={timezone}
+              historical
+            />
           )}
           empty={
             point.accountCount > 0

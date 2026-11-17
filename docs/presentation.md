@@ -470,9 +470,16 @@ the selected snapshot with its actual timestamp and total, including cross-day
 fallback. Never present another point's holdings under the original total.
 
 An expanded point shows the same account detail as Overview: report measures,
-balances, earn, dual investment, futures, and report details. Confirmed-empty
-accounts at that point are hidden like Overview; the Accounts card still counts
-them. Historical manual quantities come from the point's own reports, not
+balances, earn, dual investment, futures, and report details. Accounts use the
+same platform → identity → account tree: platforms and identities start
+expanded, account nodes start collapsed, and multiple accounts may stay open.
+Account nodes show health badges; identity nodes add issue counts and mark
+incomplete subtotals; platform nodes mark incomplete subtotals. Subtotals sum
+known values and never treat unknown value as zero, and History omits percentage
+badges. Activity cycle details reuse the tree without account-detail expansion;
+their account badges keep pointer and keyboard disclosures. Confirmed-empty
+accounts at that point are hidden like Overview; the Accounts metric still
+counts them. Historical manual quantities come from the point's own reports, not
 current edits, and current connection or archive labels do not replace point
 facts.
 

@@ -168,8 +168,10 @@
 
 .treeNodeLeft {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-sm);
+  row-gap: var(--space-xs);
   min-width: 0;
 }
 
@@ -294,10 +296,34 @@
   min-width: 0;
 }
 
+/* A non-expandable account row keeps the tree's alignment without hover affordance. */
+.treeNodeStatic,
+.treeNodeStatic:hover,
+.treeNodeStatic:active {
+  background: transparent;
+  cursor: default;
+}
+
+.treeNodeSpacer {
+  flex-shrink: 0;
+  width: var(--space-xl);
+}
+
 .inlineActionCell {
   --icon-button-size: var(--control-sm);
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
   margin: -4px 0;
+}
+
+/* The account-valuation tree keeps its cards readable inside a historical row. */
+@media (max-width: 900px) {
+  .treeCardCompact {
+    padding: var(--space-lg);
+  }
+
+  .treeAccountDetailCompact {
+    padding: var(--space-md);
+  }
 }

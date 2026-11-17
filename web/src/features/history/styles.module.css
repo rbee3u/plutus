@@ -109,23 +109,6 @@
   }
 }
 
-.inlineButton {
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  padding: 2px 0;
-  text-decoration: underline dotted var(--line-strong);
-  text-underline-offset: 4px;
-}
-
-.inlineButton:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-
 .pointStatsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
