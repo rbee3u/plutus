@@ -1299,6 +1299,7 @@ paths:
       operationId: getValuationSnapshot
       tags: [history]
       summary: Get the latest retained snapshot before a local day's end
+      description: Confirmed-empty accounts are omitted from the account list; the point's account count still covers the boundary.
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - in: query
@@ -1310,7 +1311,7 @@ paths:
           description: Calendar date in the current portfolio timezone; may fall back to an earlier day.
       responses:
         "200":
-          description: A complete retained snapshot with its actual cycle, time and total.
+          description: A complete retained snapshot with its actual cycle, time, total, and non-empty account valuations.
           content:
             application/json:
               schema:
@@ -1331,13 +1332,14 @@ paths:
     get:
       operationId: getValuationPoint
       tags: [history]
-      summary: One valuation point with its account valuations
+      summary: One valuation point with its non-empty account valuations
+      description: Confirmed-empty accounts are omitted from the list; the point's account count and issues still cover the boundary.
       parameters:
         - $ref: "#/components/parameters/PortfolioID"
         - $ref: "#/components/parameters/CycleID"
       responses:
         "200":
-          description: Valuation point detail.
+          description: Valuation point detail without confirmed-empty account rows.
           content:
             application/json:
               schema:
@@ -3946,6 +3948,7 @@ components:
           $ref: "#/components/schemas/ValuationPointSummary"
         accounts:
           type: array
+          description: Non-empty account valuations; confirmed-empty accounts are omitted from history detail.
           items:
             $ref: "#/components/schemas/AccountValuation"
         issues:

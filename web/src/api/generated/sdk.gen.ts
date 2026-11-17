@@ -515,6 +515,8 @@ export const listValuationPoints = <ThrowOnError extends boolean = false>(option
 
 /**
  * Get the latest retained snapshot before a local day's end
+ *
+ * Confirmed-empty accounts are omitted from the account list; the point's account count still covers the boundary.
  */
 export const getValuationSnapshot = <ThrowOnError extends boolean = false>(options: Options<GetValuationSnapshotData, ThrowOnError>): RequestResult<GetValuationSnapshotResponses, GetValuationSnapshotErrors, ThrowOnError> => (options.client ?? client).get<GetValuationSnapshotResponses, GetValuationSnapshotErrors, ThrowOnError>({
     security: [{
@@ -527,7 +529,9 @@ export const getValuationSnapshot = <ThrowOnError extends boolean = false>(optio
 });
 
 /**
- * One valuation point with its account valuations
+ * One valuation point with its non-empty account valuations
+ *
+ * Confirmed-empty accounts are omitted from the list; the point's account count and issues still cover the boundary.
  */
 export const getValuationPoint = <ThrowOnError extends boolean = false>(options: Options<GetValuationPointData, ThrowOnError>): RequestResult<GetValuationPointResponses, GetValuationPointErrors, ThrowOnError> => (options.client ?? client).get<GetValuationPointResponses, GetValuationPointErrors, ThrowOnError>({
     security: [{

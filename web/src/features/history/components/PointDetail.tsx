@@ -1,5 +1,6 @@
 import { NumericText } from "@/shared/ui/NumericText";
 import { useMemo, useState } from "react";
+import { useParams } from "react-router";
 import { getValuationSnapshot, keys, type ValuationPointDetail } from "@/api";
 import { usePortfolioQuery } from "@/shared/lib/usePortfolioQuery";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
@@ -9,12 +10,13 @@ import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { boundaryEventCountText } from "@/shared/lib/text";
 import { usePlatforms } from "@/shared/lib/usePlatforms";
-import { HistoricalPositions } from "@/features/holdings/display";
+import { AccountDetail } from "@/features/holdings/display";
 import { DataTable } from "@/shared/ui/DataTable";
 import { IssueList } from "@/shared/ui/IssueList";
 import { AccountValuationsGrouped } from "@/shared/ui/AccountValuationsGrouped";
 import { accountIssueScope, BOUNDARY_COLUMNS, boundaryEventRow } from "@/shared/lib/valuationRows";
 import styles from "@/features/history/styles.module.css";
+import shared from "@/shared/styles/page.module.css";
 
 export const POINT_DETAIL_ID = "valuation-point-detail";
 
@@ -28,6 +30,7 @@ export function PointDetail({
 }) {
   const [openAccount, setOpenAccount] = useState<string | undefined>();
   const platforms = usePlatforms();
+  const { portfolioId = "" } = useParams<{ portfolioId: string }>();
   const point = detail.point;
   const resolveIssueScope = useMemo(
     () => accountIssueScope(detail.accounts, platforms.data?.items),
@@ -35,6 +38,8 @@ export function PointDetail({
   );
 
   const accountsHealthy = point.staleAccountCount === 0 && point.incompleteAccountCount === 0;
+  const hiddenEmpty =
+    point.detailState === "expired" ? 0 : Math.max(0, point.accountCount - detail.accounts.length);
 
   return (
     <>
@@ -81,6 +86,12 @@ export function PointDetail({
       </div>
 
       <h3>Accounts</h3>
+      {hiddenEmpty > 0 ? (
+        <p className={shared.muted}>
+          {hiddenEmpty} confirmed-empty {hiddenEmpty === 1 ? "account is" : "accounts are"} hidden,
+          matching Overview. The Accounts card still counts every account inside the boundary.
+        </p>
+      ) : null}
       {point.detailState === "expired" ? (
         <SnapshotFallback at={point.evaluatedAt} timezone={timezone} />
       ) : (
@@ -90,19 +101,25 @@ export function PointDetail({
           platforms={platforms.data?.items}
           openKey={openAccount}
           onRowClick={(key) => setOpenAccount((current) => (current === key ? undefined : key))}
-          detailId={`historical-positions-${point.cycleId}`}
-          renderDetail={(row) => (
-            <HistoricalPositions
-              accountId={typeof row.id === "string" ? row.id : ""}
-              cycleId={point.cycleId}
-            />
-          )}
+          detailId={`historical-account-${point.cycleId}`}
+          renderDetail={(row) => {
+            const account = detail.accounts.find((item) => item.accountId === row.id);
+            return account ? (
+              <AccountDetail
+                portfolioId={portfolioId}
+                account={account}
+                cycleId={point.cycleId}
+                timezone={timezone}
+                historical
+              />
+            ) : null;
+          }}
           renderAccountAction={(item) => (
             <button
               type="button"
               className={styles.inlineButton}
               aria-expanded={openAccount === item.accountId}
-              aria-controls={`historical-positions-${point.cycleId}`}
+              aria-controls={`historical-account-${point.cycleId}`}
               onClick={() =>
                 setOpenAccount((current) =>
                   current === item.accountId ? undefined : item.accountId,
@@ -112,7 +129,11 @@ export function PointDetail({
               {item.accountName}
             </button>
           )}
-          empty="No accounts were inside the boundary at this point."
+          empty={
+            point.accountCount > 0
+              ? "No non-empty accounts at this point; confirmed-empty accounts are hidden."
+              : "No accounts were inside the boundary at this point."
+          }
         />
       )}
 

@@ -1,2 +1,2 @@
+export { AccountDetail } from "./components/AccountDetail";
 export { HoldingsTree } from "./components/HoldingsTree";
-export { HistoricalPositions } from "./components/HistoricalPositions";

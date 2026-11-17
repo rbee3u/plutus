@@ -427,7 +427,13 @@ export type BalanceRow = {
     equity: NullableDecimal;
     availableToWithdraw: NullableDecimal;
     availableToTrade: NullableDecimal;
+    /**
+     * Total debt in the asset's units, including borrowed principal, unpaid interest, and a negative balance the platform attributes to debt. Null when the platform reports none.
+     */
     liability: NullableDecimal;
+    /**
+     * Accrued unpaid interest already included in liability. Disclosed, not added to it.
+     */
     interest: NullableDecimal;
     unrealizedPnl: NullableDecimal;
     priceUsd: NullableDecimal;
@@ -773,6 +779,9 @@ export type BoundaryEventList = {
 
 export type ValuationPointDetail = {
     point: ValuationPointSummary;
+    /**
+     * Non-empty account valuations; confirmed-empty accounts are omitted from history detail.
+     */
     accounts: Array<AccountValuation>;
     issues: Array<Issue>;
     boundaryEvents: Array<BoundaryEvent>;
@@ -3128,7 +3137,7 @@ export type GetValuationSnapshotError = GetValuationSnapshotErrors[keyof GetValu
 
 export type GetValuationSnapshotResponses = {
     /**
-     * A complete retained snapshot with its actual cycle, time and total.
+     * A complete retained snapshot with its actual cycle, time, total, and non-empty account valuations.
      */
     200: ValuationPointDetail;
 };
@@ -3176,7 +3185,7 @@ export type GetValuationPointError = GetValuationPointErrors[keyof GetValuationP
 
 export type GetValuationPointResponses = {
     /**
-     * Valuation point detail.
+     * Valuation point detail without confirmed-empty account rows.
      */
     200: ValuationPointDetail;
 };

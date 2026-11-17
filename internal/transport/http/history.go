@@ -87,7 +87,7 @@ func (a *API) GetValuationPoint(ctx context.Context, request api.GetValuationPoi
 	if a.Financial == nil || a.Valuation == nil {
 		return nil, ErrNotImplemented
 	}
-	detail, err := a.Financial.Detail(ctx, sc.portfolioContext(), request.CycleId)
+	detail, err := a.Financial.DetailForHistory(ctx, sc.portfolioContext(), request.CycleId)
 	if err != nil {
 		return nil, err
 	}

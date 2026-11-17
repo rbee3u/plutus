@@ -56,22 +56,43 @@ func appendSample(out, points []sqlcgen.ListValuationPointHeadersBetweenRow, gra
 	return out
 }
 
-// Detail returns one point with its account valuations.
+// Detail returns one point with every account valuation inside its boundary.
 func (s *Service) Detail(ctx context.Context, p PortfolioContext, cycleID uuid.UUID) (PointDetail, error) {
 	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (PointDetail, error) {
-		available, err := mysql.Queries(ctx, s.db).IsPointInRetainedHistory(ctx, sqlcgen.IsPointInRetainedHistoryParams{PortfolioID: p.ID[:], CycleID: cycleID[:]})
-		if err != nil {
-			return PointDetail{}, err
-		}
-		if !available {
-			return PointDetail{}, valuation.ErrNotFound
-		}
-		point, accounts, err := s.valuation.PointByCycleWithAccounts(ctx, p.ID, cycleID)
-		if err != nil {
-			return PointDetail{}, err
-		}
-		return PointDetail{Point: point, Accounts: accounts}, nil
+		return s.detail(ctx, p, cycleID)
 	})
+}
+
+// DetailForHistory returns one point without confirmed-empty account rows.
+// The point's account count still includes them, as Overview's tree does.
+func (s *Service) DetailForHistory(ctx context.Context, p PortfolioContext, cycleID uuid.UUID) (PointDetail, error) {
+	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (PointDetail, error) {
+		detail, err := s.detail(ctx, p, cycleID)
+		if err != nil {
+			return PointDetail{}, err
+		}
+		empty, err := s.historicalEmptyReports(ctx, p, detail.Accounts)
+		if err != nil {
+			return PointDetail{}, err
+		}
+		detail.Accounts = hideHistoricalEmpty(detail.Accounts, empty)
+		return detail, nil
+	})
+}
+
+func (s *Service) detail(ctx context.Context, p PortfolioContext, cycleID uuid.UUID) (PointDetail, error) {
+	available, err := mysql.Queries(ctx, s.db).IsPointInRetainedHistory(ctx, sqlcgen.IsPointInRetainedHistoryParams{PortfolioID: p.ID[:], CycleID: cycleID[:]})
+	if err != nil {
+		return PointDetail{}, err
+	}
+	if !available {
+		return PointDetail{}, valuation.ErrNotFound
+	}
+	point, accounts, err := s.valuation.PointByCycleWithAccounts(ctx, p.ID, cycleID)
+	if err != nil {
+		return PointDetail{}, err
+	}
+	return PointDetail{Point: point, Accounts: accounts}, nil
 }
 
 // BoundaryEvents lists derived boundary events between two instants.
@@ -127,6 +148,12 @@ func (s *Service) Snapshot(ctx context.Context, p PortfolioContext, day string) 
 		if err != nil {
 			return PointDetail{}, err
 		}
-		return PointDetail{Point: points[0], Accounts: accounts[points[0].CycleID]}, nil
+		detail := PointDetail{Point: points[0], Accounts: accounts[points[0].CycleID]}
+		empty, err := s.historicalEmptyReports(ctx, p, detail.Accounts)
+		if err != nil {
+			return PointDetail{}, err
+		}
+		detail.Accounts = hideHistoricalEmpty(detail.Accounts, empty)
+		return detail, nil
 	})
 }

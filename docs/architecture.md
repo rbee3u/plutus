@@ -662,14 +662,17 @@ pagination; the page limit is not a bound on all aggregation work.
 
 Raw point pages read scalar summaries and an indexed count in one transaction.
 One extra summary supplies the oldest displayed row's predecessor within the
-same window, so comparison values do not depend on page boundaries. Aggregated
-series scan IDs/times in bounded keyset batches, retaining the final actual
-point per timezone bucket across batch boundaries, then fetch selected summaries
-in batches. A declared point budget bounds raw reads and returned samples;
-exceeding it is explicit and never silently truncates a curve. Aggregation still
-scans headers across the selected range; sampling does not reduce stored
-history. Calendar results feed full charts and paginate independently in the
-browser.
+same window, so comparison values do not depend on page boundaries. History
+point detail omits confirmed-empty accounts at the selected point, matching
+Overview's tree; the point's count and issues still cover the boundary. Expanded
+account reports read the point's own manual state without current overlays.
+Aggregated series scan IDs/times in bounded keyset batches, retaining the final
+actual point per timezone bucket across batch boundaries, then fetch selected
+summaries in batches. A declared point budget bounds raw reads and returned
+samples; exceeding it is explicit and never silently truncates a curve.
+Aggregation still scans headers across the selected range; sampling does not
+reduce stored history. Calendar results feed full charts and paginate
+independently in the browser.
 
 Capital flows and boundary events use counted SQL offset pages with
 deterministic time and ID ordering; boundary pages retain the shared account

@@ -242,6 +242,14 @@ func TestOverviewAndDetailQueryBudgets(t *testing.T) {
 	if queries := stats.Queries.Load(); queries > 8 {
 		t.Fatalf("account evidence reread: %d queries", queries)
 	}
+	stats.Queries.Store(0)
+	history, err := service.DetailForHistory(t.Context(), p, cycle)
+	if err != nil || len(history.Accounts) != 0 || history.Point.AccountCount != 40 {
+		t.Fatalf("history detail: %d accounts, %+v, %v", len(history.Accounts), history.Point, err)
+	}
+	if queries := stats.Queries.Load(); queries > 9 {
+		t.Fatalf("history empty filter amplified reads: %d queries", queries)
+	}
 }
 
 func BenchmarkRevisionQueries(b *testing.B) {

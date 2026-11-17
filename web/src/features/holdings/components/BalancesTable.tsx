@@ -81,7 +81,7 @@ export function BalancesTable({
                 ? "No manual balances entered."
                 : missingReport
                   ? NO_ACCOUNT_REPORT
-                  : "No balances in the current account report for this account."
+                  : "No balances in this account report."
         }
       />
     </>

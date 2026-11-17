@@ -255,7 +255,9 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
     .first()
     .click();
   await expect(page).toHaveURL(/pointsOffset=20/);
-  await expect(rawTable(page)).toContainText("No accounts were inside the boundary at this point.");
+  await expect(rawTable(page)).toContainText(
+    "No non-empty accounts at this point; confirmed-empty accounts are hidden.",
+  );
   await pager(page, "Period closes").getByRole("button", { name: "Next", exact: true }).click();
   await expect(pager(page, "Period closes")).toContainText("21–40 of 42");
   await expect(pager(page, "Raw valuation points")).toContainText("21–40 of 561");
@@ -654,7 +656,9 @@ test("Expanding an immutable point does not refresh the raw record page", async 
     .getByRole("button", { name: /Expand the valuation point/ })
     .first()
     .click();
-  await expect(rawTable(page)).toContainText("No accounts were inside the boundary at this point.");
+  await expect(rawTable(page)).toContainText(
+    "No non-empty accounts at this point; confirmed-empty accounts are hidden.",
+  );
   expect(state.requests.filter((url) => url.pathname === `${base}/valuation-points`)).toHaveLength(
     before,
   );

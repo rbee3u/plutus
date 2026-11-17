@@ -485,3 +485,145 @@ func TestComparisonPolicyWindowMatchesVersionSelection(t *testing.T) {
 		}
 	}
 }
+
+func TestHistoryDetailHidesConfirmedEmptyAccounts(t *testing.T) {
+	db := mysqltest.OpenTestDB(t)
+	p := performancePortfolio(t, db)
+	at := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	cycle := uuid.New()
+	exec := func(query string, args ...any) {
+		t.Helper()
+		if _, err := db.ExecContext(t.Context(), query, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	exec("INSERT INTO collection_cycles(portfolio_id,id,status,trigger_kind,available_at,created_at,collection_finished_at,finished_at) VALUES(?,?,'succeeded','schedule',?,?,?,?)", p.ID[:], cycle[:], at, at, at, at)
+
+	type fixture struct {
+		name        string
+		accountType string
+		status      string
+		method      string
+		value       any
+		balance     *struct{ equity, liability, value string }
+		visible     bool
+	}
+	fixtures := []fixture{
+		{name: "empty", accountType: "spot", status: "succeeded", method: "calculated", value: "0"},
+		{name: "funded", accountType: "spot", status: "succeeded", method: "reported", value: "10", balance: &struct{ equity, liability, value string }{equity: "10", value: "10"}, visible: true},
+		{name: "failed", accountType: "um_futures", status: "failed", method: "missing", visible: true},
+		{name: "manual", accountType: "manual", status: "succeeded", method: "calculated", value: "5", balance: &struct{ equity, liability, value string }{equity: "5", value: "5"}, visible: true},
+		// A point-own empty manual report stays hidden even though current manual
+		// quantities exist; those quantities are presentation state, not point facts.
+		{name: "manual-empty", accountType: "manual", status: "succeeded", method: "calculated", value: "0"},
+		// A zero valuation still has a nonzero holding, so it stays visible.
+		{name: "liability-only", accountType: "spot", status: "succeeded", method: "calculated", value: "0", balance: &struct{ equity, liability, value string }{equity: "0", liability: "1", value: "0"}, visible: true},
+	}
+	accounts := map[string]uuid.UUID{}
+	reports := map[string]uuid.UUID{}
+	asset := uuid.New()
+	exec("INSERT INTO valuation_points(portfolio_id,cycle_id,evaluated_at,total_usd,account_count,stale_account_count,incomplete_account_count,calculation_version,detail_state) VALUES(?,?,?,100,?,0,0,1,'full')", p.ID[:], cycle[:], at, len(fixtures))
+	exec("INSERT INTO assets(portfolio_id,id,platform,symbol,canonical_asset_symbol,mapping_version,first_observed_at,last_observed_at) VALUES(?,?,'binance','USDT','USDT',1,?,?)", p.ID[:], asset[:], at, at)
+	for _, item := range fixtures {
+		identity, account, report := uuid.New(), uuid.New(), uuid.New()
+		accounts[item.name] = account
+		reports[item.name] = report
+		exec("INSERT INTO identities(portfolio_id,id,platform,display_name,display_name_key,account_structure,connection_status,version,created_at,updated_at) VALUES(?,?,'binance',?,?,'classic','unconfigured',1,?,?)", p.ID[:], identity[:], item.name, item.name, at, at)
+		exec("INSERT INTO accounts(portfolio_id,id,identity_id,account_type,selected) VALUES(?,?,?,?,TRUE)", p.ID[:], account[:], identity[:], item.accountType)
+		var collectedAt any
+		var errorClass any
+		if item.status == "succeeded" {
+			collectedAt = at
+		} else {
+			errorClass = "temporary"
+		}
+		var reported any
+		if item.method == "reported" {
+			reported = item.value
+		}
+		exec("INSERT INTO account_reports(portfolio_id,id,cycle_id,account_id,status,collected_at,recorded_at,reported_equity_usd,error_class) VALUES(?,?,?,?,?,?,?,?,?)", p.ID[:], report[:], cycle[:], account[:], item.status, collectedAt, at, reported, errorClass)
+		var source any
+		if item.method != "missing" {
+			source = report[:]
+		}
+		var value any
+		if item.method != "missing" {
+			value = item.value
+		}
+		exec("INSERT INTO account_valuations(portfolio_id,cycle_id,account_id,source_report_id,valuation_method,value_usd) VALUES(?,?,?,?,?,?)", p.ID[:], cycle[:], account[:], source, item.method, value)
+		if item.balance == nil {
+			continue
+		}
+		var liability any
+		if item.balance.liability != "" {
+			liability = item.balance.liability
+		}
+		exec("INSERT INTO balances(portfolio_id,report_id,asset_id,equity,liability) VALUES(?,?,?,?,?)", p.ID[:], report[:], asset[:], item.balance.equity, liability)
+		pricing := "usd_parity"
+		if item.balance.value == "0" {
+			pricing = "zero_equity"
+		}
+		exec("INSERT INTO balance_valuations(portfolio_id,cycle_id,account_id,source_report_id,asset_id,canonical_asset_symbol,pricing_method,value_usd) VALUES(?,?,?,?,?,'USDT',?,?)", p.ID[:], cycle[:], account[:], report[:], asset[:], pricing, item.balance.value)
+	}
+	// Current manual quantities exist for the historically empty manual account.
+	// Overview keeps such an account visible; history reads the point's own report.
+	edited := at.Add(time.Hour)
+	emptyManual := accounts["manual-empty"]
+	exec("INSERT INTO manual_revisions(portfolio_id,account_id,revision_number,changed_at) VALUES(?,?,2,?)", p.ID[:], emptyManual[:], edited)
+	exec("INSERT INTO manual_revision_balances(portfolio_id,account_id,revision_number,asset_id,quantity,changed_at) VALUES(?,?,2,?,?,?)", p.ID[:], emptyManual[:], asset[:], "3", edited)
+
+	service := NewService(db, valuation.NewService(db))
+	all, err := service.Detail(t.Context(), p, cycle)
+	if err != nil || len(all.Accounts) != len(fixtures) {
+		t.Fatalf("detail: %d accounts, %v", len(all.Accounts), err)
+	}
+	history, err := service.DetailForHistory(t.Context(), p, cycle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[uuid.UUID]bool{}
+	for _, account := range history.Accounts {
+		seen[account.AccountID] = true
+	}
+	for _, item := range fixtures {
+		if seen[accounts[item.name]] != item.visible {
+			t.Errorf("%s: visible=%v want=%v", item.name, seen[accounts[item.name]], item.visible)
+		}
+	}
+	if history.Point.AccountCount != len(fixtures) {
+		t.Fatalf("history count changed: %+v", history.Point)
+	}
+	current, err := service.currentManualBalances(t.Context(), p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(current[emptyManual]) == 0 {
+		t.Fatal("fixture lost current manual quantities")
+	}
+	overviewEmpty, err := service.emptyReports(t.Context(), p, all.Accounts, current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if overviewEmpty[reports["manual-empty"]] {
+		t.Fatal("Overview would hide an account with current manual quantities")
+	}
+	if _, err := db.ExecContext(t.Context(), "UPDATE valuation_points SET detail_state='daily' WHERE portfolio_id=? AND cycle_id=?", p.ID[:], cycle[:]); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := service.Snapshot(t.Context(), p, "2025-01-01")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.Accounts) != len(history.Accounts) {
+		t.Fatalf("snapshot hid a different set: %d vs %d", len(snapshot.Accounts), len(history.Accounts))
+	}
+	snapshotSeen := map[uuid.UUID]bool{}
+	for _, account := range snapshot.Accounts {
+		snapshotSeen[account.AccountID] = true
+	}
+	for _, item := range fixtures {
+		if snapshotSeen[accounts[item.name]] != item.visible {
+			t.Errorf("snapshot %s: visible=%v want=%v", item.name, snapshotSeen[accounts[item.name]], item.visible)
+		}
+	}
+}

@@ -469,6 +469,13 @@ show an explicit expiry message and a separate retained-snapshot action. Label
 the selected snapshot with its actual timestamp and total, including cross-day
 fallback. Never present another point's holdings under the original total.
 
+An expanded point shows the same account detail as Overview: report measures,
+balances, earn, dual investment, futures, and report details. Confirmed-empty
+accounts at that point are hidden like Overview; the Accounts card still counts
+them. Historical manual quantities come from the point's own reports, not
+current edits, and current connection or archive labels do not replace point
+facts.
+
 Boundary events use newest collection cycles first, preserving the account order
 within each cycle. Their time order is fixed, without a sorting control. Capital
 flow and boundary event tables use server pages of 50 rows with Previous / Next

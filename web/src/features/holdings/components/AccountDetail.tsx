@@ -18,21 +18,32 @@ import { POSITION_COLUMNS, positionRow } from "./PositionsTable";
 import styles from "@/features/holdings/styles.module.css";
 import shared from "@/shared/styles/page.module.css";
 
-/** One account's current account report: valuation metrics, balances, and positions. */
+/** One account's account report at the displayed valuation point: metrics, balances, and positions. */
 export function AccountDetail({
   portfolioId,
   account,
   cycleId,
   timezone,
   onManual,
+  historical = false,
 }: {
   portfolioId: string;
   account: AccountValuation;
   cycleId: string;
   timezone?: string;
   onManual?: (target: ManualTarget) => void;
+  /**
+   * Read the account at the displayed point without current manual overlays or
+   * current selection, connection, and archive labels that are not point facts.
+   */
+  historical?: boolean;
 }) {
-  const { report, isManual, isDual, isEarn } = useAccountReport(portfolioId, account, cycleId);
+  const { report, isManual, isDual, isEarn } = useAccountReport(
+    portfolioId,
+    account,
+    cycleId,
+    !historical,
+  );
   const missingReport = isAccountReportMissing(account);
   const balanceIssues = report.data?.issues.filter(
     (issue) =>
@@ -71,7 +82,12 @@ export function AccountDetail({
       <QueryRecovery query={report} fallback="The account report could not be loaded." />
       <AccountMetrics account={account} />
       {!isManual || account.reportId ? (
-        <AccountFeedback account={account} timezone={timezone} missingReport={missingReport} />
+        <AccountFeedback
+          account={account}
+          timezone={timezone}
+          missingReport={missingReport}
+          historical={historical}
+        />
       ) : null}
       <section className={styles.accountDetail} aria-label="Balances">
         <BalancesTable
@@ -240,10 +256,12 @@ function AccountFeedback({
   account,
   timezone,
   missingReport,
+  historical,
 }: {
   account: AccountValuation;
   timezone?: string;
   missingReport: boolean;
+  historical: boolean;
 }) {
   const exceptional =
     account.status === "failed" ||
@@ -277,7 +295,8 @@ function AccountFeedback({
           ) : null}
         </div>
       ) : null}
-      {!account.selected || account.identityStatus === "archived" || showConnectionNotice ? (
+      {!historical &&
+      (!account.selected || account.identityStatus === "archived" || showConnectionNotice) ? (
         <p className={shared.notice}>
           {!account.selected ? "Account is not selected. " : ""}
           {account.identityStatus === "archived" ? "Identity is archived. " : ""}

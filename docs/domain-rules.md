@@ -161,11 +161,13 @@ when the API includes settled amounts; Plutus does not infer settlement or
 prevent double counting.
 
 Current editable and pending quantities remain distinct from collected values.
-An account hides from Overview only after a fresh successful complete zero
-valuation confirms no nonzero balances or holdings of any kind, and no current
-manual quantities remain. Stale, failed, unknown, and offsetting holdings remain
-visible. Hiding changes neither selection nor the portfolio boundary, history,
-or account counts.
+An account hides from Overview after a fresh successful complete zero valuation
+confirms no nonzero balances or holdings of any kind, and no current manual
+quantities remain. History point details apply the same test to the point's own
+report and manual quantities; current manual quantities never keep a
+historically empty account visible. Stale, failed, unknown, and offsetting
+holdings remain visible. Hiding changes neither selection nor the portfolio
+boundary, history, or account counts.
 
 ## Assets and valuation
 
@@ -347,7 +349,8 @@ Keep all detailed snapshots for at least 14 days. For older complete local days
 inside the ten-year window, keep the final whole point, including incomplete or
 stale points. Use the portfolio timezone at cleanup to choose anchors, and never
 replace an archived anchor after a timezone edit. Cleanup does not alter
-retained totals or completeness.
+retained totals or completeness. The default seven-day history window is a read
+range; it does not shorten detail retention.
 
 A historical snapshot request selects the latest retained full point inside the
 window before the requested day's end, falling back across days if needed.

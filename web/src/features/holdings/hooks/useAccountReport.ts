@@ -3,7 +3,12 @@ import { getAccountReport, keys, unwrapOrRedirect } from "@/api";
 import type { AccountValuation } from "@/api";
 import { useSessionScope } from "@/shared/lib/session";
 
-export function useAccountReport(portfolioId: string, account: AccountValuation, cycleId: string) {
+export function useAccountReport(
+  portfolioId: string,
+  account: AccountValuation,
+  cycleId: string,
+  includePendingManual = true,
+) {
   const { userId, redirect } = useSessionScope();
   const report = useQuery({
     queryKey: keys.accountReport(
@@ -11,7 +16,7 @@ export function useAccountReport(portfolioId: string, account: AccountValuation,
       portfolioId,
       account.accountId,
       cycleId,
-      true,
+      includePendingManual,
       account.reportId,
     ),
     enabled: Boolean(userId && portfolioId && account.accountId),
@@ -19,7 +24,7 @@ export function useAccountReport(portfolioId: string, account: AccountValuation,
       const data = unwrapOrRedirect(
         await getAccountReport({
           path: { portfolioId, accountId: account.accountId },
-          query: { ...(cycleId ? { cycleId } : {}), includePendingManual: true },
+          query: { ...(cycleId ? { cycleId } : {}), includePendingManual },
         }),
         redirect,
       );

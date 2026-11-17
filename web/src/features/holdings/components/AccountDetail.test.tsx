@@ -10,10 +10,12 @@ const report = vi.hoisted(() => ({
   kind: "futures",
   balanceIssues: [] as Issue[],
   productIssues: [] as Issue[],
+  args: [] as unknown[],
 }));
 
 vi.mock("../hooks/useAccountReport", () => ({
-  useAccountReport: () => {
+  useAccountReport: (...args: unknown[]) => {
+    report.args = args;
     const query = { isSuccess: true, isPending: false, isError: false };
     const context = { timezone: "UTC" };
     return {
@@ -74,18 +76,23 @@ const account: AccountValuation = {
   omitted: [],
 };
 
-function markup(item: AccountValuation) {
+function markup(item: AccountValuation, historical = false) {
   return renderToStaticMarkup(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter>
-        <AccountDetail portfolioId="portfolio" account={item} cycleId="cycle" />
+        <AccountDetail
+          portfolioId="portfolio"
+          account={item}
+          cycleId="cycle"
+          historical={historical}
+        />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
 
-function render(item: AccountValuation) {
-  return markup(item).replace(/<[^>]*>/g, "");
+function render(item: AccountValuation, historical = false) {
+  return markup(item, historical).replace(/<[^>]*>/g, "");
 }
 
 describe("Account holding issues", () => {
@@ -111,8 +118,8 @@ describe("Account holding issues", () => {
       expect(text).toContain("Incomplete");
       expect(text).not.toContain("Stale");
       expect(text).not.toContain("Earlier successful account report retained");
-      expect(text).not.toContain("No balances in the current account report");
-      expect(text).not.toContain("No open positions in the current account report");
+      expect(text).not.toContain("No balances in this account report");
+      expect(text).not.toContain("No open positions in this account report");
     },
   );
 
@@ -125,7 +132,7 @@ describe("Account holding issues", () => {
         freshness,
         status: freshness === "stale" ? "failed" : "succeeded",
       });
-      expect(text).toContain("No balances in the current account report");
+      expect(text).toContain("No balances in this account report");
       expect(text).not.toContain(NO_ACCOUNT_REPORT);
       expect(text.includes("Earlier successful account report retained")).toBe(
         freshness === "stale",
@@ -133,12 +140,36 @@ describe("Account holding issues", () => {
     },
   );
 
+  it("defaults historical reads to the point's manual state", () => {
+    render({ ...account });
+    expect(report.args[3]).toBe(true);
+    render({ ...account }, true);
+    expect(report.args[3]).toBe(false);
+  });
+
+  it("suppresses current connection and archive labels in history", () => {
+    const item = {
+      ...account,
+      selected: false,
+      identityStatus: "archived",
+      connectionStatus: "invalid",
+    };
+    const current = render(item);
+    expect(current).toContain("Account is not selected.");
+    expect(current).toContain("Identity is archived.");
+    expect(current).toContain("Connection is invalid.");
+    const historical = render(item, true);
+    expect(historical).not.toContain("Account is not selected.");
+    expect(historical).not.toContain("Identity is archived.");
+    expect(historical).not.toContain("Connection is invalid.");
+  });
+
   it("describes an uncollected empty manual account by its current records", () => {
     report.kind = "manual";
     const text = render({ ...account, accountType: "manual", method: "missing", reportId: null });
     expect(text).toContain("No manual balances entered.");
     expect(text).not.toContain(NO_ACCOUNT_REPORT);
-    expect(text).not.toContain("No balances in the current account report");
+    expect(text).not.toContain("No balances in this account report");
   });
 
   it.each([
