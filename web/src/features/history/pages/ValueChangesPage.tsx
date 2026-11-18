@@ -119,6 +119,14 @@ export function ValueChangesPage() {
                 </Select>
               </label>
             }
+            toolbar={
+              <HistoryPager
+                label="Value changes"
+                pager={pager}
+                total={changeItems.length}
+                busy={changes.isFetching}
+              />
+            }
             option={chartOption}
             empty={
               changeItems.length > 0
@@ -130,12 +138,6 @@ export function ValueChangesPage() {
             rows={changeItems
               .slice(pager.offset, pager.offset + pager.limit)
               .map((item) => valueChangeRow(item, timezone))}
-          />
-          <HistoryPager
-            label="Value changes"
-            pager={pager}
-            total={changeItems.length}
-            busy={changes.isFetching}
           />
         </>
       ) : null}

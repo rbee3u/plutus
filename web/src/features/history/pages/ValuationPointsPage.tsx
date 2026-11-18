@@ -154,6 +154,12 @@ export function ValuationPointsPage() {
             </Select>
           </label>
         </div>
+        <HistoryPager
+          label="Period closes"
+          pager={closePager}
+          total={closeItems.length}
+          busy={closes.isFetching}
+        />
         <QueryRecovery query={closes} fallback="Period closes could not be loaded." />
         <DataTable
           caption={`Period closes per ${periodKind}`}
@@ -167,15 +173,15 @@ export function ValuationPointsPage() {
             })}
           empty={closes.isPending ? "Loading period closes." : "No periods in this range."}
         />
-        <HistoryPager
-          label="Period closes"
-          pager={closePager}
-          total={closeItems.length}
-          busy={closes.isFetching}
-        />
       </section>
       <section className={shared.panel} aria-labelledby="raw-points-heading">
         <h2 id="raw-points-heading">Raw valuation points</h2>
+        <HistoryPager
+          label="Raw valuation points"
+          pager={pointPager}
+          total={records.data?.page.total ?? 0}
+          busy={records.isFetching}
+        />
         <QueryRecovery query={records} fallback="Raw valuation points could not be loaded." />
         <DataTable
           caption="Raw valuation points"
@@ -198,12 +204,6 @@ export function ValuationPointsPage() {
             const prevItem = items[index + 1] ?? records.data?.precedingPoint;
             return rawPointRow(item, prevItem, timezone, cycleId, update);
           })}
-        />
-        <HistoryPager
-          label="Raw valuation points"
-          pager={pointPager}
-          total={records.data?.page.total ?? 0}
-          busy={records.isFetching}
         />
       </section>
     </section>

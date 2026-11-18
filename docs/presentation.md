@@ -539,10 +539,16 @@ movements into compact descriptors. Across History tables, Issues stays quiet
 (`—`) during complete intervals, opening badges and diagnostics for missing
 periods, incomplete data, or stale accounts.
 
-All three tables default to 20 rows with 10/20/50 choices, Previous / Next, and
-row counts. Range changes reset pagination and open point details; period
-changes reset only that period table. Expanding a point cannot reset a page. Raw
-points have unbounded count and server pagination; calendar results use the
-400-period ceiling and independent browser pagination, preserving the complete
-value changes chart. Read mechanisms belong in
+All three tables default to 20 rows with 10/20/50 choices and a numbered pager.
+The page-size control and pager sit above their table. The first and last pages
+stay visible, the current page keeps two neighbours on each side, and a skipped
+run of two or more pages collapses to a static ellipsis; seven or fewer pages
+show every page. Page changes keep focus on the pager, do not scroll the page,
+and announce the new page and row range through a polite status region. Narrow
+layouts keep the numbered pager and drop the page-size control and visible row
+count; the status region still announces both. Range changes reset pagination
+and open point details; period changes reset only that period table. Expanding a
+point cannot reset a page. Raw points have unbounded count and server pagination;
+calendar results use the 400-period ceiling and independent browser pagination,
+preserving the complete value changes chart. Read mechanisms belong in
 [architecture](./architecture.md#history-windows-and-tables).

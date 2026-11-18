@@ -8,6 +8,8 @@ interface ChartBlockProps extends Partial<Omit<DataTableProps, "caption" | "empt
   title: string;
   summary?: string;
   action?: ReactNode;
+  /** Controls that belong directly above the table, below the chart. */
+  toolbar?: ReactNode;
   option: EChartsCoreOption | null;
   /** Shown instead of the chart when there is nothing to draw. */
   empty: string;
@@ -19,6 +21,7 @@ export function ChartBlock({
   title,
   summary,
   action,
+  toolbar,
   option,
   empty,
   emptyRows,
@@ -43,13 +46,16 @@ export function ChartBlock({
         <p className={styles.notice}>{empty}</p>
       )}
       {table.columns && table.rows && (table.rows.length > 0 || option) ? (
-        <DataTable
-          caption={`${title} values`}
-          empty={emptyRows ?? empty}
-          {...table}
-          columns={table.columns}
-          rows={table.rows}
-        />
+        <>
+          {toolbar}
+          <DataTable
+            caption={`${title} values`}
+            empty={emptyRows ?? empty}
+            {...table}
+            columns={table.columns}
+            rows={table.rows}
+          />
+        </>
       ) : null}
     </section>
   );

@@ -1,0 +1,104 @@
+/* Numbered history pager. The current page is a neutral chip, not an action. */
+
+.pager {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.page,
+.arrow {
+  display: inline-flex;
+  width: var(--control-md);
+  height: var(--control-md);
+  min-height: var(--control-md);
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-height-sm);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.pager .page:hover:not(:disabled),
+.pager .arrow:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+
+.pager .page:active:not(:disabled),
+.pager .arrow:active:not(:disabled) {
+  background: var(--surface-pressed);
+}
+
+.pager .current,
+.pager .current:hover,
+.pager .current:active {
+  background: var(--surface-pressed);
+  color: var(--ink);
+  font-weight: var(--weight-semibold);
+}
+
+.pager .page[aria-disabled="true"],
+.pager .arrow[aria-disabled="true"] {
+  color: var(--control-disabled-ink);
+  cursor: default;
+}
+
+.pager .current[aria-disabled="true"] {
+  color: var(--ink);
+}
+
+.pager .arrow:disabled {
+  color: var(--control-disabled-ink);
+  background: transparent;
+  cursor: default;
+}
+
+.ellipsis {
+  display: inline-flex;
+  width: 24px;
+  height: var(--control-md);
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  user-select: none;
+}
+
+/*
+ * Phones keep the same numbered window as desktop and drop the surrounding
+ * metadata. Nine page slots plus two arrows fit a 375px column at 32px; the
+ * global coarse pointer rule would otherwise force 44px and overflow the row.
+ */
+@media (max-width: 640px) {
+  .pager {
+    width: 100%;
+    justify-content: center;
+    gap: var(--space-2xs);
+  }
+
+  .page,
+  .arrow {
+    width: var(--control-md);
+    min-width: var(--control-md);
+    height: var(--control-md);
+    min-height: var(--control-md);
+  }
+
+  .ellipsis {
+    width: 16px;
+    height: var(--control-md);
+  }
+}

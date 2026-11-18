@@ -307,9 +307,12 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
   expect(closes.searchParams.get("from")).toBe(resolved.searchParams.get("from"));
   expect(resolved.searchParams.get("granularity")).toBe("hour");
   await pager(page, "Raw valuation points")
-    .getByRole("button", { name: "Next", exact: true })
+    .getByRole("button", { name: "Next page", exact: true })
     .click();
   await expect(pager(page, "Raw valuation points")).toContainText("21–40 of 561");
+  await expect(
+    pager(page, "Raw valuation points").getByRole("button", { name: "Page 2", exact: true }),
+  ).toBeFocused();
   await rawTable(page)
     .getByRole("button", { name: /Expand the valuation point/ })
     .first()
@@ -318,7 +321,9 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
   await expect(rawTable(page)).toContainText(
     "No non-empty accounts at this point; confirmed-empty accounts are hidden.",
   );
-  await pager(page, "Period closes").getByRole("button", { name: "Next", exact: true }).click();
+  await pager(page, "Period closes")
+    .getByRole("button", { name: "Next page", exact: true })
+    .click();
   await expect(pager(page, "Period closes")).toContainText("21–40 of 42");
   await expect(pager(page, "Raw valuation points")).toContainText("21–40 of 561");
   expect(
@@ -397,7 +402,9 @@ test("Value changes shares the applied range with its summary, independently of 
   const comparison = state.requests.find((url) => url.pathname.endsWith("/range"))!;
   expect(comparison.searchParams.get("from")).toBe(resolved.searchParams.get("from"));
   expect(comparison.searchParams.get("to")).toBe(resolved.searchParams.get("to"));
-  await pager(page, "Value changes").getByRole("button", { name: "Next", exact: true }).click();
+  await pager(page, "Value changes")
+    .getByRole("button", { name: "Next page", exact: true })
+    .click();
   await expect(pager(page, "Value changes")).toContainText("21–40 of 42");
   expect(state.requests.filter((url) => url.pathname === `${base}/value-changes`)).toHaveLength(
     reads,
@@ -645,7 +652,7 @@ test("Empty, single-point and last-page URL states stay usable", async ({ page }
   await page.goto(`${historyPath}?pointsOffset=560`);
   await expect(rawTable(page).locator("tbody > tr")).toHaveCount(1);
   await expect(
-    pager(page, "Raw valuation points").getByRole("button", { name: "Next", exact: true }),
+    pager(page, "Raw valuation points").getByRole("button", { name: "Next page", exact: true }),
   ).toBeDisabled();
   await page.goto(`${historyPath}?pointsOffset=900`);
   await expect(pager(page, "Raw valuation points")).toContainText("561–561 of 561");
@@ -660,7 +667,7 @@ test("A failed raw page retries the same applied window", async ({ page }) => {
   )!;
   state.failPage = true;
   await pager(page, "Raw valuation points")
-    .getByRole("button", { name: "Next", exact: true })
+    .getByRole("button", { name: "Next page", exact: true })
     .click();
   await expect(page.getByRole("alert")).toContainText("Page temporarily unavailable.", {
     timeout: 15_000,
@@ -685,14 +692,31 @@ for (const theme of ["light", "dark"]) {
     await fixture(page);
     await page.goto(historyPath);
     await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
+    await expect(page.getByLabel("Raw valuation points rows per page")).toBeHidden();
+    await expect(
+      pager(page, "Raw valuation points").getByText("1–20 of 561", { exact: true }),
+    ).toBeHidden();
     await page.getByRole("button", { name: "6M", exact: true }).click();
     await expect(page.getByText(/ · Daily$/)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       375,
     );
     await expect(
-      pager(page, "Raw valuation points").getByRole("button", { name: "Next", exact: true }),
+      pager(page, "Raw valuation points").getByRole("button", { name: "Next page", exact: true }),
     ).toBeEnabled();
+    await page.goto(`${historyPath}?pointsOffset=120`);
+    await expect(
+      pager(page, "Raw valuation points").getByRole("button", { name: "Page 7", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
+    await expect(
+      pager(page, "Raw valuation points").getByRole("button", { name: "Page 5", exact: true }),
+    ).toBeVisible();
+    await expect(
+      pager(page, "Raw valuation points").getByRole("button", { name: "Page 9", exact: true }),
+    ).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      375,
+    );
     await page.goto(`${historyPath}/value-changes`);
     await expect(page.getByRole("region", { name: "Selected range summary" })).toContainText(
       "+$500",
