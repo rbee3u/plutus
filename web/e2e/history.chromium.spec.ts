@@ -62,6 +62,8 @@ async function fixture(page: Page) {
     failSeries: false,
     summary: {} as Partial<ValueChange>,
     failSummary: false,
+    /** Holds a raw page response open so the busy state can be inspected. */
+    pageDelayMs: 0,
   };
   const context = { portfolioId, timezone: "Asia/Shanghai" };
   const session = sessionFixture({
@@ -124,6 +126,9 @@ async function fixture(page: Page) {
         });
       }
     } else if (path === `${base}/valuation-points`) {
+      if (state.pageDelayMs) {
+        await new Promise((resolve) => setTimeout(resolve, state.pageDelayMs));
+      }
       if (state.failPage) {
         await route.fulfill({ status: 500, json: { detail: "Page temporarily unavailable." } });
         return;
@@ -338,6 +343,75 @@ test("561 raw points are paged independently of the curve and closes", async ({ 
   await page.getByRole("button", { name: "3M", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Period", exact: true })).toHaveValue("month");
   await expect(page.getByText(/ · Daily$/)).toBeVisible();
+});
+
+test("Pagers follow their tables and keep their place across page changes", async ({ page }) => {
+  const state = await fixture(page);
+  await page.goto(historyPath);
+  const footer = pager(page, "Raw valuation points");
+  await expect(footer).toContainText("1–20 of 561");
+
+  /* Structure: each pager follows its own table in the document. */
+  expect(
+    await page.evaluate(() =>
+      ["Raw valuation points", "Period closes"].map((label) => {
+        const nav = document.querySelector(`[aria-label="${label} pagination"]`);
+        const table = nav?.closest("section")?.querySelector("table");
+        return Boolean(
+          table && nav && table.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING,
+        );
+      }),
+    ),
+  ).toEqual([true, true]);
+
+  /* The last page is short, so its footer sits under the rows without padding. */
+  await page.goto(`${historyPath}?pointsOffset=560`);
+  await expect(rawTable(page).locator("tbody > tr")).toHaveCount(1);
+  await footer.scrollIntoViewIfNeeded();
+  const shortTable = (await rawTable(page).boundingBox())!;
+  const shortFooter = (await footer.boundingBox())!;
+  expect(shortFooter.y).toBeGreaterThan(shortTable.y + shortTable.height);
+
+  /* Growing back to a full page leaves the footer where the reader paged from. */
+  await footer.getByRole("button", { name: "Page 1", exact: true }).click();
+  await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
+  const grown = (await footer.boundingBox())!;
+  const grownTable = (await rawTable(page).boundingBox())!;
+  expect(grown.y).toBeCloseTo(shortFooter.y, 0);
+  /* The rows took the height: the table now starts above the pane. */
+  expect(grownTable.y).toBeLessThan(0);
+
+  /*
+   * The held page keeps twenty rows on screen, so the footer and the table keep
+   * their place instead of collapsing into a loading row and back.
+   */
+  state.pageDelayMs = 600;
+  await footer.getByRole("button", { name: "Next page", exact: true }).click();
+  await expect(rawTable(page)).toHaveAttribute("aria-busy", "true");
+  await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
+  const busyFooter = (await footer.boundingBox())!;
+  const busyTable = (await rawTable(page).boundingBox())!;
+  expect(busyFooter.y).toBeCloseTo(grown.y, 0);
+  expect(busyTable.y).toBeCloseTo(grownTable.y, 0);
+  expect(busyTable.height).toBeCloseTo(grownTable.height, 0);
+
+  state.pageDelayMs = 0;
+  await expect(rawTable(page)).not.toHaveAttribute("aria-busy", "true");
+  await expect(footer).toContainText("21–40 of 561");
+  expect((await footer.boundingBox())!.y).toBeCloseTo(grown.y, 0);
+});
+
+test("Phone pagers keep their place across page changes", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await fixture(page);
+  await page.goto(`${historyPath}?pointsOffset=560`);
+  await expect(rawTable(page).locator("tbody > tr")).toHaveCount(1);
+  const footer = pager(page, "Raw valuation points");
+  await footer.scrollIntoViewIfNeeded();
+  const before = (await footer.boundingBox())!;
+  await footer.getByRole("button", { name: "Page 1", exact: true }).click();
+  await expect(rawTable(page).locator("tbody > tr")).toHaveCount(20);
+  expect((await footer.boundingBox())!.y).toBeCloseTo(before.y, 0);
 });
 
 test("Date drafts apply once; custom endpoints survive reload, presets reanchor", async ({

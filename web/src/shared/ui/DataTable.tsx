@@ -41,6 +41,11 @@ export interface DataTableProps {
   onRowClick?: (key: string) => void;
   /** Defaults to 'auto'; 'fixed' requires content that fits its column widths. */
   tableLayout?: "fixed" | "auto";
+  /**
+   * Marks the table busy and dims it while a page or refresh is in flight.
+   * Rows keep their height, so the table and its footer hold their place.
+   */
+  busy?: boolean;
 }
 
 /** True when a click landed on a control that handles itself, so a row handler should stay quiet. */
@@ -69,6 +74,7 @@ export function DataTable({
   renderDetail,
   onRowClick,
   tableLayout,
+  busy,
 }: DataTableProps) {
   function rowClick(key: string) {
     return onRowClick
@@ -87,7 +93,7 @@ export function DataTable({
 
   return (
     <div className={styles.tableWrap}>
-      <table className={isFixed ? styles.fixedTable : undefined}>
+      <table className={isFixed ? styles.fixedTable : undefined} aria-busy={busy || undefined}>
         <caption className={styles.srOnly}>{caption}</caption>
         <colgroup>
           {columns.map((column) => (

@@ -61,7 +61,8 @@
   gap: var(--space-xs);
 }
 
-.tableToolbar {
+/* The pager footer under each history table: page size left, range and pages right. */
+.tableFooter {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -88,7 +89,7 @@
  * row range are secondary, and the assistive announcement still carries both.
  */
 @media (max-width: 640px) {
-  .tableToolbar {
+  .tableFooter {
     justify-content: center;
     gap: 0;
   }

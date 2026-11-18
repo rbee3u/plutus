@@ -1,5 +1,6 @@
 import type { EChartsCoreOption } from "echarts/core";
 import { useEffect, useMemo } from "react";
+import { useParams } from "react-router";
 import {
   getValuationPoint,
   keys,
@@ -46,6 +47,7 @@ const GRANULARITY_LABELS: Record<TimeGranularity, string> = {
 export function ValuationPointsPage() {
   const history = useHistoryWindow();
   const { params, update, window } = history;
+  const { portfolioId: routePortfolioId = "" } = useParams();
   const from = window?.from;
   const to = window?.to;
   const granularity = from && to ? historyGranularity(from, to) : "hour";
@@ -63,6 +65,19 @@ export function ValuationPointsPage() {
     key: (userId, portfolioId) =>
       keys.valuationPointPage(userId, portfolioId, from, to, pointPager.offset, pointPager.limit),
     ready: Boolean(window),
+    /*
+     * A page read drops the rows it replaces, which would collapse the table and
+     * move its footer while the next page loads. Keep the last page read in this
+     * window on screen, dimmed, until the next page arrives. A window change
+     * starts from the loading state instead of showing another window's rows.
+     */
+    placeholderData: (previous) =>
+      previous &&
+      previous.from === from &&
+      previous.to === to &&
+      previous.context.portfolioId === routePortfolioId
+        ? previous
+        : undefined,
     load: (portfolioId) =>
       listValuationPointPage({
         path: { portfolioId },
@@ -75,6 +90,7 @@ export function ValuationPointsPage() {
       pointPager.onChange(Math.max(0, Math.ceil(total / pointPager.limit) - 1) * pointPager.limit);
     }
   }, [records.data, pointPager]);
+
   const detail = usePortfolioQuery<ValuationPointDetail>({
     key: (userId, portfolioId) => keys.valuationPoint(userId, portfolioId, cycleId),
     ready: Boolean(cycleId),
@@ -154,12 +170,6 @@ export function ValuationPointsPage() {
             </Select>
           </label>
         </div>
-        <HistoryPager
-          label="Period closes"
-          pager={closePager}
-          total={closeItems.length}
-          busy={closes.isFetching}
-        />
         <QueryRecovery query={closes} fallback="Period closes could not be loaded." />
         <DataTable
           caption={`Period closes per ${periodKind}`}
@@ -173,18 +183,20 @@ export function ValuationPointsPage() {
             })}
           empty={closes.isPending ? "Loading period closes." : "No periods in this range."}
         />
+        <HistoryPager
+          label="Period closes"
+          pager={closePager}
+          total={closeItems.length}
+          busy={closes.isFetching}
+          signature={closeItems[closePager.offset]?.label ?? ""}
+        />
       </section>
       <section className={shared.panel} aria-labelledby="raw-points-heading">
         <h2 id="raw-points-heading">Raw valuation points</h2>
-        <HistoryPager
-          label="Raw valuation points"
-          pager={pointPager}
-          total={records.data?.page.total ?? 0}
-          busy={records.isFetching}
-        />
         <QueryRecovery query={records} fallback="Raw valuation points could not be loaded." />
         <DataTable
           caption="Raw valuation points"
+          busy={records.isPlaceholderData}
           empty={records.isPending ? "Loading raw valuation points." : NO_POINT}
           rowClassName={(row) => (row.id === cycleId ? shared.openRow : undefined)}
           openKey={cycleId}
@@ -204,6 +216,13 @@ export function ValuationPointsPage() {
             const prevItem = items[index + 1] ?? records.data?.precedingPoint;
             return rawPointRow(item, prevItem, timezone, cycleId, update);
           })}
+        />
+        <HistoryPager
+          label="Raw valuation points"
+          pager={pointPager}
+          total={records.data?.page.total ?? 0}
+          busy={records.isFetching}
+          signature={records.data?.items[0]?.cycleId ?? ""}
         />
       </section>
     </section>

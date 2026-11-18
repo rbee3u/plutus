@@ -119,12 +119,13 @@ export function ValueChangesPage() {
                 </Select>
               </label>
             }
-            toolbar={
+            footer={
               <HistoryPager
                 label="Value changes"
                 pager={pager}
                 total={changeItems.length}
                 busy={changes.isFetching}
+                signature={changeItems[pager.offset]?.label ?? ""}
               />
             }
             option={chartOption}
