@@ -13,6 +13,7 @@ type walletAccount struct {
 	AccountType           string       `json:"accountType"`
 	TotalEquity           string       `json:"totalEquity"`
 	TotalAvailableBalance string       `json:"totalAvailableBalance"`
+	TotalInitialMargin    string       `json:"totalInitialMargin"`
 	AccountIMRate         string       `json:"accountIMRate"`
 	AccountMMRate         string       `json:"accountMMRate"`
 	Coins                 []walletCoin `json:"coin"`
@@ -56,7 +57,9 @@ func (a *Adapter) unified(ctx context.Context, c *client, mode adapter.MarginMod
 // mapUnifiedAccount reads the account-wide figures, all in USD. Bybit documents them as not
 // applicable to isolated margin, so there they are ignored and the value is calculated from the
 // balances. In cross and portfolio margin an empty field stays unknown rather than becoming zero.
-// totalMarginBalance is not haircut-adjusted equity and is not mapped.
+// Bybit does not publish haircut-adjusted equity; totalAvailableBalance is after haircuts and
+// initial margin, so adding totalInitialMargin back yields it. totalMarginBalance is not
+// haircut-adjusted equity and is not mapped.
 func mapUnifiedAccount(in *walletAccount, mode adapter.MarginMode) (adapter.AccountReport, error) {
 	report := adapter.AccountReport{AccountType: TypeUnified, Status: adapter.StatusSucceeded}
 	if mode == adapter.MarginBybitIsolated {
@@ -67,7 +70,6 @@ func mapUnifiedAccount(in *walletAccount, mode adapter.MarginMode) (adapter.Acco
 		dst         **string
 	}{
 		{"totalEquity", in.TotalEquity, &report.Equity},
-		{"totalAvailableBalance", in.TotalAvailableBalance, &report.AvailableEquity},
 		{"accountIMRate", in.AccountIMRate, &report.ReportedInitialMarginRatio},
 		{"accountMMRate", in.AccountMMRate, &report.ReportedMaintenanceMarginRatio},
 	} {
@@ -75,6 +77,18 @@ func mapUnifiedAccount(in *walletAccount, mode adapter.MarginMode) (adapter.Acco
 			return adapter.AccountReport{}, err
 		}
 		*field.dst = adapter.Plain(field.value)
+	}
+	available, err := adapter.OptionalDecimal(epWallet.String(), "totalAvailableBalance", in.TotalAvailableBalance)
+	if err != nil {
+		return adapter.AccountReport{}, err
+	}
+	initial, err := adapter.OptionalDecimal(epWallet.String(), "totalInitialMargin", in.TotalInitialMargin)
+	if err != nil {
+		return adapter.AccountReport{}, err
+	}
+	report.AvailableEquity = adapter.Reported(in.TotalAvailableBalance, available)
+	if strings.TrimSpace(in.TotalAvailableBalance) != "" && strings.TrimSpace(in.TotalInitialMargin) != "" {
+		report.AdjustedEquity = decimal.FormatPtr(decimal.Add(available, initial))
 	}
 	return report, nil
 }

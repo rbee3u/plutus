@@ -119,6 +119,19 @@ regime has no position leverage multiplier. Display derivations do not overwrite
 source leverage or margin, and current identity settings cannot establish a
 historical report's regime.
 
+Real leverage is an account-level display derivation for supported unified
+accounts: Binance portfolio margin, OKX unified trading, Kraken unified main,
+and Bybit unified. It is the sum of every open position's absolute USD notional
+divided by the same account report's adjusted equity. It includes linear and
+inverse positions, cross and isolated margin, and both sides without netting. A
+non-positive adjusted equity or any unknown position notional leaves it unknown;
+it is never a partial sum. Binance, OKX, and Kraken report adjusted equity after
+collateral discounts where their account scope supplies it; Bybit derives it
+from the available balance and total initial margin. Kraken's coin_m wallet is a
+separate single-collateral wallet and is excluded. This is not a universal
+notional or leverage formula, and it does not change position margin or reported
+account measures.
+
 ## Manual balances
 
 Manual supplements quantities missing from an identity's platform API; external

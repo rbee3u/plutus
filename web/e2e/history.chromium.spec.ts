@@ -3,6 +3,7 @@ import { sessionFixture } from "./support/session";
 import { expect, test, type Page } from "@playwright/test";
 import type {
   AccountValuation,
+  PositionRow,
   ValuationPointSummary,
   ValueChange,
 } from "../src/api/generated/types.gen";
@@ -37,7 +38,7 @@ const treeAccount: AccountValuation = {
   availableEquityUsd: "100560",
   initialMarginRatio: null,
   maintenanceMarginRatio: null,
-  marginRatio: null,
+  marginRatio: "67.48",
   accountId: "00000000-0000-7000-8000-000000000101",
   accountName: "Portfolio margin",
   accountType: "portfolio_margin",
@@ -51,6 +52,47 @@ const treeAccount: AccountValuation = {
   completeness: "complete",
   valueUsd: "100560",
   omitted: [],
+};
+
+const position: PositionRow = {
+  displayLeverage: "3",
+  marginUnavailableCode: null,
+  contractSize: null,
+  entryPrice: null,
+  liquidationPrice: null,
+  accountId: "00000000-0000-7000-8000-000000000101",
+  accountName: "Portfolio margin",
+  accountType: "portfolio_margin",
+  identityId: "00000000-0000-7000-8000-000000000201",
+  identityName: "isn",
+  platform: "binance",
+  positionKey: "BTC-USD-SWAP:net",
+  futuresContractId: "00000000-0000-7000-8000-000000000401",
+  futuresSymbol: "BTC-USD-SWAP",
+  kind: "inverse_perpetual",
+  side: "short",
+  positionMode: "one_way",
+  sourceQuantity: "2",
+  sourceQuantityUnit: "contracts",
+  size: "-129722.4",
+  sizeSymbol: "USD",
+  baseAssetSymbol: "BTC",
+  quoteAssetSymbol: "USD",
+  settlementAssetSymbol: "BTC",
+  markPrice: "64861.2",
+  unrealizedPnl: "0.01",
+  marginSetting: "cross",
+  portfolioMargin: true,
+  settlementMargin: "0.002",
+  reportedMargin: "100",
+  marginAssetSymbol: "USD",
+  marginBasis: "initial",
+  marginSource: "reported",
+  reportedLeverage: "3",
+  notionalUsd: "129722.4",
+  freshness: "fresh",
+  reportObservedAt: "2026-10-04T04:00:00Z",
+  issues: [],
 };
 
 async function fixture(page: Page) {
@@ -229,6 +271,20 @@ async function fixture(page: Page) {
         ...state.summary,
       };
       await route.fulfill({ json: summary });
+    } else if (path === `${base}/accounts/${treeAccount.accountId}/report`) {
+      const cycleId = point(560).cycleId;
+      await route.fulfill({
+        json: {
+          context: { ...context, cycleId, evaluatedAt: point(560).evaluatedAt },
+          manualOverlay: null,
+          account: treeAccount,
+          balances: [],
+          positions: [position],
+          dualPositions: [],
+          earnPositions: [],
+          issues: [],
+        },
+      });
     } else if (path.startsWith(`${base}/valuation-points/`)) {
       const index = Number(path.split("point-")[1]);
       await route.fulfill({
@@ -284,6 +340,27 @@ test("expanded point shows the platform, identity, and account tree", async ({ p
 
   await tree.getByRole("button", { name: "Collapse binance", exact: true }).click();
   await expect(tree.getByRole("button", { name: "Expand binance", exact: true })).toBeVisible();
+});
+
+test("portfolio margin detail shows real leverage after UniMMR", async ({ page }) => {
+  await fixture(page);
+  await page.goto(historyPath);
+  await rawTable(page)
+    .getByRole("button", { name: /Expand the valuation point/ })
+    .first()
+    .click();
+
+  const tree = page.getByRole("region", { name: "Accounts", exact: true });
+  await tree
+    .getByRole("button", {
+      name: "Expand balances and positions for Portfolio margin",
+      exact: true,
+    })
+    .click();
+
+  await expect(tree.getByText("Real leverage", { exact: true })).toBeVisible();
+  await expect(tree.getByText("1.29x", { exact: true })).toBeVisible();
+  await expect(tree.getByText("UniMMR", { exact: true })).toBeVisible();
 });
 
 test("561 raw points are paged independently of the curve and closes", async ({ page }) => {

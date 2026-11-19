@@ -128,6 +128,13 @@ reports; these source ratios do not share one denominator. Source asset amounts
 use quantity precision even for USD-equivalent assets; derived USD valuations
 use USD precision. Price precision is independent of the quoting asset.
 
+Supported unified account details append `Real leverage` after the platform's
+margin metric: Binance portfolio margin, OKX unified trading, Kraken unified
+main, and Bybit unified. The value is absolute position notional divided by
+adjusted equity from the same displayed account report. The measure appears only
+when every position notional and a positive adjusted equity are known; otherwise
+it is omitted. A loaded empty position set shows `0x`.
+
 USD valuations, flows, and differences in summaries, tree nodes, signed badges,
 and tooltips use `$`, `+$`, or `-$`. Tables put currency in headers such as
 `Value (USD)` and use unadorned cells; never combine currency prefix and suffix.

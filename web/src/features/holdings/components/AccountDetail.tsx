@@ -1,5 +1,5 @@
 import type { AccountValuation, Issue } from "@/api";
-import { formatAmount, formatDecimal, formatRatio } from "@/shared/lib/amount";
+import { formatAmount, formatDecimal, formatLeverage, formatRatio } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
 import { capitalize, issueLabel, NO_ACCOUNT_REPORT } from "@/shared/lib/text";
@@ -11,6 +11,7 @@ import { NumericText } from "@/shared/ui/NumericText";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import type { ManualTarget } from "../dialogs/manual";
 import { useAccountReport } from "../hooks/useAccountReport";
+import { realLeverage } from "../lib/realLeverage";
 import { BalancesTable } from "./BalancesTable";
 import { DualPositionsTable } from "./DualPositionsTable";
 import { EarnPositionsTable } from "./EarnPositionsTable";
@@ -77,10 +78,12 @@ export function AccountDetail({
       (productIssues?.length ?? 0) > 0 ||
       report.isError);
 
+  const leverage = realLeverage(account, report.data?.positions);
+
   return (
     <div className={styles.accountDetail}>
       <QueryRecovery query={report} fallback="The account report could not be loaded." />
-      <AccountMetrics account={account} />
+      <AccountMetrics account={account} leverage={leverage} />
       {!isManual || account.reportId ? (
         <AccountFeedback
           account={account}
@@ -195,7 +198,13 @@ function HoldingIssues({ issues, timezone }: { issues?: Issue[]; timezone?: stri
   );
 }
 
-function AccountMetrics({ account }: { account: AccountValuation }) {
+function AccountMetrics({
+  account,
+  leverage,
+}: {
+  account: AccountValuation;
+  leverage: string | null;
+}) {
   const figures = [
     { label: "Equity", value: account.reportedEquityUsd, format: formatAmount },
     {
@@ -222,6 +231,11 @@ function AccountMetrics({ account }: { account: AccountValuation }) {
       label: marginRatioLabel(account),
       value: account.marginRatio,
       format: formatRatio,
+    },
+    {
+      label: "Real leverage",
+      value: leverage,
+      format: formatLeverage,
     },
   ];
   const reported = figures.filter((figure) => figure.value != null);

@@ -254,7 +254,7 @@ func text(value *string) string {
 
 func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 	r := newReplay(t, "", map[string]string{epWallet.path: `{"retCode":0,"result":{"list":[{
-        "accountType":"UNIFIED","totalEquity":"10000","totalAvailableBalance":"8000","accountIMRate":"0.1","accountMMRate":"0.01",
+        "accountType":"UNIFIED","totalEquity":"10000","totalAvailableBalance":"8000","totalInitialMargin":"0","accountIMRate":"0.1","accountMMRate":"0.01",
         "coin":[
             {"coin":"BTC","equity":"1.00","unrealisedPnl":"-0.25","borrowAmount":"0.2","accruedInterest":"0.01"},
             {"coin":"USDT","equity":"0","borrowAmount":"5"},
@@ -291,7 +291,7 @@ func TestDocumentedPortfolioMarginAccount(t *testing.T) {
 	unified := reportOf(t, &batch, TypeUnified)
 	if text(unified.Equity) != "10000" || text(unified.AvailableEquity) != "8000" ||
 		text(unified.ReportedInitialMarginRatio) != "0.1" || text(unified.ReportedMaintenanceMarginRatio) != "0.01" ||
-		unified.AdjustedEquity != nil || unified.ReportedMarginRatio != nil {
+		text(unified.AdjustedEquity) != "8000" || unified.ReportedMarginRatio != nil {
 		t.Fatalf("Portfolio margin account figures = %+v", unified)
 	}
 	wantBalances := map[string]adapter.Balance{
@@ -351,7 +351,7 @@ func TestIsolatedMarginIgnoresAccountWideFigures(t *testing.T) {
 	if batch.MarginMode != adapter.MarginBybitIsolated || unified.Status != adapter.StatusSucceeded {
 		t.Fatalf("batch = %+v", batch)
 	}
-	if unified.Equity != nil || unified.AvailableEquity != nil || unified.ReportedInitialMarginRatio != nil || unified.ReportedMaintenanceMarginRatio != nil {
+	if unified.Equity != nil || unified.AvailableEquity != nil || unified.AdjustedEquity != nil || unified.ReportedInitialMarginRatio != nil || unified.ReportedMaintenanceMarginRatio != nil {
 		t.Fatal("Bybit documents the account-wide figures as not applicable to isolated margin")
 	}
 	if len(unified.Balances) != 1 || unified.Balances[0].AssetSymbol != "BTC" || unified.Balances[0].Equity != "0.00990587" ||
@@ -382,7 +382,7 @@ func TestCrossMarginMapsAccountFigures(t *testing.T) {
 		t.Fatalf("batch = %+v", batch)
 	}
 	if text(unified.Equity) != "3.31216591" || text(unified.AvailableEquity) != "3.00326056" ||
-		text(unified.ReportedInitialMarginRatio) != "0" || text(unified.ReportedMaintenanceMarginRatio) != "0" || unified.AdjustedEquity != nil {
+		text(unified.ReportedInitialMarginRatio) != "0" || text(unified.ReportedMaintenanceMarginRatio) != "0" || text(unified.AdjustedEquity) != "3.00326056" {
 		t.Fatalf("Cross margin account figures = %+v", unified)
 	}
 	if len(unified.Balances) != 0 {
@@ -394,6 +394,39 @@ func TestCrossMarginMapsAccountFigures(t *testing.T) {
 	position := unified.Positions[0]
 	if position.LiquidationPrice != nil || text(position.Leverage) != "10" || text(position.Margin) != "0.00010923" {
 		t.Fatalf("an empty liqPrice stays unknown; leverage and position IM map: %+v", position)
+	}
+}
+
+func TestAdjustedEquityAddsReportedInitialMargin(t *testing.T) {
+	in := &walletAccount{TotalEquity: "100", TotalAvailableBalance: "80", TotalInitialMargin: "12"}
+	report, err := mapUnifiedAccount(in, adapter.MarginBybitCross)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if text(report.AvailableEquity) != "80" || text(report.AdjustedEquity) != "92" {
+		t.Fatalf("account figures = %+v", report)
+	}
+}
+
+func TestAdjustedEquityRequiresBothReportedFigures(t *testing.T) {
+	for name, in := range map[string]*walletAccount{
+		"missing initial margin": {TotalEquity: "100", TotalAvailableBalance: "80"},
+		"missing available":      {TotalEquity: "100", TotalInitialMargin: "12"},
+	} {
+		report, err := mapUnifiedAccount(in, adapter.MarginBybitCross)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if report.AdjustedEquity != nil {
+			t.Fatalf("%s: adjusted equity = %q", name, text(report.AdjustedEquity))
+		}
+	}
+}
+
+func TestAdjustedEquityRejectsMalformedInitialMargin(t *testing.T) {
+	in := &walletAccount{TotalEquity: "100", TotalAvailableBalance: "80", TotalInitialMargin: "abc"}
+	if _, err := mapUnifiedAccount(in, adapter.MarginBybitCross); err == nil {
+		t.Fatal("malformed totalInitialMargin must fail the account")
 	}
 }
 

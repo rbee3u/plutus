@@ -83,16 +83,16 @@ hold, which fails only its own account. `ExternalRef` is `userID` from
 
 ## Account report
 
-| Plutus column                       | `unified`, cross and portfolio margin                            | `unified`, isolated margin                         | `funding`, `earn`                                  |
-| ----------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
-| `reported_equity_usd`               | `totalEquity` (USD, before collateral haircuts)                  | `null`, so the value is `calculated` from balances | `null`, so the value is `calculated` from balances |
-| `adjusted_equity_usd`               | `null`                                                           | `null`                                             | `null`                                             |
-| `available_equity_usd`              | `totalAvailableBalance` (USD, after haircuts and initial margin) | `null`                                             | `null`                                             |
-| `reported_initial_margin_ratio`     | `accountIMRate` as reported                                      | `null`                                             | `null`                                             |
-| `reported_maintenance_margin_ratio` | `accountMMRate` as reported                                      | `null`                                             | `null`                                             |
-| `reported_margin_ratio`             | `null`                                                           | `null`                                             | `null`                                             |
-| `collected_at`                      | Local time when the account's responses arrived                  | Same                                               | Same                                               |
-| `source_observed_at`                | `null`                                                           | `null`                                             | `null`                                             |
+| Plutus column                       | `unified`, cross and portfolio margin                                  | `unified`, isolated margin                         | `funding`, `earn`                                  |
+| ----------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
+| `reported_equity_usd`               | `totalEquity` (USD, before collateral haircuts)                        | `null`, so the value is `calculated` from balances | `null`, so the value is `calculated` from balances |
+| `adjusted_equity_usd`               | `totalAvailableBalance + totalInitialMargin` (derived; after haircuts) | `null`                                             | `null`                                             |
+| `available_equity_usd`              | `totalAvailableBalance` (USD, after haircuts and initial margin)       | `null`                                             | `null`                                             |
+| `reported_initial_margin_ratio`     | `accountIMRate` as reported                                            | `null`                                             | `null`                                             |
+| `reported_maintenance_margin_ratio` | `accountMMRate` as reported                                            | `null`                                             | `null`                                             |
+| `reported_margin_ratio`             | `null`                                                                 | `null`                                             | `null`                                             |
+| `collected_at`                      | Local time when the account's responses arrived                        | Same                                               | Same                                               |
+| `source_observed_at`                | `null`                                                                 | `null`                                             | `null`                                             |
 
 - Bybit documents every account-wide field as not applicable to isolated margin,
   so the adapter ignores them there, whatever Bybit returns.
@@ -101,12 +101,16 @@ hold, which fails only its own account. `ExternalRef` is `userID` from
 - `accountIMRate` and `accountMMRate` are Bybit's own ratios. They divide the
   initial or maintenance margin by the margin balance in cross margin, and by
   the collateral-adjusted equity in portfolio margin.
+- Bybit does not publish haircut-adjusted equity. `totalAvailableBalance` is
+  after haircuts and initial margin, so adding `totalInitialMargin` back yields
+  `adjusted_equity_usd`; either field missing keeps it null.
 - `totalMarginBalance` is the wallet balance plus perpetual and futures
-  unrealized PnL, not a haircut-adjusted equity, so `adjusted_equity_usd` stays
-  null.
+  unrealized PnL, not a haircut-adjusted equity, so it is not used.
+- `totalInitialMargin` is read only to derive adjusted equity and is not stored
+  separately.
 - Not stored: `totalWalletBalance`, `totalMarginBalance`, `totalPerpUPL`,
-  `totalInitialMargin`, `totalMaintenanceMargin`, the `…ByMp` duplicates, and
-  the deprecated `accountLTV`.
+  `totalMaintenanceMargin`, the `…ByMp` duplicates, and the deprecated
+  `accountLTV`.
 
 ## Balance
 

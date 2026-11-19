@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AccountValuation, Issue } from "@/api";
+import type { AccountValuation, Issue, PositionRow } from "@/api";
 import { AccountDetail } from "./AccountDetail";
 import { NO_ACCOUNT_REPORT } from "@/shared/lib/text";
 
@@ -10,6 +10,8 @@ const report = vi.hoisted(() => ({
   kind: "futures",
   balanceIssues: [] as Issue[],
   productIssues: [] as Issue[],
+  positions: [] as PositionRow[],
+  hasData: true,
   args: [] as unknown[],
 }));
 
@@ -21,22 +23,25 @@ vi.mock("../hooks/useAccountReport", () => ({
     return {
       report: {
         ...query,
-        data: {
-          context,
-          balances: [],
-          positions: [],
-          dualPositions: [],
-          earnPositions: [],
-          issues: [
-            ...report.balanceIssues,
-            ...report.productIssues.filter(
-              (issue) =>
-                !report.balanceIssues.some(
-                  (existing) => existing.code === issue.code && existing.detail === issue.detail,
+        data: report.hasData
+          ? {
+              context,
+              balances: [],
+              positions: report.positions,
+              dualPositions: [],
+              earnPositions: [],
+              issues: [
+                ...report.balanceIssues,
+                ...report.productIssues.filter(
+                  (issue) =>
+                    !report.balanceIssues.some(
+                      (existing) =>
+                        existing.code === issue.code && existing.detail === issue.detail,
+                    ),
                 ),
-            ),
-          ],
-        },
+              ],
+            }
+          : undefined,
       },
       isManual: report.kind === "manual",
       isDual: report.kind === "dual",
@@ -49,6 +54,8 @@ beforeEach(() => {
   report.kind = "futures";
   report.balanceIssues = [];
   report.productIssues = [];
+  report.positions = [];
+  report.hasData = true;
 });
 
 const account: AccountValuation = {
@@ -74,6 +81,83 @@ const account: AccountValuation = {
   completeness: "complete",
   marginRatio: "4.2",
   omitted: [],
+};
+
+const position: PositionRow = {
+  displayLeverage: "3",
+  marginUnavailableCode: null,
+  contractSize: null,
+  entryPrice: null,
+  liquidationPrice: null,
+  accountId: "account",
+  accountName: "Trading",
+  accountType: "portfolio_margin",
+  identityId: "identity",
+  identityName: "Owner",
+  platform: "binance",
+  positionKey: "BTC-USD-SWAP:net",
+  futuresContractId: "futuresContract",
+  futuresSymbol: "BTC-USD-SWAP",
+  kind: "inverse_perpetual",
+  side: "short",
+  positionMode: "one_way",
+  sourceQuantity: "2",
+  sourceQuantityUnit: "contracts",
+  size: "-200",
+  sizeSymbol: "USD",
+  baseAssetSymbol: "BTC",
+  quoteAssetSymbol: "USD",
+  settlementAssetSymbol: "BTC",
+  markPrice: "50000",
+  unrealizedPnl: "0.000123456789",
+  marginSetting: "cross",
+  portfolioMargin: true,
+  settlementMargin: "0.002",
+  reportedMargin: "100",
+  marginAssetSymbol: "USD",
+  marginBasis: "initial",
+  marginSource: "reported",
+  reportedLeverage: "3",
+  notionalUsd: "50807.4868059",
+  freshness: "fresh",
+  reportObservedAt: "2026-10-03T00:00:00Z",
+  issues: [],
+};
+
+const portfolioMargin: AccountValuation = {
+  ...account,
+  platform: "binance",
+  accountType: "portfolio_margin",
+  adjustedEquityUsd: "39349.44",
+  marginRatio: "67.48",
+};
+
+const okxUnified: AccountValuation = {
+  ...account,
+  platform: "okx",
+  accountType: "trading",
+  adjustedEquityUsd: "39349.44",
+  marginRatio: "67.48",
+};
+
+const krakenUnified: AccountValuation = {
+  ...account,
+  platform: "kraken",
+  accountType: "main",
+  adjustedEquityUsd: "39349.44",
+  marginRatio: null,
+  initialMarginRatio: "0.12",
+  maintenanceMarginRatio: "0.04",
+};
+
+const bybitUnified: AccountValuation = {
+  ...account,
+  platform: "bybit",
+  accountType: "unified",
+  adjustedEquityUsd: "39349.44",
+  marginRatio: null,
+  initialMarginRatio: "0.1",
+  maintenanceMarginRatio: "0.01",
 };
 
 function markup(item: AccountValuation, historical = false) {
@@ -316,5 +400,77 @@ describe("Account feedback scope", () => {
     expect(text).toContain("Omitted from the total:");
     expect(text).toContain("BTC");
     expect(text).not.toContain("Connection is");
+  });
+});
+
+describe("Account real leverage", () => {
+  it("divides position notional by adjusted equity after UniMMR", () => {
+    report.positions = [position];
+    const text = render(portfolioMargin);
+    expect(text).toContain("Real leverage1.29x");
+    expect(text.indexOf("Real leverage")).toBeGreaterThan(text.indexOf("UniMMR"));
+  });
+
+  it.each([
+    ["binance", "spot"],
+    ["okx", "funding"],
+    ["kraken", "coin_m"],
+    ["bybit", "funding"],
+  ])("omits the measure outside a supported unified scope: %s %s", (platform, accountType) => {
+    report.positions = [position];
+    expect(
+      render({ ...account, platform, accountType, adjustedEquityUsd: "39349.44" }),
+    ).not.toContain("Real leverage");
+  });
+
+  it.each([
+    ["okx trading", okxUnified],
+    ["kraken main", krakenUnified],
+    ["bybit unified", bybitUnified],
+  ])("shows the measure for %s", (_label, item) => {
+    report.positions = [{ ...position, platform: item.platform, accountType: item.accountType }];
+    expect(render(item)).toContain("Real leverage1.29x");
+  });
+
+  it("keeps Kraken separate-wallet main unknown", () => {
+    report.positions = [position];
+    expect(render({ ...krakenUnified, adjustedEquityUsd: null })).not.toContain("Real leverage");
+  });
+
+  it("shows zero leverage for a loaded empty position set", () => {
+    expect(render(portfolioMargin)).toContain("Real leverage0x");
+  });
+
+  it("omits the measure when adjusted equity is unknown", () => {
+    report.positions = [position];
+    expect(render({ ...portfolioMargin, adjustedEquityUsd: null })).not.toContain("Real leverage");
+  });
+
+  it("omits the measure when a position notional is unknown", () => {
+    report.positions = [{ ...position, notionalUsd: null }];
+    expect(render(portfolioMargin)).not.toContain("Real leverage");
+  });
+
+  it("keeps the measure on a stale retained report", () => {
+    report.positions = [position];
+    const text = render({
+      ...portfolioMargin,
+      reportId: "report",
+      reportObservedAt: "2026-10-03T00:00:00Z",
+      freshness: "stale",
+      status: "failed",
+    });
+    expect(text).toContain("Real leverage");
+    expect(text).toContain("Earlier successful account report retained");
+  });
+
+  it("keeps the measure in history", () => {
+    report.positions = [position];
+    expect(render(portfolioMargin, true)).toContain("Real leverage");
+  });
+
+  it("does not render while the account report is loading", () => {
+    report.hasData = false;
+    expect(render(portfolioMargin)).not.toContain("Real leverage");
   });
 });

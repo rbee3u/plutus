@@ -102,6 +102,11 @@ an inverse contract. _Avoid_: contract count, mark-derived settlement amount.
 position, or allocated funds excluding unrealized PnL for an isolated position.
 _Avoid_: shared collateral allocation, account margin requirement.
 
+**real leverage**: An account-level display ratio for supported unified
+accounts: the absolute USD notional of every open position divided by adjusted
+equity from the same account report. _Avoid_: a universal leverage measure,
+position leverage, account margin ratio.
+
 **complete set**: All balances, positions, earn positions, and dual positions
 held by one account according to a successful account report.
 
