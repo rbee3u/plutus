@@ -132,6 +132,15 @@ separate single-collateral wallet and is excluded. This is not a universal
 notional or leverage formula, and it does not change position margin or reported
 account measures.
 
+A high-leverage warning is a display-only Overview rule for the same supported
+scopes: a known real leverage strictly above 3 warns on the account and on every
+visible identity and platform ancestor. An ancestor warning means that a
+displayed descendant exceeds the threshold; it does not define an aggregate
+ratio, sum, or maximum. Unknown real leverage does not warn, while a stale known
+value still does. The warning is not a reported margin ratio, a liquidation
+prediction, or a universal cross-platform risk measure. History and Activity do
+not present it as a current warning.
+
 ## Manual balances
 
 Manual supplements quantities missing from an identity's platform API; external

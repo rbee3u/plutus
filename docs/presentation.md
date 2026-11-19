@@ -135,6 +135,19 @@ adjusted equity from the same displayed account report. The measure appears only
 when every position notional and a positive adjusted equity are known; otherwise
 it is omitted. A loaded empty position set shows `0x`.
 
+Overview marks a supported unified account as `High leverage` when its known,
+unrounded real leverage is strictly above 3. The warning appears on the account
+row and on every visible identity and platform ancestor; ancestors show no
+aggregate value or count. The `Real leverage` metric chip uses the danger
+treatment only in Overview; at 3 or below it remains the existing neutral chip.
+Warning rows name the affected account and value in their accessible
+description. A known stale report can still warn. Unknown leverage never warns;
+if the positions read needed for the warning fails, a neutral
+`Leverage warnings could not be checked.` status appears. The warning is not
+conveyed by color alone, and at narrow widths its pill may wrap below the name
+while the USD value stays right-aligned. History and Activity never show the
+warning.
+
 USD valuations, flows, and differences in summaries, tree nodes, signed badges,
 and tooltips use `$`, `+$`, or `-$`. Tables put currency in headers such as
 `Value (USD)` and use unadorned cells; never combine currency prefix and suffix.
@@ -196,12 +209,13 @@ Account details contain failed, stale, and incomplete states with source times
 and omissions. Cross-account Issues identify platform, identity, account, and
 asset or contract where available, using metadata from the displayed view.
 Overview's page-level Issues remain visible when nodes are collapsed; normal
-connection labels and repeated ancestor badges do not occupy the tree. Balances
-always appear in details. Futures, earn, and dual sections hide only after a
-successful empty read; loading, failed reads, and stale holdings stay explicit.
-Account hiding follows the
-[confirmed-empty rule](./domain-rules.md#manual-balances). The identity add
-action stays available when all accounts hide.
+connection labels and repeated ancestor badges do not occupy the tree. The
+high-leverage warning is the deliberate exception: its ancestor badges identify
+a current financial risk rather than repeat connection health. Balances always
+appear in details. Futures, earn, and dual sections hide only after a successful
+empty read; loading, failed reads, and stale holdings stay explicit. Account
+hiding follows the [confirmed-empty rule](./domain-rules.md#manual-balances).
+The identity add action stays available when all accounts hide.
 
 Summary and tree must describe one consistent valuation point; expanded details
 must match the visible account report, apart from explicitly pending manual

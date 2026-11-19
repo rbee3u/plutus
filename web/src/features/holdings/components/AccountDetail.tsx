@@ -1,7 +1,9 @@
+import { TriangleAlert } from "lucide-react";
 import type { AccountValuation, Issue } from "@/api";
 import { formatAmount, formatDecimal, formatLeverage, formatRatio } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { shortId } from "@/shared/lib/id";
+import { iconSize } from "@/shared/icons/iconSizes";
 import { capitalize, issueLabel, NO_ACCOUNT_REPORT } from "@/shared/lib/text";
 import { isAccountReportMissing } from "@/shared/lib/valuationRows";
 import { AccountHealthBadges, Badge } from "@/shared/ui/Badge";
@@ -11,6 +13,7 @@ import { NumericText } from "@/shared/ui/NumericText";
 import { QueryRecovery } from "@/shared/ui/QueryRecovery";
 import type { ManualTarget } from "../dialogs/manual";
 import { useAccountReport } from "../hooks/useAccountReport";
+import { isHighRealLeverage } from "../lib/leverageRisk";
 import { realLeverage } from "../lib/realLeverage";
 import { BalancesTable } from "./BalancesTable";
 import { DualPositionsTable } from "./DualPositionsTable";
@@ -27,6 +30,7 @@ export function AccountDetail({
   timezone,
   onManual,
   historical = false,
+  highlightLeverageRisk = false,
 }: {
   portfolioId: string;
   account: AccountValuation;
@@ -38,6 +42,8 @@ export function AccountDetail({
    * current selection, connection, and archive labels that are not point facts.
    */
   historical?: boolean;
+  /** Overview only: redden the account's own Real leverage chip above 3x. */
+  highlightLeverageRisk?: boolean;
 }) {
   const { report, isManual, isDual, isEarn } = useAccountReport(
     portfolioId,
@@ -83,7 +89,11 @@ export function AccountDetail({
   return (
     <div className={styles.accountDetail}>
       <QueryRecovery query={report} fallback="The account report could not be loaded." />
-      <AccountMetrics account={account} leverage={leverage} />
+      <AccountMetrics
+        account={account}
+        leverage={leverage}
+        highlightLeverageRisk={highlightLeverageRisk}
+      />
       {!isManual || account.reportId ? (
         <AccountFeedback
           account={account}
@@ -201,9 +211,11 @@ function HoldingIssues({ issues, timezone }: { issues?: Issue[]; timezone?: stri
 function AccountMetrics({
   account,
   leverage,
+  highlightLeverageRisk,
 }: {
   account: AccountValuation;
   leverage: string | null;
+  highlightLeverageRisk: boolean;
 }) {
   const figures = [
     { label: "Equity", value: account.reportedEquityUsd, format: formatAmount },
@@ -240,16 +252,25 @@ function AccountMetrics({
   ];
   const reported = figures.filter((figure) => figure.value != null);
   if (reported.length === 0) return null;
+  const leverageRisk = highlightLeverageRisk && isHighRealLeverage(leverage);
   return (
     <div className={styles.accountMetricsBar}>
-      {reported.map((figure) => (
-        <div key={figure.label} className={styles.accountMetricChip}>
-          <span className={styles.accountMetricLabel}>{figure.label}</span>
-          <span className={styles.accountMetricValue}>
-            <NumericText>{figure.format(figure.value)}</NumericText>
-          </span>
-        </div>
-      ))}
+      {reported.map((figure) => {
+        const danger = figure.label === "Real leverage" && leverageRisk;
+        return (
+          <div
+            key={figure.label}
+            className={`${styles.accountMetricChip}${danger ? ` ${styles.accountMetricChipDanger}` : ""}`}
+            data-leverage-risk={danger ? "true" : undefined}
+          >
+            {danger ? <TriangleAlert size={iconSize.xs} aria-hidden="true" /> : null}
+            <span className={styles.accountMetricLabel}>{figure.label}</span>
+            <span className={styles.accountMetricValue}>
+              <NumericText>{figure.format(figure.value)}</NumericText>
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

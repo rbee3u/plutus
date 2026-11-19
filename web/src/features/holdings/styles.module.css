@@ -200,6 +200,34 @@
   border: 1px solid var(--line-soft);
 }
 
+.leverageRiskBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.leverageRiskBadge > svg {
+  flex-shrink: 0;
+}
+
+.leverageRiskNotice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  line-height: var(--line-height-sm);
+}
+
+.leverageRiskNotice > svg {
+  flex-shrink: 0;
+}
+
 .treeNodeValue {
   color: var(--ink);
   font-family: var(--font-mono);
@@ -254,6 +282,25 @@
   font-weight: var(--weight-semibold);
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+}
+
+.accountMetricChipDanger {
+  align-items: center;
+  background: var(--danger-soft);
+  border-color: var(--danger-line);
+}
+
+.accountMetricChipDanger .accountMetricLabel {
+  color: var(--danger);
+}
+
+.accountMetricChipDanger .accountMetricValue {
+  color: var(--danger-strong);
+}
+
+.accountMetricChipDanger > svg {
+  flex-shrink: 0;
+  color: var(--danger);
 }
 
 .accountSectionTitle {

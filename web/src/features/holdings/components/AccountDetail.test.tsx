@@ -160,7 +160,7 @@ const bybitUnified: AccountValuation = {
   maintenanceMarginRatio: "0.01",
 };
 
-function markup(item: AccountValuation, historical = false) {
+function markup(item: AccountValuation, historical = false, highlightLeverageRisk = false) {
   return renderToStaticMarkup(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter>
@@ -169,6 +169,7 @@ function markup(item: AccountValuation, historical = false) {
           account={item}
           cycleId="cycle"
           historical={historical}
+          highlightLeverageRisk={highlightLeverageRisk}
         />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -472,5 +473,29 @@ describe("Account real leverage", () => {
   it("does not render while the account report is loading", () => {
     report.hasData = false;
     expect(render(portfolioMargin)).not.toContain("Real leverage");
+  });
+});
+
+describe("Account real leverage warning", () => {
+  it("reddens the chip only when requested and above 3x", () => {
+    report.positions = [{ ...position, notionalUsd: "324" }];
+    const risky = { ...portfolioMargin, adjustedEquityUsd: "100" };
+
+    const highlighted = markup(risky, false, true);
+    expect(highlighted).toContain('data-leverage-risk="true"');
+    expect(highlighted).toContain("Real leverage");
+    expect(highlighted).toContain("3.24x");
+
+    const neutral = markup(risky);
+    expect(neutral).not.toContain('data-leverage-risk="true"');
+    expect(neutral).toContain("Real leverage");
+    expect(neutral).toContain("3.24x");
+  });
+
+  it("does not warn at exactly 3x", () => {
+    report.positions = [{ ...position, notionalUsd: "300" }];
+    const html = markup({ ...portfolioMargin, adjustedEquityUsd: "100" }, false, true);
+    expect(html).toContain("Real leverage");
+    expect(html).not.toContain('data-leverage-risk="true"');
   });
 });

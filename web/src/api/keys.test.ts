@@ -9,6 +9,7 @@ describe("Collection cache policy", () => {
       keys.overview("alice", "main"),
       keys.historyWindow("alice", "main", "UTC", "3D", "", "mount", 2),
       keys.accountReport("alice", "main", "account", "point"),
+      keys.leverageRisk("alice", "main", "point"),
     ];
     const separate = [
       keys.overview("bob", "main"),

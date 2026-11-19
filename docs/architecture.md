@@ -543,9 +543,13 @@ keyboard input while dismissing on external scroll.
 view-memory rules.
 
 Overview returns its point summary and ownership tree in one repeatable-read
-snapshot, sharing the latest point and adopted account evidence. The point owns
-its total, completeness, and counts; charts use the separate series read. Series
-points carry only their identity, time, total, and completeness, avoiding unused
+snapshot, sharing the latest point and adopted account evidence. Its
+high-leverage warning reads positions for the same displayed point in one
+browser request, loading every page; the read is display-only and never starts a
+collection or exchange request. A failed or mismatched read leaves the warning
+map empty and exposes the neutral unavailable status. The point owns its total,
+completeness, and counts; charts use the separate series read. Series points
+carry only their identity, time, total, and completeness, avoiding unused
 boundary aggregation. One account report read resolves its point and compatible
 source report once, then loads balances and the applicable product holdings
 within the same read transaction. Account query keys include the cycle, report,

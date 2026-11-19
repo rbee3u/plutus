@@ -214,6 +214,10 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapter.AccountType) 
 	if d.Profile == "empty" {
 		return r
 	}
+	if d.Profile == "leverage_warning" && kind == "portfolio_margin" {
+		demoLeverageWarning(&r, d, anchor, at)
+		return r
+	}
 	switch kind {
 	case "earn":
 		demoEarn(&r, d, anchor, at)
@@ -299,6 +303,21 @@ func demoReport(d DemoIdentity, anchor, at time.Time, kind adapter.AccountType) 
 		}
 	}
 	return r
+}
+
+// demoLeverageWarning is a local demo of the Overview real-leverage warning:
+// one supported unified account with 1,000 adjusted equity and 4,000 notional.
+func demoLeverageWarning(r *adapter.AccountReport, d DemoIdentity, anchor, at time.Time) {
+	r.Balances = []adapter.Balance{demoBalance("USDT", "1000")}
+	r.Equity = adapter.OptionalText("1000")
+	r.AdjustedEquity = adapter.OptionalText("1000")
+	r.AvailableEquity = adapter.OptionalText("700")
+	r.ReportedInitialMarginRatio = adapter.OptionalText("0.1")
+	r.ReportedMaintenanceMarginRatio = adapter.OptionalText("0.01")
+	r.ReportedMarginRatio = adapter.OptionalText("4.2")
+	position := d
+	position.Profile = "daily"
+	r.Positions = []adapter.Position{demoPosition(position, anchor, at, demoAssets[0], 0, false, "4000")}
 }
 
 func demoBalance(symbol, amount string) adapter.Balance {

@@ -35,8 +35,8 @@ func TestBuild(t *testing.T) {
 	if !strings.Contains(seed.SQL, "'alice'") || strings.Contains(seed.SQL, "'bob'") {
 		t.Fatal("only Alice must be seeded")
 	}
-	if len(seed.Portfolios) != 2 {
-		t.Fatal("expected two walkthrough portfolios")
+	if len(seed.Portfolios) != 3 {
+		t.Fatal("expected three walkthrough portfolios")
 	}
 	if strings.Contains(seed.SQL, "INSERT INTO valuation_points") {
 		t.Fatal("seeds must not write derived points")

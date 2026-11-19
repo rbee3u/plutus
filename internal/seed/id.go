@@ -36,9 +36,10 @@ func SeedID(kind uint16, n uint64) uuid.UUID {
 
 // Well-known IDs retained across disposable development resets.
 var (
-	UserAlice          = SeedID(kindUser, 1)
-	PortfolioAliceMain = SeedID(kindPortfolio, 1)
-	PortfolioAliceEdge = namedID("portfolio/edge-cases")
+	UserAlice              = SeedID(kindUser, 1)
+	PortfolioAliceMain     = SeedID(kindPortfolio, 1)
+	PortfolioAliceEdge     = namedID("portfolio/edge-cases")
+	PortfolioAliceLeverage = namedID("portfolio/leverage-warning")
 )
 
 func namedID(key string) uuid.UUID {

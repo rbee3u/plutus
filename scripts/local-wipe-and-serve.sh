@@ -26,6 +26,7 @@ echo
 echo "Seed logins:"
 echo "  alice / Alice=123456"
 echo "This machine: http://127.0.0.1:8080"
+echo "Select the 'leverage-warning' portfolio to see the 4x Real leverage warning."
 lan_ip="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
 if [[ -n "$lan_ip" ]]; then
   echo "LAN: http://${lan_ip}:8080"

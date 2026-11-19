@@ -15,6 +15,13 @@ const UNIFIED_ACCOUNT_TYPES = new Map<string, ReadonlySet<string>>([
 type LeverageAccount = Pick<AccountValuation, "platform" | "accountType" | "adjustedEquityUsd">;
 type LeveragePosition = Pick<PositionRow, "notionalUsd">;
 
+/** Whether this platform/account scope has the adjusted-equity basis for real leverage. */
+export function supportsRealLeverage(
+  account: Pick<AccountValuation, "platform" | "accountType">,
+): boolean {
+  return UNIFIED_ACCOUNT_TYPES.get(account.platform)?.has(account.accountType) ?? false;
+}
+
 /**
  * Display-only gross leverage for one supported unified account report: the
  * absolute USD notional of every open position divided by adjusted equity.
@@ -28,20 +35,21 @@ export function realLeverage(
   account: LeverageAccount,
   positions: ReadonlyArray<LeveragePosition> | undefined,
 ): string | null {
-  if (!UNIFIED_ACCOUNT_TYPES.get(account.platform)?.has(account.accountType)) return null;
+  if (!supportsRealLeverage(account)) return null;
   if (positions === undefined) return null;
-  const equity = parseRatio(account.adjustedEquityUsd);
+  const equity = parseLeverageRatio(account.adjustedEquityUsd);
   if (equity === null || equity.lte(0)) return null;
   let notional = new Ratio(0);
   for (const position of positions) {
-    const value = parseRatio(position.notionalUsd);
+    const value = parseLeverageRatio(position.notionalUsd);
     if (value === null || value.lt(0)) return null;
     notional = notional.plus(value);
   }
   return notional.div(equity).toSignificantDigits(30).toFixed();
 }
 
-function parseRatio(value: string | null | undefined): Decimal | null {
+/** Parse a ratio string without losing digits before the display compares it. */
+export function parseLeverageRatio(value: string | null | undefined): Decimal | null {
   if (value == null || value === "") return null;
   try {
     const parsed = new Ratio(value);

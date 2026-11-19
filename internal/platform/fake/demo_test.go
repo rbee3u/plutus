@@ -83,7 +83,7 @@ func TestDemoNormalMajorityAndConcentration(t *testing.T) {
 		shapes[shape] = true
 	}
 
-	if normal != 12 || exceptional != 3 || archived != 1 || len(shapes) != normal {
+	if normal != 13 || exceptional != 3 || archived != 1 || len(shapes) != normal {
 		t.Fatalf("Identity mix normal=%d exceptional=%d archived=%d distinct=%d", normal, exceptional, archived, len(shapes))
 	}
 	if empty < 20 || earn < 15 || earn > 30 || dual != 2 {
@@ -107,6 +107,30 @@ func demoByID(t *testing.T, id string) DemoIdentity {
 	}
 	t.Fatalf("unknown scenario %s", id)
 	return DemoIdentity{}
+}
+
+func TestLeverageWarningDemo(t *testing.T) {
+	anchor := time.Date(2026, 10, 5, 10, 0, 0, 0, time.UTC)
+	d := demoByID(t, "leverage-warning")
+	if got := DemoAccounts(d, anchor, anchor); len(got) != 1 || got[0] != "portfolio_margin" {
+		t.Fatalf("leverage-warning accounts = %v", got)
+	}
+	batch, err := DemoBatch(d, anchor, anchor, DemoAccounts(d, anchor, anchor))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(batch.Reports) != 1 || batch.Reports[0].Status != adapter.StatusSucceeded {
+		t.Fatalf("leverage-warning report = %+v", batch.Reports)
+	}
+	report := batch.Reports[0]
+	if report.AdjustedEquity == nil || len(report.Positions) != 1 || report.Positions[0].MarkPrice == nil {
+		t.Fatalf("leverage-warning facts = %+v", report)
+	}
+	notional := demoMul(report.Positions[0].SourceQuantity, *report.Positions[0].MarkPrice)
+	leverage := demoDiv(notional, *report.AdjustedEquity)
+	if demoNumber(leverage).Cmp(demoNumber("3")) <= 0 {
+		t.Fatalf("leverage-warning real leverage = %s, want > 3", leverage)
+	}
 }
 
 func TestDemoCapabilityMatrix(t *testing.T) {

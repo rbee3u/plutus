@@ -35,6 +35,7 @@ func BuildAt(now time.Time) (Seed, error) {
 	portfolios := []portfolioSpec{
 		{ID: PortfolioAliceMain, User: UserAlice, Name: "default", Timezone: "Asia/Shanghai", Interval: 1800, Undeletable: true, CreatedAt: created},
 		{ID: PortfolioAliceEdge, User: UserAlice, Name: "edge-cases", Timezone: "Europe/Berlin", Interval: 1800, CreatedAt: created},
+		{ID: PortfolioAliceLeverage, User: UserAlice, Name: "leverage-warning", Timezone: "UTC", Interval: 1800, CreatedAt: created},
 	}
 	definitions := fake.DemoIdentities()
 	seen := map[string]bool{}

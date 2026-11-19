@@ -107,6 +107,11 @@ accounts: the absolute USD notional of every open position divided by adjusted
 equity from the same account report. _Avoid_: a universal leverage measure,
 position leverage, account margin ratio.
 
+**high-leverage warning**: An Overview warning on a supported unified account
+whose known real leverage is strictly above 3; it repeats on the visible
+identity and platform rows without defining a parent ratio. _Avoid_: risk score,
+margin call, universal risk ratio.
+
 **complete set**: All balances, positions, earn positions, and dual positions
 held by one account according to a successful account report.
 

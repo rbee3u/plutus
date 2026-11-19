@@ -41,6 +41,7 @@ const registry = {
       reportId?: string | null,
     ]
   >("account-report", true),
+  leverageRisk: family<[cycleId?: string]>("leverage-risk", true),
   manualEditor: family<[identityId?: string, editorId?: string]>("manual-editor", false),
   historyWindow: family<
     [timezone?: string, fromOrPreset?: string, to?: string, mountId?: string, anchor?: number]

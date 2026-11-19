@@ -11,17 +11,20 @@ Agents use only `plutus_agent` on :8081. There are no seed profiles.
 
 ## Portfolios
 
-| Name         | Timezone      | History                                | Purpose                                                        |
-| ------------ | ------------- | -------------------------------------- | -------------------------------------------------------------- |
-| `default`    | Asia/Shanghai | 3 months                               | 12 healthy active identities and one archived historical login |
-| `edge-cases` | Europe/Berlin | 3 months with an intentional empty day | 3 identities covering four representative valuation states     |
+| Name               | Timezone      | History                                | Purpose                                                        |
+| ------------------ | ------------- | -------------------------------------- | -------------------------------------------------------------- |
+| `default`          | Asia/Shanghai | 3 months                               | 12 healthy active identities and one archived historical login |
+| `edge-cases`       | Europe/Berlin | 3 months with an intentional empty day | 3 identities covering four representative valuation states     |
+| `leverage-warning` | UTC           | 3 months                               | One synthetic 4x Real leverage warning demo                    |
 
 Long histories have daily older points and two-hour points in the last three
 local days, with brackets around event instants. The current local day is
 included. Collection runs every 30 minutes. Observations depend on the original
 anchor and actual time; collection does not advance a simulation counter.
 Partial calendar periods can be incomplete when their opening dates predate the
-seed horizon; History names those missing dates.
+seed horizon; History names those missing dates. The `leverage-warning` fixture
+was added after the older two-portfolio measurements below; those measurements
+predate it.
 
 ## Healthy walkthrough
 
@@ -54,6 +57,11 @@ does not supply them.
 
 Expand identities and accounts in Overview, then inspect balances, futures,
 earn, and dual investment. Create a new portfolio to inspect empty state.
+
+`leverage-warning` exists only to exercise the Overview high-leverage warning.
+Its Binance portfolio-margin account reports 1,000 USD adjusted equity and one
+4,000 USD position, so Real leverage is 4x. Select the portfolio after login;
+it is synthetic data and does not affect `default`.
 
 The table uses `D` for the rounded UTC seed anchor. Find exact timestamps in
 capital or Activity; History labels use the portfolio timezone.

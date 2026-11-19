@@ -22,7 +22,9 @@ Implemented capabilities:
 - Scheduled and on-demand collection, USD valuation, compatible stale history,
   and explicit incomplete totals.
 - Overview ownership tree; balances, futures, earn, and dual investment tables;
-  manual balances for API-uncovered quantities.
+  manual balances for API-uncovered quantities. Overview warns when a supported
+  unified account's real leverage is above 3, on the account and its visible
+  identity and platform rows.
 - Historical points, calendar comparisons, manual capital flows, asset mapping,
   asset exclusions, and audit history.
 - Rotating application, access, and SQL logs, plus a deterministic

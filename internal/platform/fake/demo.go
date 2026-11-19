@@ -39,6 +39,7 @@ func DemoIdentities() []DemoIdentity {
 		{"daily-okx-sum", "default", "sum", adapter.PlatformOKX, adapter.StructureOKXUnified, adapter.MarginOKXMCM, "daily", "enabled"},
 		{"daily-okx-coin", "default", "coinM", adapter.PlatformOKX, adapter.StructureOKXUnified, adapter.MarginOKXMCM, "daily", "enabled"},
 		{"daily-okx-usd", "default", "usdM", adapter.PlatformOKX, adapter.StructureOKXUnified, adapter.MarginOKXMCM, "daily", "enabled"},
+		{"leverage-warning", "leverage-warning", "risk-demo", adapter.PlatformBinance, adapter.StructureBinancePM, "", "leverage_warning", "enabled"},
 		{"retired-classic", "default", "retired", adapter.PlatformBinance, adapter.StructureBinanceClassic, "", "archived", "unconfigured"},
 		{"edge-unpriced", "edge-cases", "Binance unpriced airdrop", adapter.PlatformBinance, adapter.StructureBinanceClassic, "", "unpriced", "enabled"},
 		{"edge-stale", "edge-cases", "Binance delayed reports", adapter.PlatformBinance, adapter.StructureBinanceClassic, "", "stale", "enabled"},
@@ -52,7 +53,7 @@ func ValidateDemoIdentity(d DemoIdentity) error {
 		!adapter.ValidStructure(d.Platform, d.Structure) || !adapter.ValidMarginMode(d.Structure, d.Mode) {
 		return fmt.Errorf("invalid demo identity %q: identity or capability", d.ID)
 	}
-	if d.Portfolio != "default" && d.Portfolio != "edge-cases" {
+	if d.Portfolio != "default" && d.Portfolio != "edge-cases" && d.Portfolio != "leverage-warning" {
 		return fmt.Errorf("invalid demo identity %q: portfolio", d.ID)
 	}
 	switch d.Connection {
@@ -61,7 +62,7 @@ func ValidateDemoIdentity(d DemoIdentity) error {
 		return fmt.Errorf("invalid demo identity %q: connection", d.ID)
 	}
 	switch d.Profile {
-	case "daily", "large", "unpriced", "stale", "stale_incomplete", "missing", "invalid", "disabled", "unconfigured", "archived", "boundary", "policy", "metadata", "mode", "empty", "unsupported", "normalization":
+	case "daily", "large", "unpriced", "stale", "stale_incomplete", "missing", "invalid", "disabled", "unconfigured", "archived", "boundary", "policy", "metadata", "mode", "empty", "unsupported", "normalization", "leverage_warning":
 	default:
 		return fmt.Errorf("invalid demo identity %q: profile", d.ID)
 	}
@@ -102,6 +103,8 @@ func DemoEventTime(anchor time.Time, days int) time.Time {
 // seeds use this timeline; runtime always honors the owner's requested accounts.
 func DemoAccounts(d DemoIdentity, anchor, at time.Time) []adapter.AccountType {
 	switch d.Profile {
+	case "leverage_warning":
+		return []adapter.AccountType{"portfolio_margin"}
 	case "daily", "large":
 		if d.Profile == "daily" && d.Structure == adapter.StructureBinanceClassic {
 			return []adapter.AccountType{"spot", "funding", "um_futures", "cm_futures", "earn", adapter.TypeDualInvestment}
