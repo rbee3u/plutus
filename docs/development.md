@@ -81,7 +81,9 @@ merge with `config/local.env`. The MySQL DSN comes only from `PLUTUS_DSN` or
 `PLUTUS_DSN_FILE`, never TOML. The credential encryption master key stays in
 `PLUTUS_MASTER_KEY` or `PLUTUS_MASTER_KEY_FILE` and must not appear in TOML.
 Without a key, credential writes, validation, and enabling return 503. Seed
-commands require a master key.
+commands require a master key. The optional `TG_RISK_TOKEN` Telegram bot token
+is a secret too: it is read from the process environment or the selected env
+file, never from TOML. It is paired with `telegram.chat_id` in TOML.
 
 The environment examples contain deployment differences and explicit environment
 permissions, rather than every default. Keep their listener, port, cookie
@@ -120,6 +122,9 @@ than reverting to defaults. Durations use Go notation such as `15s`, `2m`, and
 | `collection.fake_adapter`                  | `false`     | Register fake adapters for dev rather than live adapters                               |
 | `collection.proxy.mode`                    | `"direct"`  | Runtime platform proxy policy: direct or proxy                                         |
 | `collection.proxy.url`                     | `""`        | HTTP/HTTPS/SOCKS5/SOCKS5H URL with host and explicit port; required only in proxy mode |
+| `telegram.chat_id`                         | `""`        | Telegram group chat id; with `TG_RISK_TOKEN`, enables high-leverage alerts             |
+| `telegram.proxy.mode`                      | `"direct"`  | Telegram alert proxy policy: direct or proxy                                           |
+| `telegram.proxy.url`                       | `""`        | HTTP/HTTPS/SOCKS5/SOCKS5H URL with host and explicit port; required only in proxy mode |
 
 The three TLS settings are paths to PEM files and belong in TOML, including the
 private-key path. Secret values remain outside TOML. Environment variables such
@@ -198,6 +203,38 @@ for file selection and credential isolation.
 
 See the [runtime proxy delivery report](./platform/proxy-verification.md) for
 synthetic and agent verification coverage and remaining deployment gaps.
+
+### Telegram high-leverage alerts
+
+The optional risk alert needs both `TG_RISK_TOKEN` in the env file and
+`telegram.chat_id` in TOML. The bot must be a member of the group with
+permission to send messages. With either value missing, the feature stays
+disabled and logs one startup message. After every completed collection cycle,
+the server evaluates the stored point and sends one message when any supported
+account's known real leverage is strictly above 3; a browser does not need to be
+open. The condition, including stale known values and the account-only scope, is
+defined in the [domain rules](./domain-rules.md#collection-and-account-reports).
+The alert repeats every cycle while the condition holds, and a failed send is
+logged and retried naturally by the next cycle.
+
+Telegram uses its own explicit proxy policy so it never changes exchange
+routing:
+
+```toml
+[telegram]
+chat_id = "-1001234567890"
+
+[telegram.proxy]
+mode = "proxy"
+url = "http://127.0.0.1:7893"
+```
+
+`telegram.proxy` follows the same validation as `collection.proxy`, including
+the no-credentials rule and the prohibition on reading proxy environment
+variables. Leave it `direct` when the host reaches `api.telegram.org` directly.
+In local development, the fake `leverage-warning` seed sends a real message when
+Telegram is configured; use a test group or omit the token when that is not
+wanted.
 
 ### Logging
 

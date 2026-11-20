@@ -25,6 +25,9 @@ import (
 // IdentityDelay is the fixed runtime delay between identities in one collection cycle.
 const IdentityDelay = 3 * time.Second
 
+// notifyTimeout bounds the post-cycle external alert without blocking the worker.
+const notifyTimeout = 15 * time.Second
+
 // Error classes written by the runner itself.
 const (
 	ClassSkipped     = "skipped"
@@ -39,9 +42,16 @@ type Options struct {
 	Manual      *manual.Service
 	Valuation   *valuation.Service
 	Cycles      *cycle.Service
+	Notifier    CycleNotifier
 	Stagger     time.Duration
 	RetryDelays []time.Duration
 	Logger      *slog.Logger
+}
+
+// CycleNotifier delivers an external alert for one completed cycle. Its errors
+// never change the cycle outcome.
+type CycleNotifier interface {
+	NotifyCycle(ctx context.Context, portfolioID, cycleID uuid.UUID) error
 }
 
 // Service runs collection cycles.
@@ -56,6 +66,7 @@ type Service struct {
 	catalog     *catalog.Service
 	valuation   *valuation.Service
 	cycles      *cycle.Service
+	notifier    CycleNotifier
 	stagger     time.Duration
 	retryDelays []time.Duration
 	logger      *slog.Logger
@@ -66,7 +77,7 @@ func NewService(db *sql.DB, opts Options) *Service {
 	s := &Service{
 		db: db, q: sqlcgen.New(db), now: time.Now, sleep: sleepCtx, manual: opts.Manual,
 		adapters: opts.Adapters, identities: opts.Identities, catalog: opts.Catalog, valuation: opts.Valuation,
-		cycles: opts.Cycles, stagger: opts.Stagger, retryDelays: opts.RetryDelays, logger: opts.Logger,
+		cycles: opts.Cycles, notifier: opts.Notifier, stagger: opts.Stagger, retryDelays: opts.RetryDelays, logger: opts.Logger,
 	}
 	if s.retryDelays == nil {
 		s.retryDelays = []time.Duration{2 * time.Second, 5 * time.Second}
@@ -121,6 +132,7 @@ func plural(n int, one, many string) string {
 func (s *Service) RunCycle(ctx context.Context, portfolioID, cycleID uuid.UUID, claim ...*cycle.Claim) (Summary, error) {
 	point, err := s.valuation.PointByCycle(ctx, portfolioID, cycleID)
 	if err == nil {
+		s.notify(ctx, portfolioID, cycleID)
 		summary, err := s.cycleSummary(ctx, point)
 		if err != nil {
 			return Summary{}, err
@@ -144,6 +156,7 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, cycleID uuid.UUID, 
 		if err != nil {
 			return Summary{}, err
 		}
+		s.notify(ctx, portfolioID, cycleID)
 		return s.cycleSummary(ctx, point)
 	}
 	reports, err := s.q.ListReportsByCycle(ctx, sqlcgen.ListReportsByCycleParams{PortfolioID: portfolioID[:], CycleID: cycleID[:]})
@@ -228,6 +241,7 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, cycleID uuid.UUID, 
 	if err != nil {
 		return Summary{}, err
 	}
+	s.notify(ctx, portfolioID, cycleID)
 	summary, err := s.cycleSummary(ctx, point)
 	if err != nil {
 		return Summary{}, err
@@ -239,6 +253,20 @@ func (s *Service) RunCycle(ctx context.Context, portfolioID, cycleID uuid.UUID, 
 			slog.Int("connections_invalidated", summary.Invalidated))
 	}
 	return summary, nil
+}
+
+// notify runs the optional post-cycle alert. A failure is logged and never
+// changes the cycle result; the next cycle evaluates the condition again.
+func (s *Service) notify(ctx context.Context, portfolioID, cycleID uuid.UUID) {
+	if s.notifier == nil || ctx.Err() != nil {
+		return
+	}
+	notifyCtx, cancel := context.WithTimeout(ctx, notifyTimeout)
+	defer cancel()
+	if err := s.notifier.NotifyCycle(notifyCtx, portfolioID, cycleID); err != nil {
+		s.logger.ErrorContext(ctx, "telegram risk alert failed",
+			slog.String("portfolio_id", portfolioID.String()), slog.String("cycle_id", cycleID.String()), slog.Any("err", err))
+	}
 }
 
 // collectIdentity calls the adapter with bounded retries and writes one report per selected account.

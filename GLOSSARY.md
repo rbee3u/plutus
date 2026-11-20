@@ -112,6 +112,12 @@ whose known real leverage is strictly above 3; it repeats on the visible
 identity and platform rows without defining a parent ratio. _Avoid_: risk score,
 margin call, universal risk ratio.
 
+**risk alert**: An optional Telegram message after a completed collection cycle
+that lists every supported unified account whose known real leverage is strictly
+above 3. It repeats each cycle, never aggregates ancestors, and is not a margin
+call or a delivery guarantee. _Avoid_: margin call, liquidation notice, alert
+history.
+
 **complete set**: All balances, positions, earn positions, and dual positions
 held by one account according to a successful account report.
 

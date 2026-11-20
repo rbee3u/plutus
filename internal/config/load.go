@@ -57,6 +57,10 @@ type fileConfig struct {
 		FakeAdapter                 bool      `toml:"fake_adapter"`
 		Proxy                       proxyFile `toml:"proxy"`
 	} `toml:"collection"`
+	Telegram struct {
+		ChatID string    `toml:"chat_id"`
+		Proxy  proxyFile `toml:"proxy"`
+	} `toml:"telegram"`
 	Database struct {
 		AllowReset bool `toml:"allow_reset"`
 	} `toml:"database"`
@@ -110,6 +114,7 @@ func defaults() Config {
 			ConnectionValidationTimeout: 15 * time.Second,
 			Proxy:                       Proxy{Mode: defaultProxyMode},
 		},
+		Telegram: Telegram{Proxy: Proxy{Mode: defaultProxyMode}},
 	}
 }
 
@@ -178,6 +183,8 @@ func overlayFile(cfg *Config, parsed *fileConfig) error {
 	}
 	cfg.Collection.FakeAdapter = parsed.Collection.FakeAdapter
 	cfg.Collection.Proxy = parsed.Collection.Proxy.policy()
+	cfg.Telegram.ChatID = strings.TrimSpace(parsed.Telegram.ChatID)
+	cfg.Telegram.Proxy = parsed.Telegram.Proxy.policy()
 	cfg.Database.AllowReset = parsed.Database.AllowReset
 	if parsed.Logging.Directory != nil {
 		cfg.Logging.Directory = strings.TrimSpace(*parsed.Logging.Directory)

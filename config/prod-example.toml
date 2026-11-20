@@ -35,3 +35,12 @@ mode = "direct"
 # A local sing-box HTTP/SOCKS entry point can forward through an external SS tunnel.
 # Set mode = "proxy" before configuring the URL; usernames and passwords are not accepted.
 # url = "http://127.0.0.1:7890"
+
+# [telegram]
+# Optional high-leverage alerts; set TG_RISK_TOKEN in the matching env file too.
+# chat_id = "-100..."
+
+# [telegram.proxy]
+# These hosts normally reach Telegram directly; proxy is for restricted egress.
+# mode = "proxy"
+# url = "http://127.0.0.1:7890"

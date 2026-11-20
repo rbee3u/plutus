@@ -14,6 +14,7 @@ const (
 	envDSNFile       = "PLUTUS_DSN_FILE"
 	envMasterKey     = "PLUTUS_MASTER_KEY"
 	envMasterKeyFile = "PLUTUS_MASTER_KEY_FILE"
+	envTelegramToken = "TG_RISK_TOKEN" // #nosec G101 -- Environment variable name, not a secret value.
 
 	defaultListenAddress        = "0.0.0.0"
 	defaultPort                 = 8080
@@ -41,6 +42,7 @@ type Config struct {
 	Server     Server
 	Auth       Auth
 	Collection Collection
+	Telegram   Telegram
 	Database   Database
 	Crypto     Crypto
 	Logging    Logging
@@ -122,10 +124,23 @@ type Collection struct {
 	Proxy Proxy
 }
 
-// Proxy holds the instance-wide runtime platform proxy policy.
+// Proxy holds an explicit outbound proxy policy.
 type Proxy struct {
 	Mode string
 	URL  string
+}
+
+// Telegram holds the optional high-leverage alert bot settings. The token is a
+// secret and must never be logged.
+type Telegram struct {
+	BotToken string
+	ChatID   string
+	Proxy    Proxy
+}
+
+// Enabled reports whether both the bot token and chat id are configured.
+func (t Telegram) Enabled() bool {
+	return t.BotToken != "" && t.ChatID != ""
 }
 
 // Database holds the MySQL DSN and development-reset permission. The DSN must never be logged.

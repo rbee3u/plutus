@@ -201,3 +201,21 @@ local sing-box entry point may forward through SS to an allowlisted exit; Plutus
 does not implement SS or fall back to direct access. Verify the actual exit IPv4
 and successful account reports separately from readiness. When moving an
 existing database, retain its original credential encryption master key.
+
+## Telegram alerts
+
+Optional high-leverage alerts need `TG_RISK_TOKEN` in `test.env` or `prod.env`
+and `telegram.chat_id` in the matching TOML. The bot must be a member of the
+target group with permission to send messages. Missing either value disables the
+feature without failing startup.
+
+The test and prod hosts normally reach `api.telegram.org` directly. If egress is
+restricted, configure
+[`telegram.proxy`](./development.md#telegram-high-leverage-alerts) independently
+of `collection.proxy`; the two policies do not share a route. Restart the
+service after changing either the token or the TOML.
+
+Delivery is best-effort: each completed collection cycle evaluates the condition
+again, and a failed send appears in `app.log` as `telegram risk alert failed`.
+The next cycle retries while the condition holds. There is no delivery history,
+outbox, or guaranteed message for a specific cycle.

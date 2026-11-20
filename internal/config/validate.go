@@ -15,6 +15,9 @@ func Validate(cfg *Config, opts *Options) error {
 	if err := validateProxy(&cfg.Collection.Proxy, "collection.proxy"); err != nil {
 		return err
 	}
+	if err := validateProxy(&cfg.Telegram.Proxy, "telegram.proxy"); err != nil {
+		return err
+	}
 	if err := validateLogging(&cfg.Logging); err != nil {
 		return err
 	}

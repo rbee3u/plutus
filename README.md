@@ -25,6 +25,8 @@ Implemented capabilities:
   manual balances for API-uncovered quantities. Overview warns when a supported
   unified account's real leverage is above 3, on the account and its visible
   identity and platform rows.
+- Optional Telegram high-leverage alerts use the same condition after each
+  completed collection cycle.
 - Historical points, calendar comparisons, manual capital flows, asset mapping,
   asset exclusions, and audit history.
 - Rotating application, access, and SQL logs, plus a deterministic

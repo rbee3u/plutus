@@ -213,6 +213,15 @@ uncommitted work uses the current boundary and connections. Valuation then
 selects compatible source reports, calculates account values and boundary
 events, and writes one valuation point for the cycle.
 
+After the point transaction commits, the collection runner invokes an optional
+notifier for the portfolio and cycle. The notifier loads the point's account
+valuations and each supported account's stored positions, applies the same
+real-leverage predicate as Overview, and sends one plain-text Telegram message
+per cycle when any account qualifies. The call is bounded and best-effort: a
+failure is logged and never changes the cycle result, and no delivery state is
+stored. The Telegram client uses its own explicit proxy policy and never reads
+proxy environment variables.
+
 Temporary and rate-limit adapter failures have bounded retries within the cycle.
 `unsupported` failures, including detected structure mismatches, are not retried
 within that run. Enabled connections remain scheduled for later cycles.
@@ -547,7 +556,9 @@ snapshot, sharing the latest point and adopted account evidence. Its
 high-leverage warning reads positions for the same displayed point in one
 browser request, loading every page; the read is display-only and never starts a
 collection or exchange request. A failed or mismatched read leaves the warning
-map empty and exposes the neutral unavailable status. The point owns its total,
+map empty and exposes the neutral unavailable status. The server-side risk alert
+applies the same predicate from stored accounts and positions after a point
+commits; it does not use this browser read. The point owns its total,
 completeness, and counts; charts use the separate series read. Series points
 carry only their identity, time, total, and completeness, avoiding unused
 boundary aggregation. One account report read resolves its point and compatible

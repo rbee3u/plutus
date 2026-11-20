@@ -132,14 +132,23 @@ separate single-collateral wallet and is excluded. This is not a universal
 notional or leverage formula, and it does not change position margin or reported
 account measures.
 
-A high-leverage warning is a display-only Overview rule for the same supported
-scopes: a known real leverage strictly above 3 warns on the account and on every
-visible identity and platform ancestor. An ancestor warning means that a
-displayed descendant exceeds the threshold; it does not define an aggregate
-ratio, sum, or maximum. Unknown real leverage does not warn, while a stale known
-value still does. The warning is not a reported margin ratio, a liquidation
-prediction, or a universal cross-platform risk measure. History and Activity do
-not present it as a current warning.
+A high-leverage warning is an Overview rule for the same supported scopes: a
+known real leverage strictly above 3 warns on the account and on every visible
+identity and platform ancestor. An ancestor warning means that a displayed
+descendant exceeds the threshold; it does not define an aggregate ratio, sum, or
+maximum. Unknown real leverage does not warn, while a stale known value still
+does. The warning is not a reported margin ratio, a liquidation prediction, or a
+universal cross-platform risk measure. History and Activity do not present it as
+a current warning.
+
+The same condition drives an optional risk alert after each completed collection
+cycle. One Telegram message per portfolio lists every supported account above
+the threshold at that point; it repeats every cycle while the condition holds. A
+stale known value is included, while unknown values, failed cycles, and
+historical points are not. A failed position read omits only that account. The
+alert is account-scoped, defines no parent aggregate, and is best-effort:
+delivery failure is logged, never changes collection, and creates no durable
+delivery record. It is not a margin call or a liquidation prediction.
 
 ## Manual balances
 

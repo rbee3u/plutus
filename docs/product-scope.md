@@ -27,6 +27,10 @@ confirmed empty accounts hide. See
 [Overview and navigation](./presentation.md#overview-and-navigation) and
 [manual/empty account rules](./domain-rules.md#manual-balances).
 
+Optional Telegram risk alerts repeat the same high-leverage condition after each
+completed collection cycle. They are a best-effort convenience, not a monitoring
+service, margin call, or durable notification history.
+
 Holdings has independent balances, futures, earn, and dual investment views,
 with balances as the default. Earn preserves source product granularity and
 qualifies rates, amounts, rewards, and lifecycle stages. Options is not offered.

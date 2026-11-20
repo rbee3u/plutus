@@ -19,14 +19,22 @@ func applySecrets(cfg *Config, opts *Options) error {
 	if err != nil {
 		return err
 	}
-	if keyRaw == "" {
-		return nil
+	if keyRaw != "" {
+		key, err := decodeMasterKey(keyRaw)
+		if err != nil {
+			return err
+		}
+		cfg.Crypto.MasterKey = key
 	}
-	key, err := decodeMasterKey(keyRaw)
-	if err != nil {
-		return err
+
+	token, ok := opts.LookupEnv(envTelegramToken)
+	if ok {
+		token = strings.TrimSpace(token)
+		if token == "" {
+			return fmt.Errorf("%s is empty", envTelegramToken)
+		}
+		cfg.Telegram.BotToken = token
 	}
-	cfg.Crypto.MasterKey = key
 	return nil
 }
 

@@ -31,10 +31,10 @@ predate it.
 Identity names and account combinations borrow the shapes of a locally inspected
 production dump from October 11–13, 2026. Without exchange prefixes, generic
 labels such as `main`, `sum`, `coinM`, and `usdM` are retained; personal
-sub-login labels become `sub-01` through `sub-04`. No production IDs, credentials,
-sessions, exact balances, or financial records are imported. The dump's roughly
-57-hour history cannot establish the realism of three-month synthetic curves or
-long-term failure frequencies.
+sub-login labels become `sub-01` through `sub-04`. No production IDs,
+credentials, sessions, exact balances, or financial records are imported. The
+dump's roughly 57-hour history cannot establish the realism of three-month
+synthetic curves or long-term failure frequencies.
 
 `default` has four Binance portfolio margin logins, one Binance classic login,
 four OKX logins (one portfolio margin and three Multi-currency margin), one
@@ -51,37 +51,39 @@ Binance classic USDⓈ-M and COIN-M wallets, the OKX USDⓈ-M wallet, Bybit unif
 and Kraken Coin-M, all with expiry ahead of the anchor. Most earn descriptions
 are flexible product aggregates; Kraken retains strategy granularity and
 bonded/timed descriptions. Dual has just two current BTC/USDT subscriptions
-under `sum`, with 120 USDT and 0.002 BTC principal. Other selected dual
-wallets are empty. Optional measures stay unknown where the simulated platform
-does not supply them.
+under `sum`, with 120 USDT and 0.002 BTC principal. Other selected dual wallets
+are empty. Optional measures stay unknown where the simulated platform does not
+supply them.
 
 Expand identities and accounts in Overview, then inspect balances, futures,
 earn, and dual investment. Create a new portfolio to inspect empty state.
 
 `leverage-warning` exists only to exercise the Overview high-leverage warning.
 Its Binance portfolio-margin account reports 1,000 USD adjusted equity and one
-4,000 USD position, so Real leverage is 4x. Select the portfolio after login;
-it is synthetic data and does not affect `default`.
+4,000 USD position, so Real leverage is about 4x. Select the portfolio after
+login; it is synthetic data and does not affect `default`. When Telegram is
+configured, collecting this portfolio sends one risk alert per cycle while the
+condition holds.
 
 The table uses `D` for the rounded UTC seed anchor. Find exact timestamps in
 capital or Activity; History labels use the portfolio timezone.
 
-| When            | Event                                                         | Expected result                                                           |
-| --------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| D−60 days       | `sub-04` Spot receives 0.1 BTC                                | A valued contribution offsets the increase in value change                |
-| D−30 days       | `sub-04` funding receives 5,000 USDT                          | Capital records the contribution                                          |
-| D−8 to D−4 days | A historical SOL hedge opens and closes in `sub-04` USDⓈ-M    | The position disappears after success; realized PnL remains in collateral |
-| D−6 to D−5 days | Temporary Bybit outage                                        | Historical reports are stale; current Bybit is healthy                    |
-| D−5 days        | `sub-04` funding withdraws 1,000 USDC                         | Capital records the withdrawal                                            |
-| D−3 days        | 750 USDT moves funding → Spot                                 | Total principal is unchanged; no capital flow is invented                 |
-| D−3 days        | `sub-04` earn/dual terms return principal                     | 400/200 USDT returns to funding after the product rows disappear          |
-| D−3 days        | Bybit changes cross → portfolio margin                        | Historical reports retain their observed regime                           |
-| D−2 days        | `retired` is archived                                         | Earlier holdings and boundary withdrawals remain in History               |
+| When            | Event                                                      | Expected result                                                           |
+| --------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------- |
+| D−60 days       | `sub-04` Spot receives 0.1 BTC                             | A valued contribution offsets the increase in value change                |
+| D−30 days       | `sub-04` funding receives 5,000 USDT                       | Capital records the contribution                                          |
+| D−8 to D−4 days | A historical SOL hedge opens and closes in `sub-04` USDⓈ-M | The position disappears after success; realized PnL remains in collateral |
+| D−6 to D−5 days | Temporary Bybit outage                                     | Historical reports are stale; current Bybit is healthy                    |
+| D−5 days        | `sub-04` funding withdraws 1,000 USDC                      | Capital records the withdrawal                                            |
+| D−3 days        | 750 USDT moves funding → Spot                              | Total principal is unchanged; no capital flow is invented                 |
+| D−3 days        | `sub-04` earn/dual terms return principal                  | 400/200 USDT returns to funding after the product rows disappear          |
+| D−3 days        | Bybit changes cross → portfolio margin                     | Historical reports retain their observed regime                           |
+| D−2 days        | `retired` is archived                                      | Earlier holdings and boundary withdrawals remain in History               |
 
-Only `sub-04` owns the scripted investment and transfer events. Ordinary
-rolling cohorts keep entry and subscription dates stable; bounded price waves
-repeat at close/reopen boundaries. Long-term curves and all scripted financial
-events are synthetic.
+Only `sub-04` owns the scripted investment and transfer events. Ordinary rolling
+cohorts keep entry and subscription dates stable; bounded price waves repeat at
+close/reopen boundaries. Long-term curves and all scripted financial events are
+synthetic.
 
 ## Edge walkthrough
 
@@ -143,13 +145,11 @@ connections in 76 ms. The seed load reported 2.442 seconds, excluding migration
 and compilation. This single host measurement is not a performance guarantee.
 
 On the embedded SPA at :8081, Alice switched between both portfolios. `default`
-had 12 active identities and 67 selected accounts, with approximately
-$266,112
+had 12 active identities and 67 selected accounts, with approximately $266,112
 known value, no stale accounts, and complete valuation. Its current holdings had
 72 balances, 28 futures positions, 20 earn descriptions, and two dual
-subscriptions. The main Binance login concentrated about $64k
-in portfolio margin and $50k in earn. Fresh empty wallets stayed hidden from
-Overview.
+subscriptions. The main Binance login concentrated about $64k in portfolio
+margin and $50k in earn. Fresh empty wallets stayed hidden from Overview.
 
 Interaction covered all four holdings views and both manual collections. Normal
 collection preserved completeness and product counts. `edge-cases` retained
