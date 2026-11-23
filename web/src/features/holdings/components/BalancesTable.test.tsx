@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { BalanceRow } from "@/api";
 import { DataTable } from "@/shared/ui/DataTable";
-import { BALANCE_COLUMNS, balanceRow } from "./BalancesTable";
+import { BALANCE_COLUMNS, balanceRow, riskExposureUsd } from "./BalancesTable";
 
 const balance: BalanceRow = {
   interest: null,
@@ -110,8 +110,10 @@ describe("shared balance cells", () => {
       { ...balance, riskExposure: "-1.20309", priceSource: "spot" },
       "Asia/Shanghai",
     );
-    expect(known.riskExposure).toBe("-1.20309");
-    expect(renderToStaticMarkup(<>{known.riskExposure}</>)).not.toContain("pnlNegative");
+    const knownHtml = renderToStaticMarkup(<>{known.riskExposure}</>);
+    expect(knownHtml).toContain('aria-label="XBT risk exposure -1.20309"');
+    expect(knownHtml).toContain("-1.20309");
+    expect(knownHtml).not.toContain("pnlNegative");
 
     const unavailable = balanceRow(
       {
@@ -126,7 +128,7 @@ describe("shared balance cells", () => {
     expect(html.replace(/<[^>]*>/g, "")).toBe("—");
   });
 
-  it("marks a contract-only row and uses the contract mark price with a disclosure", () => {
+  it("discloses a contract-only row on the asset symbol and uses the contract mark price", () => {
     const item: BalanceRow = {
       ...balance,
       equity: "0",
@@ -140,10 +142,96 @@ describe("shared balance cells", () => {
       priceSourceSymbol: "XBTUSDT",
     };
     const row = balanceRow(item, "Asia/Shanghai");
-    expect(renderToStaticMarkup(<>{row.symbol}</>)).toContain("Contract only");
+    const symbol = renderToStaticMarkup(<>{row.symbol}</>);
+    expect(symbol).toContain('aria-label="XBT"');
+    // The disclosure lives in the closed popover, so the row no longer shows the text.
+    expect(symbol).not.toContain("Contract only");
     const price = renderToStaticMarkup(<>{row.priceUsd}</>);
     expect(price).toContain('aria-label="XBT contract mark price source"');
     expect(price).toContain("50,000");
     expect(price).not.toContain("Missing price");
+  });
+
+  it("leaves a symbol without contract-only exposure as plain text", () => {
+    const row = balanceRow({ ...balance, canonicalAssetSymbol: "XBT" }, "Asia/Shanghai");
+    expect(renderToStaticMarkup(<>{row.symbol}</>)).not.toContain("<button");
+  });
+});
+
+describe("risk exposure USD disclosure", () => {
+  const item = (values: Partial<BalanceRow>): BalanceRow => ({
+    ...balance,
+    assetSymbol: "ADA",
+    canonicalAssetSymbol: "ADA",
+    priceSource: "spot",
+    ...values,
+  });
+
+  it("derives the signed USD value with the shared USD format", () => {
+    expect(riskExposureUsd(item({ riskExposure: "107.088", priceUsd: "0.1458" }))).toEqual({
+      kind: "usd",
+      text: "$15.61",
+    });
+    expect(riskExposureUsd(item({ riskExposure: "-5.198", priceUsd: "1721.57" }))).toEqual({
+      kind: "usd",
+      text: "-$8,948.72",
+    });
+    expect(riskExposureUsd(item({ riskExposure: "9.43609", priceUsd: "40.61" }))).toEqual({
+      kind: "usd",
+      text: "$383.2",
+    });
+  });
+
+  it("keeps a known zero at $0 even without a price", () => {
+    expect(riskExposureUsd(item({ riskExposure: "0", priceUsd: "4.753" }))).toEqual({
+      kind: "usd",
+      text: "$0",
+    });
+    expect(riskExposureUsd(item({ riskExposure: "0", priceUsd: null }))).toEqual({
+      kind: "usd",
+      text: "$0",
+    });
+    expect(
+      riskExposureUsd(item({ riskExposure: "0", priceUsd: "50000", priceSource: "contract" })),
+    ).toEqual({ kind: "usd", text: "$0" });
+  });
+
+  it("names a missing or nonpositive price instead of inventing a value", () => {
+    for (const priceUsd of [null, "0", "-1", "not-a-number"]) {
+      expect(riskExposureUsd(item({ riskExposure: "-0.5", priceUsd }))).toEqual({
+        kind: "unavailable",
+        text: "USD value unavailable: price is missing.",
+      });
+    }
+  });
+
+  it("identifies the contract mark price fallback", () => {
+    expect(
+      riskExposureUsd(item({ riskExposure: "-0.5", priceUsd: "50000", priceSource: "contract" })),
+    ).toEqual({
+      kind: "usd",
+      text: "-$25,000",
+      note: "at contract mark price",
+    });
+  });
+
+  it("does not disclose a USD value for an unavailable exposure", () => {
+    expect(
+      riskExposureUsd(item({ riskExposure: null, riskExposureUnavailableReason: "not_unified" })),
+    ).toBeNull();
+  });
+
+  it("renders a disclosure trigger only for a parsable exposure", () => {
+    const known = balanceRow(
+      item({ riskExposure: "107.088", priceUsd: "0.1458" }),
+      "Asia/Shanghai",
+    );
+    const html = renderToStaticMarkup(<>{known.riskExposure}</>);
+    expect(html).toContain('aria-label="ADA risk exposure 107.088"');
+    expect(html).toContain("107.088");
+    expect(html).toContain("<button");
+
+    const invalid = balanceRow(item({ riskExposure: "not-a-number" }), "Asia/Shanghai");
+    expect(renderToStaticMarkup(<>{invalid.riskExposure}</>)).toBe("—");
   });
 });

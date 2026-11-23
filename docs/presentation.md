@@ -358,11 +358,22 @@ aligned, uses quantity precision, and keeps its sign without a leading `+`; a
 known zero is `0`. Profit colors do not apply. Unavailable values are `—` with a
 disclosure naming the reason: not a unified account, platform pending, or
 unavailable position inputs. The header discloses the formula and exclusions.
-Rows for assets with contracts but no nonzero spot balance carry a neutral
-`Contract only` badge and zero Equity, Liability, and Equity (USD); their
-Unrealized PnL is the actual coin-settled result, with a zero contribution from
-positions settled in another coin. A contract mark price fallback is shown with
-a dotted disclosure on Price and is not used for valuation.
+
+Known values disclose their USD value on pointer hover, keyboard focus, or
+click/touch: the signed coin quantity multiplied by the row's displayed Price
+(USD). The value is formatted like other USD amounts, preserves its sign, and
+takes no profit color. A contract mark price fallback is identified as
+`at contract mark price`; a missing or nonpositive price shows
+`USD value unavailable: price is missing.` A known zero is `$0`, even without a
+price. This is a display derivation, not a USD exposure metric; the column still
+shows the signed coin quantity.
+
+Rows for assets with contracts but no nonzero spot balance have zero Equity,
+Liability, and Equity (USD) and disclose `Contract only` from the Asset symbol
+on hover, focus, or click; their Unrealized PnL is the actual coin-settled
+result, with a zero contribution from positions settled in another coin. A
+contract mark price fallback is shown with a dotted disclosure on Price and is
+not used for valuation.
 
 ### Futures
 

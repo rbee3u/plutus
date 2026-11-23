@@ -4,10 +4,15 @@ import { IconButton } from "@/shared/ui/IconButton";
 import { iconSize } from "@/shared/icons/iconSizes";
 import { NumericText } from "@/shared/ui/NumericText";
 import type { AccountReport, AccountValuation, BalanceRow, Issue } from "@/api";
-import { formatAmount, formatDecimal, formatPrice, parseDecimal } from "@/shared/lib/amount";
+import {
+  formatAmount,
+  formatDecimal,
+  formatPrice,
+  formatUsd,
+  parseDecimal,
+} from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { NO_ACCOUNT_REPORT } from "@/shared/lib/text";
-import { Badge } from "@/shared/ui/Badge";
 import { DataTable, type DataRow } from "@/shared/ui/DataTable";
 import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { ObservedCell } from "./ObservedCell";
@@ -108,6 +113,7 @@ const RISK_EXPOSURE_HEADER = (
       Funding, earn, dual investment, other accounts, and options are not included. Available for
       supported unified accounts.
     </p>
+    <p>Hover, focus, or tap a value for its USD value at the displayed Price (USD).</p>
   </HoverDetails>
 );
 
@@ -169,16 +175,22 @@ function balanceLiability(item: BalanceRow) {
 
 function symbolCell(item: BalanceRow) {
   const mapped = item.canonicalAssetSymbol && item.canonicalAssetSymbol !== item.assetSymbol;
-  if (!mapped && !item.contractOnly) return item.assetSymbol;
+  const symbol = item.contractOnly ? (
+    <HoverDetails
+      className={styles.assetSymbolTrigger}
+      name={item.assetSymbol}
+      label={item.assetSymbol}
+    >
+      <p>Contract only</p>
+    </HoverDetails>
+  ) : (
+    item.assetSymbol
+  );
+  if (!mapped) return symbol;
   return (
     <span className={shared.cellStack}>
-      <span className={styles.assetBadgeRow}>
-        <span>{item.assetSymbol}</span>
-        {item.contractOnly ? <Badge tone="neutral">Contract only</Badge> : null}
-      </span>
-      {mapped ? (
-        <span className={shared.cellMeta}>Canonical asset: {item.canonicalAssetSymbol}</span>
-      ) : null}
+      {symbol}
+      <span className={shared.cellMeta}>Canonical asset: {item.canonicalAssetSymbol}</span>
     </span>
   );
 }
@@ -204,8 +216,50 @@ function priceCell(item: BalanceRow) {
   return formatPrice(item.priceUsd);
 }
 
+export type RiskExposureUsd =
+  { kind: "usd"; text: string; note?: string } | { kind: "unavailable"; text: string };
+
+/**
+ * The USD value disclosed for a known risk exposure. Zero stays zero without a
+ * price; any other exposure needs a positive price. Null means the exposure is
+ * absent or malformed, so no USD disclosure is rendered.
+ */
+export function riskExposureUsd(item: BalanceRow): RiskExposureUsd | null {
+  if (item.riskExposure == null) return null;
+  const exposure = parseDecimal(item.riskExposure);
+  if (!exposure) return null;
+  if (exposure.isZero()) return { kind: "usd", text: formatUsd("0") };
+  const price = parseDecimal(item.priceUsd);
+  if (!price || price.lte(0)) {
+    return { kind: "unavailable", text: "USD value unavailable: price is missing." };
+  }
+  const text = formatUsd(exposure.times(price).toString());
+  return item.priceSource === "contract"
+    ? { kind: "usd", text, note: "at contract mark price" }
+    : { kind: "usd", text };
+}
+
 function riskExposureCell(item: BalanceRow) {
-  if (item.riskExposure != null) return formatDecimal(item.riskExposure);
+  if (item.riskExposure != null) {
+    const value = riskExposureUsd(item);
+    if (!value) return formatDecimal(item.riskExposure);
+    const label = formatDecimal(item.riskExposure);
+    return (
+      <HoverDetails
+        name={`${item.assetSymbol} risk exposure ${label}`}
+        label={<NumericText>{label}</NumericText>}
+      >
+        {value.kind === "usd" ? (
+          <p>
+            <NumericText>{value.text}</NumericText>
+          </p>
+        ) : (
+          <p>{value.text}</p>
+        )}
+        {value.kind === "usd" && value.note ? <p className={shared.muted}>{value.note}</p> : null}
+      </HoverDetails>
+    );
+  }
   const reason = item.riskExposureUnavailableReason;
   if (!reason) return "—";
   return (

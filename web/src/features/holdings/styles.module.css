@@ -364,15 +364,21 @@
   margin: -4px 0;
 }
 
-.assetBadgeRow,
 .riskExposureHeader {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
 }
 
-.riskExposureHeader {
-  gap: var(--space-xs);
+/* Expand the pointer target to 24px without changing the row height. */
+.assetSymbolTrigger {
+  position: relative;
+}
+
+.assetSymbolTrigger::after {
+  content: "";
+  position: absolute;
+  inset: -2px -4px;
 }
 
 .riskExposureTrigger {

@@ -331,7 +331,7 @@ test("Balance asset search keeps symbol queries and Observed discloses the corre
   expect(state.mutations).toHaveLength(0);
 });
 
-test("Risk exposure marks a contract-only row and discloses its mark price", async ({ page }) => {
+test("Risk exposure discloses a contract-only row and its mark price", async ({ page }) => {
   const state = await fixture(page);
   state.balances = [
     {
@@ -376,16 +376,164 @@ test("Risk exposure marks a contract-only row and discloses its mark price", asy
     "Risk exposure",
     "Issues",
   ]);
-  await expect(page.getByText("Contract only", { exact: true })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "-0.5" })).toBeVisible();
+  const contractOnly = page.getByRole("button", { name: "BTC", exact: true });
+  await contractOnly.hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Contract only");
+  await page.keyboard.press("Escape");
+  await expect(page.getByText("Contract only", { exact: true })).toHaveCount(0);
+  await contractOnly.focus();
+  await expect(page.getByRole("tooltip")).toHaveText("Contract only");
+  await page.keyboard.press("Escape");
+  const exposure = page.getByRole("button", { name: "BTC risk exposure -0.5" });
+  await exposure.hover();
+  await expect(page.getByRole("tooltip")).toContainText("-$25,000");
+  await expect(page.getByRole("tooltip")).toContainText("at contract mark price");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("tooltip")).toBeHidden();
+  await exposure.focus();
+  await expect(page.getByRole("tooltip")).toContainText("-$25,000");
+  await page.keyboard.press("Escape");
   const header = page.getByRole("button", { name: "Risk exposure definition" });
   await header.focus();
   await expect(page.getByRole("tooltip")).toContainText("Spot equity plus");
+  await expect(page.getByRole("tooltip")).toContainText(
+    "Hover, focus, or tap a value for its USD value",
+  );
   await page.keyboard.press("Escape");
   const price = page.getByRole("button", { name: "BTC contract mark price source" });
   await price.focus();
   await expect(page.getByRole("tooltip")).toContainText("BTCUSDT");
   await expect(page.getByRole("tooltip")).toContainText("not used for valuation");
+  expect(state.mutations).toHaveLength(0);
+});
+
+test("Risk exposure discloses the signed USD value for spot prices", async ({ page }) => {
+  const state = await fixture(page);
+  const row = (
+    values: Partial<BalanceRow> & Pick<BalanceRow, "accountId" | "assetId" | "assetSymbol">,
+  ): BalanceRow => {
+    const { accountId, assetId, assetSymbol, ...rest } = values;
+    return {
+      accountId,
+      accountName: "Portfolio margin",
+      accountType: "portfolio_margin",
+      identityId: bn,
+      identityName: "main",
+      platform: "binance",
+      assetId,
+      assetSymbol,
+      canonicalAssetSymbol: assetSymbol,
+      equity: "0",
+      availableToWithdraw: null,
+      availableToTrade: null,
+      liability: "0",
+      interest: null,
+      unrealizedPnl: "0",
+      priceUsd: "1",
+      equityUsd: "0",
+      noPrice: false,
+      riskExposure: "0",
+      contractOnly: false,
+      priceSource: "spot",
+      priceSourceSymbol: null,
+      freshness: "fresh",
+      reportObservedAt: "2026-10-03T00:00:00Z",
+      ...rest,
+    };
+  };
+  state.balances = [
+    row({
+      accountId: "margin",
+      assetId: "asset-ada",
+      assetSymbol: "ADA",
+      equity: "27785.66",
+      priceUsd: "0.1458",
+      equityUsd: "4051.15",
+      liability: "2.71148",
+      unrealizedPnl: "6090.24",
+      riskExposure: "107.088",
+    }),
+    row({
+      accountId: "margin",
+      assetId: "asset-eth",
+      assetSymbol: "ETH",
+      priceUsd: "1721.57",
+      riskExposure: "-5.198",
+      contractOnly: true,
+    }),
+    row({
+      accountId: "margin",
+      assetId: "asset-uni",
+      assetSymbol: "UNI",
+      equity: "765",
+      priceUsd: "4.753",
+      equityUsd: "3636.05",
+      riskExposure: "0",
+    }),
+    row({
+      accountId: "margin",
+      assetId: "asset-ltc",
+      assetSymbol: "LTC",
+      equity: "382.59",
+      priceUsd: "40.61",
+      equityUsd: "15536.99",
+      riskExposure: "9.43609",
+    }),
+    row({
+      accountId: "margin",
+      assetId: "asset-xrp",
+      assetSymbol: "XRP",
+      equity: "11418.37",
+      priceUsd: null,
+      equityUsd: null,
+      noPrice: true,
+      riskExposure: "-0.5",
+    }),
+  ];
+  state.balanceIssues = [];
+  await page.goto(`/p/${portfolioId}/holdings/balances`);
+  await expect(page.getByRole("columnheader")).toHaveText([
+    /Platform/,
+    /Identity/,
+    "Account",
+    "Asset",
+    "Equity",
+    "Price (USD)",
+    "Equity (USD)",
+    "Liability",
+    "Unrealized PnL",
+    "Risk exposure",
+    "Issues",
+  ]);
+
+  for (const [name, expected] of [
+    ["ADA risk exposure 107.088", "$15.61"],
+    ["ETH risk exposure -5.198", "-$8,948.72"],
+    ["UNI risk exposure 0", "$0"],
+    ["LTC risk exposure 9.43609", "$383.2"],
+    ["XRP risk exposure -0.5", "USD value unavailable: price is missing."],
+  ] as const) {
+    await page.getByRole("button", { name }).focus();
+    await expect(page.getByRole("tooltip")).toHaveText(expected);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("tooltip")).toBeHidden();
+  }
+
+  const ada = page.getByRole("button", { name: "ADA risk exposure 107.088" });
+  await ada.hover();
+  await expect(page.getByRole("tooltip")).toHaveText("$15.61");
+  await page.keyboard.press("Escape");
+  await ada.click();
+  await expect(page.getByRole("tooltip")).toHaveText("$15.61");
+  await ada.click();
+  await expect(page.getByRole("tooltip")).toBeHidden();
+
+  const header = page.getByRole("button", { name: "Risk exposure definition" });
+  await header.focus();
+  await expect(page.getByRole("tooltip")).toContainText(
+    "Hover, focus, or tap a value for its USD value",
+  );
+  await page.keyboard.press("Escape");
   expect(state.mutations).toHaveLength(0);
 });
 
