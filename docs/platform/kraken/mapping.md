@@ -235,11 +235,11 @@ routing uses the futures contract type, not its symbol prefix or expiry.
 
 ## Risk exposure
 
-The current rollout reports `platform_pending`; Kraken positions and balances
-are not netted into a displayed exposure yet. Inputs are present:
-`openpositions` sizes are contracts times `contractSize`, inverse size is quote
-face, and the mark price is stored. Unified main holds multi-collateral futures;
-inverse and vanilla positions belong to coin_m and are separate accounts.
+Unified main's multi-collateral `currencies[].quantity` is the spot leg;
+flexible linear positions contribute base quantity and settle in USD. Inverse
+and vanilla positions belong to coin_m and are separate accounts, so they do not
+enter main's exposure. Contract-only base assets are synthesized when needed;
+the mark price supplies the display-only contract fallback.
 
 ## Prices
 

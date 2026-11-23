@@ -8,6 +8,14 @@ import (
 	"github.com/rbee3u/plutus/internal/shared/decimal"
 )
 
+func TestRiskExposurePlatformGateCoversSupportedScopes(t *testing.T) {
+	for _, platform := range []adapter.Platform{adapter.PlatformBinance, adapter.PlatformOKX, adapter.PlatformBybit, adapter.PlatformKraken} {
+		if !riskExposurePlatforms[platform] {
+			t.Errorf("%s is missing from the risk exposure rollout", platform)
+		}
+	}
+}
+
 func TestRiskAssetsNetsLinearAndInverseContracts(t *testing.T) {
 	positions := []PositionRow{
 		{

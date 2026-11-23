@@ -24,9 +24,11 @@ Supported scopes are Binance portfolio margin, OKX unified trading, Bybit
 unified, and Kraken unified main. Kraken coin_m and derivatives holding are
 separate accounts and do not enter main's account-level exposure. Funding, earn,
 dual investment, manual balances, and other accounts are excluded. Options are
-not collected and do not contribute; Binance PM is a known blind spot. Platform
-rollout is explicit: a supported scope without an enabled calculation is
-unknown, never zero. The current rollout computes Binance portfolio margin only.
+not collected and do not contribute; Binance PM does not fetch them, while OKX,
+Bybit, and Kraken fail a report that contains an option row. Platform rollout is
+explicit: a supported scope without an enabled calculation is unknown, never
+zero. Every supported scope currently computes: Binance portfolio margin, OKX
+unified trading, Bybit unified, and Kraken unified main.
 
 A row without an adopted spot price may show a contract mark price for
 reference. The mark is the largest absolute USD notional position for that

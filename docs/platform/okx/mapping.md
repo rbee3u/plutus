@@ -327,11 +327,12 @@ Rows are handled as follows:
 
 ## Risk exposure
 
-The current rollout reports `platform_pending`; OKX positions and balances are
-not netted into a displayed exposure yet. Inputs are present: `pos` is a
-contract count multiplied by `ctVal × ctMult`, inverse size is quote face, and
-`markPx` is stored. `MARGIN` rows are skipped and their value remains in the
-`trading` balance `eq`.
+`trading` balances and positions are netted in coin units. `eq` is the spot leg
+and already includes borrowing, isolated-margin collateral, unrealized PnL, and
+option value. `pos` contributes base quantity for linear contracts and quote
+face divided by `markPx` for inverse contracts. `MARGIN` rows are skipped
+because their exposure is already in `eq`. A USD-equivalent quote makes the
+display-only contract mark fallback available.
 
 ## Prices
 

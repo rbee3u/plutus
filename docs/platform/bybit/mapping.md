@@ -268,9 +268,10 @@ An unknown contract type, a missing coin, or a delivery contract without
 
 ## Risk exposure
 
-The current rollout reports `platform_pending`; Bybit positions and balances are
-not netted into a displayed exposure yet. Inputs are present: linear `size` is
-base quantity, inverse `size` is quote face, and `markPrice` is stored.
+`unified` `equity` is the spot leg and already nets borrowing and includes
+unrealized PnL. Linear `size` is base quantity; inverse `size` is quote face;
+both net by side. The stored `markPrice` supplies the display-only contract mark
+fallback when no spot price exists.
 
 ## Prices
 

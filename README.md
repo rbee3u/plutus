@@ -25,8 +25,8 @@ Implemented capabilities:
   manual balances for API-uncovered quantities. Overview warns when a supported
   unified account's real leverage is above 3, on the account and its visible
   identity and platform rows.
-- Per-asset risk exposure on unified-account balance rows, starting with Binance
-  portfolio margin; contract-only coins appear as zero-spot rows.
+- Per-asset risk exposure on supported unified-account balance rows;
+  contract-only coins appear as zero-spot rows.
 - Optional Telegram high-leverage alerts use the same condition after each
   completed collection cycle.
 - Historical points, calendar comparisons, manual capital flows, asset mapping,

@@ -156,6 +156,7 @@ func TestSeedsApplyRetryAndCollect(t *testing.T) {
 	assertWalkthroughReads(ctx, t, db, anchor)
 	assertContractOnlyRiskExposure(ctx, t, db)
 	assertHistoricalRiskExposure(ctx, t, db)
+	assertUnifiedPlatformRiskExposure(ctx, t, db)
 	queue := cycle.NewService(db)
 	assets := catalog.NewService(db)
 	runner := collection.NewService(db, collection.Options{Adapters: registry, Identities: ids, Catalog: assets, Manual: manual.NewService(db, assets), Valuation: v, Cycles: queue, RetryDelays: []time.Duration{}})
@@ -201,6 +202,58 @@ func assertContractOnlyRiskExposure(ctx context.Context, t *testing.T, db *sql.D
 		}
 	}
 	t.Fatalf("leverage-warning BTC row missing from %+v", rows.Items)
+}
+
+func assertUnifiedPlatformRiskExposure(ctx context.Context, t *testing.T, db *sql.DB) {
+	t.Helper()
+	v := financial.NewService(db, valuation.NewService(db))
+	rows, err := v.FlatBalances(ctx, financial.PortfolioContext{ID: PortfolioAliceMain, Timezone: "Asia/Shanghai"}, &financial.ListFilter{Limit: 200})
+	if err != nil {
+		t.Fatal(err)
+	}
+	known := map[string]bool{"okx": false, "bybit": false, "kraken": false}
+	want := map[string]string{
+		"okx/BTC":    "0.042",
+		"bybit/BTC":  "0.0315",
+		"kraken/BTC": "0.0455",
+	}
+	separate := false
+	for _, row := range rows.Items {
+		if row.RiskExposure != nil && row.IdentityName == "main" {
+			key := row.Platform + "/" + row.AssetSymbol
+			if expected, ok := want[key]; ok {
+				if *row.RiskExposure != expected {
+					t.Fatalf("%s exposure = %s, want %s", key, *row.RiskExposure, expected)
+				}
+				detail, err := v.AccountReport(ctx, financial.PortfolioContext{ID: PortfolioAliceMain, Timezone: "Asia/Shanghai"}, row.AccountID, nil, true)
+				if err != nil {
+					t.Fatal(err)
+				}
+				found := false
+				for _, balance := range detail.Balances {
+					if balance.AssetSymbol == row.AssetSymbol && balance.RiskExposure != nil && *balance.RiskExposure == expected {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("%s account report missing exposure %s: %+v", key, expected, detail.Balances)
+				}
+				known[row.Platform] = true
+			}
+		}
+		if row.Platform == "kraken" && row.AccountType == "main" && row.IdentityName == "sum" && row.RiskExposureUnavailableReason == financial.RiskExposureNotUnified {
+			separate = true
+		}
+	}
+	for platform, found := range known {
+		if !found {
+			t.Fatalf("%s unified account has no expected risk exposure: %+v", platform, rows.Items)
+		}
+	}
+	if !separate {
+		t.Fatalf("Kraken separate main was not excluded: %+v", rows.Items)
+	}
 }
 
 func assertHistoricalRiskExposure(ctx context.Context, t *testing.T, db *sql.DB) {

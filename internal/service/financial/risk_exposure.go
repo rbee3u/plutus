@@ -29,10 +29,14 @@ const (
 	RiskExposureUnknownPosition = "unknown_position_inputs"
 )
 
-// riskExposurePlatforms is the rollout gate. A supported unified account on a
-// platform outside this set reports platform_pending instead of a value.
+// riskExposurePlatforms is the explicit rollout gate. Every currently supported
+// unified scope is enabled; a future scope must be added deliberately and
+// reports platform_pending until then.
 var riskExposurePlatforms = map[adapter.Platform]bool{
 	adapter.PlatformBinance: true,
+	adapter.PlatformOKX:     true,
+	adapter.PlatformBybit:   true,
+	adapter.PlatformKraken:  true,
 }
 
 // riskPosition retains the facts needed to price one contract when no spot
