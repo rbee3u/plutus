@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Info, Plus } from "lucide-react";
 import { ManualActions, type ManualTarget } from "../dialogs/manual";
 import { IconButton } from "@/shared/ui/IconButton";
 import { iconSize } from "@/shared/icons/iconSizes";
@@ -7,6 +7,7 @@ import type { AccountReport, AccountValuation, BalanceRow, Issue } from "@/api";
 import { formatAmount, formatDecimal, formatPrice, parseDecimal } from "@/shared/lib/amount";
 import { formatInstant } from "@/shared/lib/datetime";
 import { NO_ACCOUNT_REPORT } from "@/shared/lib/text";
+import { Badge } from "@/shared/ui/Badge";
 import { DataTable, type DataRow } from "@/shared/ui/DataTable";
 import { HoverDetails } from "@/shared/ui/HoverDetails";
 import { ObservedCell } from "./ObservedCell";
@@ -88,6 +89,35 @@ export function BalancesTable({
   );
 }
 
+const RISK_EXPOSURE_HEADER = (
+  <HoverDetails
+    name="Risk exposure definition"
+    className={styles.riskExposureTrigger}
+    label={
+      <span className={styles.riskExposureHeader}>
+        Risk exposure
+        <Info size={iconSize.xs} aria-hidden="true" />
+      </span>
+    }
+  >
+    <p>
+      Spot equity plus the signed coin quantity of open linear and inverse contracts in this
+      account. Positive is net long; negative is net short. Inverse contracts use their mark price.
+    </p>
+    <p>
+      Funding, earn, dual investment, other accounts, and options are not included. Available for
+      supported unified accounts.
+    </p>
+  </HoverDetails>
+);
+
+const RISK_EXPOSURE_UNAVAILABLE: Record<string, string> = {
+  not_unified: "Risk exposure is available for unified accounts only.",
+  platform_pending: "Risk exposure is not yet available for this platform.",
+  unknown_position_inputs:
+    "Risk exposure cannot be determined because a position's size or mark price is unavailable.",
+};
+
 export const BALANCE_COLUMNS = [
   { key: "symbol", header: "Asset" },
   { key: "equity", header: "Equity", numeric: true, width: "130px" },
@@ -95,6 +125,13 @@ export const BALANCE_COLUMNS = [
   { key: "equityUsd", header: "Equity (USD)", numeric: true, width: "130px" },
   { key: "liability", header: "Liability", numeric: true, width: "120px" },
   { key: "unrealizedPnl", header: "Unrealized PnL", numeric: true, width: "130px" },
+  {
+    key: "riskExposure",
+    header: "Risk exposure",
+    headerContent: RISK_EXPOSURE_HEADER,
+    numeric: true,
+    width: "150px",
+  },
   { key: "issues", header: "Issues", nowrap: true, width: "100px" },
 ];
 
@@ -130,6 +167,57 @@ function balanceLiability(item: BalanceRow) {
   );
 }
 
+function symbolCell(item: BalanceRow) {
+  const mapped = item.canonicalAssetSymbol && item.canonicalAssetSymbol !== item.assetSymbol;
+  if (!mapped && !item.contractOnly) return item.assetSymbol;
+  return (
+    <span className={shared.cellStack}>
+      <span className={styles.assetBadgeRow}>
+        <span>{item.assetSymbol}</span>
+        {item.contractOnly ? <Badge tone="neutral">Contract only</Badge> : null}
+      </span>
+      {mapped ? (
+        <span className={shared.cellMeta}>Canonical asset: {item.canonicalAssetSymbol}</span>
+      ) : null}
+    </span>
+  );
+}
+
+function priceCell(item: BalanceRow) {
+  if (item.priceSource === "contract" && item.priceUsd != null) {
+    const source = item.priceSourceSymbol ? ` from ${item.priceSourceSymbol}` : "";
+    return (
+      <HoverDetails
+        name={`${item.assetSymbol} contract mark price source`}
+        label={<NumericText>{formatPrice(item.priceUsd)}</NumericText>}
+      >
+        <p>
+          No spot price is available. This is the mark price{source}, shown for reference; it is not
+          used for valuation.
+        </p>
+      </HoverDetails>
+    );
+  }
+  if (item.noPrice || item.priceUsd == null) {
+    return <span className={shared.cellMeta}>Missing price</span>;
+  }
+  return formatPrice(item.priceUsd);
+}
+
+function riskExposureCell(item: BalanceRow) {
+  if (item.riskExposure != null) return formatDecimal(item.riskExposure);
+  const reason = item.riskExposureUnavailableReason;
+  if (!reason) return "—";
+  return (
+    <HoverDetails
+      name={`${item.assetSymbol} risk exposure unavailable`}
+      label={<span className={shared.muted}>—</span>}
+    >
+      <p>{RISK_EXPOSURE_UNAVAILABLE[reason] ?? "Risk exposure is unavailable."}</p>
+    </HoverDetails>
+  );
+}
+
 export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] = []): DataRow {
   const quantity = item.manualChange === "added" ? item.manualQuantity : item.equity;
   const stale = issues.find(
@@ -137,15 +225,7 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
   );
   return {
     id: `${item.accountId}-${item.assetId}`,
-    symbol:
-      item.canonicalAssetSymbol && item.canonicalAssetSymbol !== item.assetSymbol ? (
-        <span className={shared.cellStack}>
-          <span>{item.assetSymbol}</span>
-          <span className={shared.cellMeta}>Canonical asset: {item.canonicalAssetSymbol}</span>
-        </span>
-      ) : (
-        item.assetSymbol
-      ),
+    symbol: symbolCell(item),
     equity:
       item.manualChange || item.excluded ? (
         <HoverDetails
@@ -173,11 +253,8 @@ export function balanceRow(item: BalanceRow, timezone?: string, issues: Issue[] 
       ),
     liability: balanceLiability(item),
     unrealizedPnl: balancePnl(item.unrealizedPnl),
-    priceUsd: item.noPrice ? (
-      <span className={shared.cellMeta}>Missing price</span>
-    ) : (
-      formatPrice(item.priceUsd)
-    ),
+    riskExposure: riskExposureCell(item),
+    priceUsd: priceCell(item),
     equityUsd: formatAmount(item.equityUsd),
     issues: (
       <ObservedCell

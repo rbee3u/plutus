@@ -440,6 +440,26 @@ export type BalanceRow = {
     equityUsd: NullableDecimal;
     noPrice: boolean;
     /**
+     * Signed coin quantity of the account's net spot and contract exposure. Null when unavailable; never a partial sum.
+     */
+    riskExposure?: NullableDecimal;
+    /**
+     * Why riskExposure is null. Unknown values are not zero or omitted.
+     */
+    riskExposureUnavailableReason?: 'not_unified' | 'platform_pending' | 'unknown_position_inputs' | null;
+    /**
+     * True when the row exists for contract exposure and the account has no nonzero spot balance; Equity, Liability, and Equity (USD) are zero.
+     */
+    contractOnly?: boolean;
+    /**
+     * Source of priceUsd. Contract means a mark price is shown because no spot price is available; it is display-only and does not change equityUsd or valuation.
+     */
+    priceSource?: 'spot' | 'contract' | null;
+    /**
+     * Futures contract symbol used for a contract price fallback.
+     */
+    priceSourceSymbol?: string | null;
+    /**
      * Source report freshness; null for a pending manual addition.
      */
     freshness: 'fresh' | 'stale' | null;

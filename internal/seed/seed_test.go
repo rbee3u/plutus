@@ -154,6 +154,8 @@ func TestSeedsApplyRetryAndCollect(t *testing.T) {
 	v := valuation.NewService(db)
 	assertImmutableRetries(ctx, t, db, v)
 	assertWalkthroughReads(ctx, t, db, anchor)
+	assertContractOnlyRiskExposure(ctx, t, db)
+	assertHistoricalRiskExposure(ctx, t, db)
 	queue := cycle.NewService(db)
 	assets := catalog.NewService(db)
 	runner := collection.NewService(db, collection.Options{Adapters: registry, Identities: ids, Catalog: assets, Manual: manual.NewService(db, assets), Valuation: v, Cycles: queue, RetryDelays: []time.Duration{}})
@@ -182,6 +184,74 @@ func TestSeedsApplyRetryAndCollect(t *testing.T) {
 		}
 		if stored.Connection.Status != d.Connection {
 			t.Fatalf("%s connection: %s instead of %s", d.ID, stored.Connection.Status, d.Connection)
+		}
+	}
+}
+
+func assertContractOnlyRiskExposure(ctx context.Context, t *testing.T, db *sql.DB) {
+	t.Helper()
+	v := financial.NewService(db, valuation.NewService(db))
+	rows, err := v.FlatBalances(ctx, financial.PortfolioContext{ID: PortfolioAliceLeverage, Timezone: "UTC"}, &financial.ListFilter{Limit: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range rows.Items {
+		if row.AssetSymbol == "BTC" && row.ContractOnly && row.RiskExposure != nil && *row.RiskExposure != "0" {
+			return
+		}
+	}
+	t.Fatalf("leverage-warning BTC row missing from %+v", rows.Items)
+}
+
+func assertHistoricalRiskExposure(ctx context.Context, t *testing.T, db *sql.DB) {
+	t.Helper()
+	var accountRaw []byte
+	if err := db.QueryRowContext(ctx, `SELECT a.id FROM accounts a JOIN identities i ON i.portfolio_id = a.portfolio_id AND i.id = a.identity_id WHERE a.portfolio_id = ? AND i.platform = 'binance' AND i.display_name = 'main' AND a.account_type = 'portfolio_margin' LIMIT 1`, PortfolioAliceMain[:]).Scan(&accountRaw); err != nil {
+		t.Fatal(err)
+	}
+	accountID, err := uuid.FromBytes(accountRaw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := db.QueryContext(ctx, `SELECT cycle_id FROM valuation_points WHERE portfolio_id = ? ORDER BY evaluated_at DESC LIMIT 2`, PortfolioAliceMain[:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	var cycles []uuid.UUID
+	for rows.Next() {
+		var raw []byte
+		if err := rows.Scan(&raw); err != nil {
+			t.Fatal(err)
+		}
+		cycleID, err := uuid.FromBytes(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cycles = append(cycles, cycleID)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if len(cycles) != 2 {
+		t.Fatalf("valuation points = %d, want two", len(cycles))
+	}
+	v := financial.NewService(db, valuation.NewService(db))
+	pctx := financial.PortfolioContext{ID: PortfolioAliceMain, Timezone: "Asia/Shanghai"}
+	for _, cycleID := range cycles {
+		view, err := v.AccountReport(ctx, pctx, accountID, &cycleID, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, balance := range view.Balances {
+			if balance.RiskExposure != nil {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("historical point %s has no risk exposure: %+v", cycleID, view.Balances)
 		}
 	}
 }

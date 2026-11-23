@@ -26,12 +26,21 @@ func (s *Service) AccountBalancesAt(ctx context.Context, p PortfolioContext, acc
 		if err != nil {
 			return AccountView{}, err
 		}
-		return s.readAccountBalances(ctx, p, view, source, true)
+		positions := []PositionRow{}
+		if source != nil && positionAccount(&view.Account) {
+			positions, _, err = s.loadPositions(ctx, p, &view, source)
+			if err != nil {
+				return AccountView{}, err
+			}
+		}
+		view.Positions = positions
+		return s.readAccountBalances(ctx, p, view, source, true, positions)
 	})
 }
 
-func (s *Service) readAccountBalances(ctx context.Context, p PortfolioContext, view AccountView, source *uuid.UUID, includePending bool) (AccountView, error) {
+func (s *Service) readAccountBalances(ctx context.Context, p PortfolioContext, view AccountView, source *uuid.UUID, includePending bool, positions []PositionRow) (AccountView, error) {
 	view.Balances = []BalanceRow{}
+	balanceAssets := map[string]bool{}
 
 	var rows []sqlcgen.ListBalancesByReportRow
 	var err error
@@ -51,6 +60,7 @@ func (s *Service) readAccountBalances(ctx context.Context, p PortfolioContext, v
 		if err != nil {
 			return AccountView{}, err
 		}
+		balanceAssets[normalizedRiskSymbol(&rows[i].AssetSymbol)] = true
 		if isExcluded(decisions[assetID]) && view.Account.AccountType != string(adapter.TypeManual) {
 			continue
 		}
@@ -71,6 +81,11 @@ func (s *Service) readAccountBalances(ctx context.Context, p PortfolioContext, v
 		view.ManualOverlay = overlay
 		view.Balances = mergeManualBalances(view.Balances, current[view.Account.AccountID], &view.Account)
 	}
+	balances, err := s.applyRiskExposure(ctx, p, &view.Account, view.Balances, positions, balanceAssets)
+	if err != nil {
+		return AccountView{}, err
+	}
+	view.Balances = balances
 	sortBalances(view.Balances, accountRanks([]valuation.AccountValuation{view.Account}))
 	return view, nil
 }
@@ -184,12 +199,20 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 		}
 		var rows []sqlcgen.ListBalancesByCycleRow
 		if point != nil {
-			rows, err = mysql.Queries(ctx, s.db).ListBalancesByCycle(ctx, sqlcgen.ListBalancesByCycleParams{PortfolioID: p.ID[:], CycleID: point.CycleID[:], Platform: f.Platform, IdentityID: optionalFilterID(f.IdentityID), Symbol: normalizedSearch(f.Symbol)})
+			rows, err = mysql.Queries(ctx, s.db).ListBalancesByCycle(ctx, sqlcgen.ListBalancesByCycleParams{PortfolioID: p.ID[:], CycleID: point.CycleID[:], Platform: f.Platform, IdentityID: optionalFilterID(f.IdentityID), Symbol: ""})
 			if err != nil {
 				return FlatList[BalanceRow]{}, err
 			}
 		}
 		byAccount := indexAccounts(accounts)
+		positionsByAccount := map[uuid.UUID][]PositionRow{}
+		if point != nil {
+			positionsByAccount, err = s.riskPositionsByCycle(ctx, p, point.CycleID, byAccount)
+			if err != nil {
+				return FlatList[BalanceRow]{}, err
+			}
+		}
+		balanceAssets := map[uuid.UUID]map[string]bool{}
 		decisions := make(map[uuid.UUID]map[uuid.UUID]*valuation.BalanceValuation, len(accounts))
 		selectedManual := map[uuid.UUID]bool{}
 		filteredAccounts := []valuation.AccountValuation{}
@@ -224,6 +247,10 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 			if err != nil {
 				return FlatList[BalanceRow]{}, err
 			}
+			if balanceAssets[accountID] == nil {
+				balanceAssets[accountID] = map[string]bool{}
+			}
+			balanceAssets[accountID][normalizedRiskSymbol(&rows[i].AssetSymbol)] = true
 			if account.Method == valuation.MethodCalculated && isExcluded(decisions[accountID][assetID]) && account.AccountType != string(adapter.TypeManual) {
 				continue
 			}
@@ -261,6 +288,31 @@ func (s *Service) FlatBalances(ctx context.Context, p PortfolioContext, f *ListF
 					manual = mergeManualBalances(manual, current[account.AccountID], account)
 				}
 				all = append(all, manual...)
+			}
+		}
+		byAccountRows := map[uuid.UUID][]int{}
+		for i := range all {
+			byAccountRows[all[i].AccountID] = append(byAccountRows[all[i].AccountID], i)
+		}
+		for i := range accounts {
+			account := &accounts[i]
+			if !matchesAccount(f, account) {
+				continue
+			}
+			indexes := byAccountRows[account.AccountID]
+			accountRows := make([]BalanceRow, 0, len(indexes))
+			for _, index := range indexes {
+				accountRows = append(accountRows, all[index])
+			}
+			updated, err := s.applyRiskExposure(ctx, p, account, accountRows, positionsByAccount[account.AccountID], balanceAssets[account.AccountID])
+			if err != nil {
+				return FlatList[BalanceRow]{}, err
+			}
+			for j, index := range indexes {
+				all[index] = updated[j]
+			}
+			if len(updated) > len(indexes) {
+				all = append(all, updated[len(indexes):]...)
 			}
 		}
 		filtered := all[:0]

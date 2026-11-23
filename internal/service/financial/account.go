@@ -140,10 +140,20 @@ func (s *Service) AccountReport(ctx context.Context, p PortfolioContext, account
 		if err != nil {
 			return AccountView{}, err
 		}
-		view, err = s.readAccountBalances(ctx, p, view, source, includePendingManual)
+		positions := []PositionRow{}
+		positionIssues := []valuation.Issue{}
+		if source != nil && positionAccount(&view.Account) {
+			positions, positionIssues, err = s.loadPositions(ctx, p, &view, source)
+			if err != nil {
+				return AccountView{}, err
+			}
+		}
+		view, err = s.readAccountBalances(ctx, p, view, source, includePendingManual, positions)
 		if err != nil {
 			return AccountView{}, err
 		}
+		view.Positions = positions
+		view.Issues = append(view.Issues, positionIssues...)
 		switch view.Account.AccountType {
 		case "earn":
 			return s.readAccountEarn(ctx, p, view)
@@ -152,9 +162,6 @@ func (s *Service) AccountReport(ctx context.Context, p PortfolioContext, account
 		case "manual":
 			return view, nil
 		default:
-			if positionAccount(&view.Account) {
-				return s.readAccountPositions(ctx, p, view, source)
-			}
 			return view, nil
 		}
 	})

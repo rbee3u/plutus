@@ -336,10 +336,10 @@ same supporting information.
 ### Balances
 
 Columns are `Platform`, `Identity`, `Account`, `Asset`, `Equity`, `Price (USD)`,
-`Equity (USD)`, `Liability`, `Unrealized PnL`, and `Issues`. Account details
-start at `Asset`, which shows the native symbol with a secondary mapping hint.
-Withdrawable and tradable remain source/API fields rather than displayed
-columns.
+`Equity (USD)`, `Liability`, `Unrealized PnL`, `Risk exposure`, and `Issues`.
+Account details start at `Asset`, which shows the native symbol with a secondary
+mapping hint. Withdrawable and tradable remain source/API fields rather than
+displayed columns.
 
 Issues stays quiet (`—`) when healthy, exposing stale or data issue badges on
 hover and disclosing carried-forward source observation times when applicable.
@@ -351,6 +351,18 @@ pointer hover, keyboard focus, or click as
 `Of which unpaid interest: <amount> <asset>`. It stays inside the liability
 rather than adding a column: interest is a component, never a second amount to
 add.
+
+Risk exposure shows the account-level signed coin quantity defined by the
+[domain rule](./domain-rules.md#account-level-risk-exposure). It is right
+aligned, uses quantity precision, and keeps its sign without a leading `+`; a
+known zero is `0`. Profit colors do not apply. Unavailable values are `—` with a
+disclosure naming the reason: not a unified account, platform pending, or
+unavailable position inputs. The header discloses the formula and exclusions.
+Rows for assets with contracts but no nonzero spot balance carry a neutral
+`Contract only` badge and zero Equity, Liability, and Equity (USD); their
+Unrealized PnL is the actual coin-settled result, with a zero contribution from
+positions settled in another coin. A contract mark price fallback is shown with
+a dotted disclosure on Price and is not used for valuation.
 
 ### Futures
 

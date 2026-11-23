@@ -64,3 +64,22 @@ const (
 	KindLinearDelivery   = "linear_delivery"
 	KindInverseDelivery  = "inverse_delivery"
 )
+
+// SupportedUnifiedAccount reports whether the account structure keeps spot and
+// contract holdings in one nettable account. Kraken separate main is a spot
+// wallet, so it is not included. Account type names are stable catalog
+// identifiers; platform packages own their typed aliases.
+func SupportedUnifiedAccount(platform Platform, structure AccountStructure, accountType AccountType) bool {
+	switch platform {
+	case PlatformBinance:
+		return structure == StructureBinancePM && accountType == "portfolio_margin"
+	case PlatformOKX:
+		return structure == StructureOKXUnified && accountType == "trading"
+	case PlatformBybit:
+		return structure == StructureBybitUTA2 && accountType == "unified"
+	case PlatformKraken:
+		return structure == StructureKrakenUnified && accountType == "main"
+	default:
+		return false
+	}
+}

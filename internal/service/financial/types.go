@@ -47,31 +47,36 @@ type TreePlatform struct {
 
 // BalanceRow is one balance with its USD value.
 type BalanceRow struct {
-	ManualChange         string
-	ManualQuantity       *string
-	Excluded             bool
-	AccountID            uuid.UUID
-	AccountName          string
-	AccountType          string
-	IdentityID           uuid.UUID
-	IdentityName         string
-	Platform             string
-	AssetID              uuid.UUID
-	AssetSymbol          string
-	CanonicalAssetSymbol string
-	Equity               string
-	AvailableToWithdraw  *string
-	AvailableToTrade     *string
-	Liability            *string
-	Interest             *string
-	UnrealizedPnl        *string
-	PriceUSD             *string
-	EquityUSD            *string
-	NoPrice              bool
-	Freshness            string
-	ReportObservedAt     *time.Time
-	ManualModifiedAt     *time.Time
-	equityUSDRat         *big.Rat
+	ManualChange                  string
+	ManualQuantity                *string
+	Excluded                      bool
+	AccountID                     uuid.UUID
+	AccountName                   string
+	AccountType                   string
+	IdentityID                    uuid.UUID
+	IdentityName                  string
+	Platform                      string
+	AssetID                       uuid.UUID
+	AssetSymbol                   string
+	CanonicalAssetSymbol          string
+	Equity                        string
+	AvailableToWithdraw           *string
+	AvailableToTrade              *string
+	Liability                     *string
+	Interest                      *string
+	UnrealizedPnl                 *string
+	PriceUSD                      *string
+	EquityUSD                     *string
+	NoPrice                       bool
+	RiskExposure                  *string
+	RiskExposureUnavailableReason string
+	ContractOnly                  bool
+	PriceSource                   string
+	PriceSourceSymbol             *string
+	Freshness                     string
+	ReportObservedAt              *time.Time
+	ManualModifiedAt              *time.Time
+	equityUSDRat                  *big.Rat
 }
 
 // PositionRow is one position with its USD notional.

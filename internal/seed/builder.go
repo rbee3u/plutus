@@ -512,6 +512,9 @@ func (b *builder) cycle(portfolioID uuid.UUID, at time.Time, reports []reportSpe
 		}
 		for j := range rep.Positions {
 			pos := &rep.Positions[j]
+			if pos.FuturesContract.BaseAssetSymbol != "" {
+				b.asset(portfolioID, r.Platform, pos.FuturesContract.BaseAssetSymbol, observed)
+			}
 			futuresContractID := b.futuresContract(portfolioID, r.Platform, &pos.FuturesContract, observed)
 			b.add("futures_positions", bin(reportID), bin(portfolioID), q(pos.PositionKey), bin(futuresContractID), q(pos.Side), pos.SourceQuantity, q(pos.SourceQuantityUnit), decp(pos.EntryPrice), decp(pos.MarkPrice), decp(pos.LiquidationPrice), decp(pos.UnrealizedPnl), decp(pos.Leverage), decp(pos.Margin), qn(pos.PositionMode), qn(pos.MarginSetting), qn(pos.MarginAssetSymbol), qn(pos.MarginBasis))
 		}

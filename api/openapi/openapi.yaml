@@ -3204,6 +3204,37 @@ components:
           $ref: "#/components/schemas/NullableDecimal"
         noPrice:
           type: boolean
+        riskExposure:
+          $ref: "#/components/schemas/NullableDecimal"
+          description:
+            Signed coin quantity of the account's net spot and contract exposure.
+            Null when unavailable; never a partial sum.
+        riskExposureUnavailableReason:
+          type:
+            - string
+            - "null"
+          enum: [not_unified, platform_pending, unknown_position_inputs, null]
+          description:
+            Why riskExposure is null. Unknown values are not zero or omitted.
+        contractOnly:
+          type: boolean
+          description:
+            True when the row exists for contract exposure and the account has no
+            nonzero spot balance; Equity, Liability, and Equity (USD) are zero.
+        priceSource:
+          type:
+            - string
+            - "null"
+          enum: [spot, contract, null]
+          description:
+            Source of priceUsd. Contract means a mark price is shown because no
+            spot price is available; it is display-only and does not change
+            equityUsd or valuation.
+        priceSourceSymbol:
+          type:
+            - string
+            - "null"
+          description: Futures contract symbol used for a contract price fallback.
         freshness:
           type:
             - string

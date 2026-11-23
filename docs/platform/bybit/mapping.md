@@ -266,6 +266,12 @@ inverse, and option positions before any position is kept.
 An unknown contract type, a missing coin, or a delivery contract without
 `deliveryTime` fails the `unified` report with `normalization`.
 
+## Risk exposure
+
+The current rollout reports `platform_pending`; Bybit positions and balances are
+not netted into a displayed exposure yet. Inputs are present: linear `size` is
+base quantity, inverse `size` is quote face, and `markPrice` is stored.
+
 ## Prices
 
 For every non-USD balance symbol, the spot `lastPrice` of `<symbol>USDT`, else

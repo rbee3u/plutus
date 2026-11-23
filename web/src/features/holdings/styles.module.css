@@ -364,6 +364,25 @@
   margin: -4px 0;
 }
 
+.assetBadgeRow,
+.riskExposureHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.riskExposureHeader {
+  gap: var(--space-xs);
+}
+
+.riskExposureTrigger {
+  text-decoration: none;
+}
+
+.riskExposureTrigger:hover:not(:disabled) {
+  text-decoration: none;
+}
+
 /* The account-valuation tree keeps its cards readable inside a historical row. */
 @media (max-width: 900px) {
   .treeCardCompact {

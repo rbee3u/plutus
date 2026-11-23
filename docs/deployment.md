@@ -176,12 +176,16 @@ cd /opt/plutus-test
 ### Prelaunch baseline
 
 The initial schema is
-[20261010160000_schema.sql](../db/migrations/20261010160000_schema.sql). Earlier
-development schemas are disposable; reset those environments before starting
-this build. There is no populated-database upgrade path from the retired
-development baselines and no compatibility reader for their JSON. Deploy the
-server and embedded SPA together, then check Catalog, manual editing, capital
-flows, collection, and history. Agent verification uses only the isolated
+[20261010160000_schema.sql](../db/migrations/20261010160000_schema.sql). The
+appended
+[20261120180000_risk_exposure_assets.sql](../db/migrations/20261120180000_risk_exposure_assets.sql)
+backfills position base assets for contract-only risk exposure; it is data-only
+and runs with the normal `migrate up`. Earlier development schemas are
+disposable; reset those environments before starting this build. There is no
+populated-database upgrade path from the retired development baselines and no
+compatibility reader for their JSON. Deploy the server and embedded SPA
+together, then check Catalog, manual editing, capital flows, collection, and
+history. Agent verification uses only the isolated
 [agent instance](./development.md#agent-setup).
 
 This reset decision applies only before the first production migration. Once

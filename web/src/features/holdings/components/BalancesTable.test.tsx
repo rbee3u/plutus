@@ -46,6 +46,7 @@ describe("shared balance cells", () => {
       ["equityUsd", "Equity (USD)"],
       ["liability", "Liability"],
       ["unrealizedPnl", "Unrealized PnL"],
+      ["riskExposure", "Risk exposure"],
       ["issues", "Issues"],
     ]);
     const row = balanceRow(balance, "Asia/Shanghai");
@@ -54,6 +55,7 @@ describe("shared balance cells", () => {
     expect(row.equityUsd).toBe("6,172.84");
     expect(row.liability).toBe("0");
     expect(row.unrealizedPnl).toBe("—");
+    expect(row.riskExposure).toBe("—");
     const symbol = renderToStaticMarkup(<>{row.symbol}</>);
     expect(symbol).toContain("XBT");
     expect(symbol.indexOf("XBT")).toBeLessThan(symbol.indexOf("Canonical asset: BTC"));
@@ -101,5 +103,47 @@ describe("shared balance cells", () => {
     expect(renderToStaticMarkup(<>{row.priceUsd}</>)).toContain("Missing price");
     const issues = renderToStaticMarkup(<>{row.issues}</>);
     expect(issues.replace(/<[^>]*>/g, "")).toBe("—");
+  });
+
+  it("renders the signed exposure without profit color and explains an unavailable value", () => {
+    const known = balanceRow(
+      { ...balance, riskExposure: "-1.20309", priceSource: "spot" },
+      "Asia/Shanghai",
+    );
+    expect(known.riskExposure).toBe("-1.20309");
+    expect(renderToStaticMarkup(<>{known.riskExposure}</>)).not.toContain("pnlNegative");
+
+    const unavailable = balanceRow(
+      {
+        ...balance,
+        riskExposure: null,
+        riskExposureUnavailableReason: "not_unified",
+      },
+      "Asia/Shanghai",
+    );
+    const html = renderToStaticMarkup(<>{unavailable.riskExposure}</>);
+    expect(html).toContain('aria-label="XBT risk exposure unavailable"');
+    expect(html.replace(/<[^>]*>/g, "")).toBe("—");
+  });
+
+  it("marks a contract-only row and uses the contract mark price with a disclosure", () => {
+    const item: BalanceRow = {
+      ...balance,
+      equity: "0",
+      liability: "0",
+      equityUsd: "0",
+      riskExposure: "0.5",
+      contractOnly: true,
+      noPrice: true,
+      priceUsd: "50000",
+      priceSource: "contract",
+      priceSourceSymbol: "XBTUSDT",
+    };
+    const row = balanceRow(item, "Asia/Shanghai");
+    expect(renderToStaticMarkup(<>{row.symbol}</>)).toContain("Contract only");
+    const price = renderToStaticMarkup(<>{row.priceUsd}</>);
+    expect(price).toContain('aria-label="XBT contract mark price source"');
+    expect(price).toContain("50,000");
+    expect(price).not.toContain("Missing price");
   });
 });

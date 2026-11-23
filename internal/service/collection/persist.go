@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -139,13 +140,41 @@ func (s *Service) insertSuccessfulReport(ctx context.Context, q *sqlcgen.Queries
 	}); err != nil {
 		return err
 	}
+	// Register balance assets in symbol order. Position base assets are
+	// registered before the report transaction. Sorted acquisition keeps
+	// concurrent transactions from deadlocking on the shared asset unique key.
+	assetSymbols := map[string]struct{}{}
+	for _, balance := range report.Balances {
+		symbol, err := catalog.NormalizeSymbol(balance.AssetSymbol)
+		if err != nil {
+			return err
+		}
+		assetSymbols[symbol] = struct{}{}
+	}
+	orderedAssets := make([]string, 0, len(assetSymbols))
+	for symbol := range assetSymbols {
+		orderedAssets = append(orderedAssets, symbol)
+	}
+	slices.Sort(orderedAssets)
+	assetIDs := make(map[string]uuid.UUID, len(orderedAssets))
+	for _, symbol := range orderedAssets {
+		assetID, _, err := s.catalog.EnsureAsset(ctx, q, portfolioID, platform, symbol, observed)
+		if err != nil {
+			return err
+		}
+		assetIDs[symbol] = assetID
+	}
 	for _, balance := range report.Balances {
 		if !decimal.Valid(balance.Equity) {
 			return fmt.Errorf("%w: balance %s equity %q", catalog.ErrInvalid, balance.AssetSymbol, balance.Equity)
 		}
-		assetID, _, err := s.catalog.EnsureAsset(ctx, q, portfolioID, platform, balance.AssetSymbol, observed)
+		symbol, err := catalog.NormalizeSymbol(balance.AssetSymbol)
 		if err != nil {
 			return err
+		}
+		assetID, ok := assetIDs[symbol]
+		if !ok {
+			return fmt.Errorf("%w: balance %s asset", catalog.ErrInvalid, balance.AssetSymbol)
 		}
 		if err := q.InsertBalance(ctx, sqlcgen.InsertBalanceParams{
 			ReportID: id[:], PortfolioID: portfolioID[:], AssetID: assetID[:], Equity: balance.Equity,

@@ -70,5 +70,3 @@ func optionalFilterID(id *uuid.UUID) []byte {
 	}
 	return id[:]
 }
-
-func normalizedSearch(q string) string { return strings.ToLower(strings.TrimSpace(q)) }

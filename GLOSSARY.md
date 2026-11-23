@@ -107,6 +107,11 @@ accounts: the absolute USD notional of every open position divided by adjusted
 equity from the same account report. _Avoid_: a universal leverage measure,
 position leverage, account margin ratio.
 
+**risk exposure**: One asset's signed coin quantity in one supported unified
+account: balance equity plus the base quantity of open linear and inverse
+contracts, with funding, earn, dual investment, other accounts, and uncollected
+options excluded. _Avoid_: net delta, unhedged value, USD exposure.
+
 **high-leverage warning**: An Overview warning on a supported unified account
 whose known real leverage is strictly above 3; it repeats on the visible
 identity and platform rows without defining a parent ratio. _Avoid_: risk score,

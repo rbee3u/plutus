@@ -358,6 +358,32 @@ func TestPendingManualJSONHasNoCollectedFacts(t *testing.T) {
 	}
 }
 
+func TestRiskExposureJSONKeepsNullReasonAndPriceSource(t *testing.T) {
+	symbol := "BTCUSDT"
+	rows := toAPIBalanceRows([]financial.BalanceRow{
+		{
+			RiskExposureUnavailableReason: financial.RiskExposureNotUnified,
+			ContractOnly:                  true,
+			PriceSource:                   "contract",
+			PriceSourceSymbol:             &symbol,
+		},
+		{RiskExposure: new("-0.5"), ContractOnly: true, PriceSource: "spot"},
+	})
+	if len(rows) != 2 {
+		t.Fatalf("rows = %d", len(rows))
+	}
+	first := rows[0]
+	if first.RiskExposure != nil || first.RiskExposureUnavailableReason == nil || *first.RiskExposureUnavailableReason != api.BalanceRowRiskExposureUnavailableReasonNotUnified {
+		t.Fatalf("unavailable exposure = %+v", first)
+	}
+	if first.ContractOnly == nil || !*first.ContractOnly || first.PriceSource == nil || *first.PriceSource != api.BalanceRowPriceSourceContract || first.PriceSourceSymbol == nil || *first.PriceSourceSymbol != symbol {
+		t.Fatalf("exposure provenance = %+v", first)
+	}
+	if rows[1].RiskExposure == nil || *rows[1].RiskExposure != "-0.5" || rows[1].RiskExposureUnavailableReason != nil {
+		t.Fatalf("known exposure = %+v", rows[1])
+	}
+}
+
 func TestCapitalAndBoundaryHTTPPages(t *testing.T) {
 	db := mysqltest.OpenTestDB(t)
 	ctx := t.Context()

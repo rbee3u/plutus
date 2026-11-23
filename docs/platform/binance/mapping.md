@@ -253,6 +253,17 @@ A position whose symbol is missing from a fresh `exchangeInfo` fails its account
 with `normalization`, naming the symbol. It is never dropped. Contract symbols
 may use non-Latin scripts (`牛来USDT`).
 
+## Risk exposure
+
+For portfolio margin, the account-level exposure uses the `portfolio_margin`
+balance `equity` as the spot leg and nets UM and CM positions. UM `positionAmt`
+is base quantity; CM is contracts times `contractSize` (USD per contract)
+divided by the stored `markPrice`. The balance already includes
+`umUnrealizedPNL + cmUnrealizedPNL` and nets borrowing, so it is not adjusted
+again. Options are not fetched and do not contribute. The display price fallback
+uses the mark price of the largest absolute USD notional position from the same
+risk response; it never changes `equityUsd`.
+
 ## Prices
 
 For every non-USD balance symbol, the price is the spot last price of

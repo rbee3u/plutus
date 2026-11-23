@@ -87,37 +87,46 @@ func (s *Service) Enqueue(ctx context.Context, portfolioID uuid.UUID, trigger st
 		cycle   Cycle
 		created bool
 	}
-	value, err := mysql.WithTx(ctx, s.db, func(q *sqlcgen.Queries) (result, error) {
-		// Serialize first insertion as well as active-cycle reuse within the portfolio.
-		if _, err := q.LockPortfolio(ctx, portfolioID[:]); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return result{}, ErrNotFound
+	var value result
+	var err error
+	// Concurrent first insertions for different portfolios can deadlock on the
+	// nullable active-cycle unique key. The transaction is safe to replay.
+	for attempt := 0; attempt < 3; attempt++ {
+		value, err = mysql.WithTx(ctx, s.db, func(q *sqlcgen.Queries) (result, error) {
+			// Serialize first insertion as well as active-cycle reuse within the portfolio.
+			if _, err := q.LockPortfolio(ctx, portfolioID[:]); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					return result{}, ErrNotFound
+				}
+				return result{}, err
 			}
-			return result{}, err
+			existing, err := q.LockActiveCollectionCycle(ctx, portfolioID[:])
+			if err == nil {
+				cycle, err := cycleFromRow(&existing)
+				return result{cycle: cycle}, err
+			}
+			if !errors.Is(err, sql.ErrNoRows) {
+				return result{}, err
+			}
+			id, err := uuid.NewV7()
+			if err != nil {
+				return result{}, err
+			}
+			now := s.now().UTC().Truncate(time.Microsecond)
+			if err := q.InsertCollectionCycle(ctx, sqlcgen.InsertCollectionCycleParams{PortfolioID: portfolioID[:], ID: id[:], TriggerKind: trigger, CreatedAt: now}); err != nil {
+				return result{}, err
+			}
+			row, err := q.GetCollectionCycle(ctx, sqlcgen.GetCollectionCycleParams{PortfolioID: portfolioID[:], ID: id[:]})
+			if err != nil {
+				return result{}, err
+			}
+			cycle, err := cycleFromRow(&row)
+			return result{cycle: cycle, created: true}, err
+		})
+		if err == nil || !mysql.IsDeadlock(err) {
+			break
 		}
-		existing, err := q.LockActiveCollectionCycle(ctx, portfolioID[:])
-		if err == nil {
-			cycle, err := cycleFromRow(&existing)
-			return result{cycle: cycle}, err
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			return result{}, err
-		}
-		id, err := uuid.NewV7()
-		if err != nil {
-			return result{}, err
-		}
-		now := s.now().UTC().Truncate(time.Microsecond)
-		if err := q.InsertCollectionCycle(ctx, sqlcgen.InsertCollectionCycleParams{PortfolioID: portfolioID[:], ID: id[:], TriggerKind: trigger, CreatedAt: now}); err != nil {
-			return result{}, err
-		}
-		row, err := q.GetCollectionCycle(ctx, sqlcgen.GetCollectionCycleParams{PortfolioID: portfolioID[:], ID: id[:]})
-		if err != nil {
-			return result{}, err
-		}
-		cycle, err := cycleFromRow(&row)
-		return result{cycle: cycle, created: true}, err
-	})
+	}
 	return value.cycle, value.created, err
 }
 

@@ -325,6 +325,14 @@ Rows are handled as follows:
 - **USD notional.** For a linear contract position it is contracts × contract
   size × mark price. For an inverse one it is contracts × contract size.
 
+## Risk exposure
+
+The current rollout reports `platform_pending`; OKX positions and balances are
+not netted into a displayed exposure yet. Inputs are present: `pos` is a
+contract count multiplied by `ctVal × ctMult`, inverse size is quote face, and
+`markPx` is stored. `MARGIN` rows are skipped and their value remains in the
+`trading` balance `eq`.
+
 ## Prices
 
 Each non-USD balance symbol is priced at the spot `last` of `<symbol>-USDT`,

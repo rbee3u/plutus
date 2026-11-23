@@ -233,6 +233,14 @@ routing uses the futures contract type, not its symbol prefix or expiry.
 | `expiry_at`                               | `lastTradingTime`; a contract without one whose ticker `tag` is not `perpetual` fails with `normalization`                                                    |
 | `contract_size`                           | `contractSize`, required: base coins per contract for linear contracts, USD per contract for inverse ones                                                     |
 
+## Risk exposure
+
+The current rollout reports `platform_pending`; Kraken positions and balances
+are not netted into a displayed exposure yet. Inputs are present:
+`openpositions` sizes are contracts times `contractSize`, inverse size is quote
+face, and the mark price is stored. Unified main holds multi-collateral futures;
+inverse and vanilla positions belong to coin_m and are separate accounts.
+
 ## Prices
 
 For every balance symbol other than USD, USDT, and USDC, the Spot last trade

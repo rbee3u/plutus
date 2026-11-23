@@ -302,6 +302,7 @@ test("Balance asset search keeps symbol queries and Observed discloses the corre
     "Equity (USD)",
     "Liability",
     "Unrealized PnL",
+    "Risk exposure",
     "Issues",
   ]);
   await expect(page.getByRole("cell", { name: "XBT canonical asset: BTC" })).toBeVisible();
@@ -327,6 +328,64 @@ test("Balance asset search keeps symbol queries and Observed discloses the corre
   await expect(page.getByRole("tooltip")).toContainText(
     "An earlier successful account report is carried forward.",
   );
+  expect(state.mutations).toHaveLength(0);
+});
+
+test("Risk exposure marks a contract-only row and discloses its mark price", async ({ page }) => {
+  const state = await fixture(page);
+  state.balances = [
+    {
+      accountId: "margin",
+      accountName: "Portfolio margin",
+      accountType: "portfolio_margin",
+      identityId: bn,
+      identityName: "main",
+      platform: "binance",
+      assetId: "asset-margin",
+      assetSymbol: "BTC",
+      canonicalAssetSymbol: "BTC",
+      equity: "0",
+      availableToWithdraw: null,
+      availableToTrade: null,
+      liability: "0",
+      interest: null,
+      unrealizedPnl: "0",
+      priceUsd: "50000",
+      equityUsd: "0",
+      noPrice: true,
+      riskExposure: "-0.5",
+      contractOnly: true,
+      priceSource: "contract",
+      priceSourceSymbol: "BTCUSDT",
+      freshness: "fresh",
+      reportObservedAt: "2026-10-03T00:00:00Z",
+    },
+  ];
+  state.balanceIssues = [];
+  await page.goto(`/p/${portfolioId}/holdings/balances`);
+  await expect(page.getByRole("columnheader")).toHaveText([
+    /Platform/,
+    /Identity/,
+    "Account",
+    "Asset",
+    "Equity",
+    "Price (USD)",
+    "Equity (USD)",
+    "Liability",
+    "Unrealized PnL",
+    "Risk exposure",
+    "Issues",
+  ]);
+  await expect(page.getByText("Contract only", { exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "-0.5" })).toBeVisible();
+  const header = page.getByRole("button", { name: "Risk exposure definition" });
+  await header.focus();
+  await expect(page.getByRole("tooltip")).toContainText("Spot equity plus");
+  await page.keyboard.press("Escape");
+  const price = page.getByRole("button", { name: "BTC contract mark price source" });
+  await price.focus();
+  await expect(page.getByRole("tooltip")).toContainText("BTCUSDT");
+  await expect(page.getByRole("tooltip")).toContainText("not used for valuation");
   expect(state.mutations).toHaveLength(0);
 });
 

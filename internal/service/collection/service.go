@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -269,6 +270,56 @@ func (s *Service) notify(ctx context.Context, portfolioID, cycleID uuid.UUID) {
 	}
 }
 
+// ensurePositionAssets registers position base assets before the report
+// transaction. Each catalog write is idempotent and autocommitted; a deadlock
+// retries only that write.
+func (s *Service) ensurePositionAssets(ctx context.Context, portfolioID uuid.UUID, platform adapter.Platform, reports []adapter.AccountReport, observed time.Time) error {
+	symbols := map[string]struct{}{}
+	for i := range reports {
+		if reports[i].Status != adapter.StatusSucceeded {
+			continue
+		}
+		for j := range reports[i].Positions {
+			base := reports[i].Positions[j].FuturesContract.BaseAssetSymbol
+			if base == "" {
+				continue
+			}
+			symbol, err := catalog.NormalizeSymbol(base)
+			if err != nil {
+				return err
+			}
+			symbols[symbol] = struct{}{}
+		}
+	}
+	if len(symbols) == 0 {
+		return nil
+	}
+	ordered := make([]string, 0, len(symbols))
+	for symbol := range symbols {
+		ordered = append(ordered, symbol)
+	}
+	slices.Sort(ordered)
+	for _, symbol := range ordered {
+		var last error
+		registered := false
+		for attempt := 0; attempt < 3; attempt++ {
+			if _, _, err := s.catalog.EnsureAsset(ctx, mysql.Queries(ctx, s.db), portfolioID, platform, symbol, observed); err != nil {
+				last = err
+				if !mysql.IsDeadlock(err) {
+					return err
+				}
+				continue
+			}
+			registered = true
+			break
+		}
+		if !registered {
+			return last
+		}
+	}
+	return nil
+}
+
 // collectIdentity calls the adapter with bounded retries and writes one report per selected account.
 func (s *Service) collectIdentity(ctx context.Context, portfolioID, cycleID uuid.UUID, item *identity.Collectable, prices recordedPrices) (map[uuid.UUID]bool, error) {
 	written := map[uuid.UUID]bool{}
@@ -287,6 +338,13 @@ func (s *Service) collectIdentity(ctx context.Context, portfolioID, cycleID uuid
 	}
 	if class == "" {
 		if err := s.supplementPrices(ctx, portfolioID, item, &batch); err != nil {
+			return nil, err
+		}
+		observed := batch.CollectedAt
+		if observed.IsZero() {
+			observed = s.now().UTC()
+		}
+		if err := s.ensurePositionAssets(ctx, portfolioID, item.Identity.Platform, batch.Reports, observed); err != nil {
 			return nil, err
 		}
 	}

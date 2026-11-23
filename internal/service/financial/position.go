@@ -33,26 +33,40 @@ func (s *Service) AccountPositionsAt(ctx context.Context, p PortfolioContext, ac
 }
 
 func (s *Service) readAccountPositions(ctx context.Context, p PortfolioContext, view AccountView, source *uuid.UUID) (AccountView, error) {
-	view.Positions = []PositionRow{}
+	positions, issues, err := s.loadPositions(ctx, p, &view, source)
+	if err != nil {
+		return AccountView{}, err
+	}
+	view.Positions = positions
+	view.Issues = append(view.Issues, issues...)
+	return view, nil
+}
+
+// loadPositions maps one source report's positions with their display facts.
+// Balance reads reuse it so risk exposure and the Futures table describe the
+// same retained position set.
+func (s *Service) loadPositions(ctx context.Context, p PortfolioContext, view *AccountView, source *uuid.UUID) ([]PositionRow, []valuation.Issue, error) {
+	positions := []PositionRow{}
+	issues := []valuation.Issue{}
 	if source == nil {
-		return view, nil
+		return positions, issues, nil
 	}
 	rows, err := mysql.Queries(ctx, s.db).ListPositionsByReport(ctx, sqlcgen.ListPositionsByReportParams{PortfolioID: p.ID[:], ReportID: source[:]})
 	if err != nil {
-		return AccountView{}, err
+		return nil, nil, err
 	}
 	for i := range rows {
 		r := &rows[i]
 		row, err := positionRow(&view.Account, r)
 		if err != nil {
-			return AccountView{}, err
+			return nil, nil, err
 		}
 		completePosition(&row, &view.Account, positionMetadata{sql.NullString{String: r.PositionMode, Valid: true}, r.MarginSetting, r.MarginAssetSymbol, r.MarginBasis})
-		view.Issues = append(view.Issues, positionDataIssues(row.Issues)...)
-		view.Positions = append(view.Positions, row)
+		issues = append(issues, positionDataIssues(row.Issues)...)
+		positions = append(positions, row)
 	}
-	sortPositions(view.Positions, nil)
-	return view, nil
+	sortPositions(positions, nil)
+	return positions, issues, nil
 }
 
 func positionRow(account *valuation.AccountValuation, source *sqlcgen.ListPositionsByReportRow) (PositionRow, error) {

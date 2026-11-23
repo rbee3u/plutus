@@ -34,6 +34,9 @@ service, margin call, or durable notification history.
 Holdings has independent balances, futures, earn, and dual investment views,
 with balances as the default. Earn preserves source product granularity and
 qualifies rates, amounts, rewards, and lifecycle stages. Options is not offered.
+Balances show a per-asset risk exposure for supported unified accounts;
+contract-only assets appear as zero-spot rows. Portfolio-level exposure
+aggregation is not offered.
 
 ## History presentation
 
@@ -72,9 +75,10 @@ platform prices. Pending edits are separate from collected values. See
   quantity adjustments create no flow and make crossing comparisons incomplete.
   Value change is an absolute amount, not an investment return.
 - Trading, transfers, trade history, automatic deposit import, percentage
-  returns, attribution, non-USD display, and exposure aggregation are out of
-  scope. Options, unlisted products and structures, shared portfolios, public
-  registration, and manually tracked non-exchange assets are not offered.
+  returns, attribution, non-USD display, and portfolio-level exposure
+  aggregation are out of scope. Options, unlisted products and structures,
+  shared portfolios, public registration, and manually tracked non-exchange
+  assets are not offered.
 
 Collection success, stale fallback, unknown value, report scopes, earn/dual
 completeness, exclusions, and history calculations are defined in

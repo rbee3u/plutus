@@ -150,6 +150,45 @@ alert is account-scoped, defines no parent aggregate, and is best-effort:
 delivery failure is logged, never changes collection, and creates no durable
 delivery record. It is not a margin call or a liquidation prediction.
 
+### Account-level risk exposure
+
+Risk exposure is one asset's signed coin quantity in one supported unified
+account. It is the balance's net equity plus the net base quantity of open
+linear and inverse contracts in the same account. Linear contracts contribute
+base quantity; inverse contracts contribute quote face divided by their positive
+mark price. Long is positive and short is negative. Cross and isolated margin,
+one-way and hedged sides, and perpetual and delivery contracts net. A position
+never changes a source balance quantity or PnL.
+
+The supported scopes are Binance portfolio margin, OKX unified trading, Bybit
+unified, and Kraken unified main. Kraken coin_m and derivatives holding are
+separate accounts and do not enter main's account-level exposure. Funding, earn,
+dual investment, manual balances, and other accounts are excluded. Options are
+not collected and do not contribute; Binance PM is a known blind spot. Platform
+enablement is explicit: a supported scope without an enabled calculation is
+unknown, never zero. The current rollout computes Binance portfolio margin only;
+the other supported scopes remain pending.
+
+Balance equity is the spot leg. It includes coin-denominated unrealized PnL and
+futures collateral and is net of debt, so liability is not subtracted again.
+Contract-only assets with no spot balance row appear as rows with zero equity,
+zero liability, zero equity USD, and the actual coin-settled position result.
+Positions settled in another coin contribute zero to that row; unknown
+contributing PnL is unknown. Any unconvertible position size, contract size, or
+inverse mark makes the whole asset exposure unknown. It is never a partial sum.
+
+A row without an adopted spot price may display a contract mark price for
+reference when the same report's positions supply one. The fallback changes
+neither equity USD nor valuation completeness, and it never rewrites a committed
+point. Historical reads use the point's retained balances, positions, contract
+terms, and marks, never current prices. Contract base assets are recognized in
+the catalog; multiplier-prefixed contracts such as 1000PEPE remain distinct from
+PEPE.
+
+Account-level exposure is not portfolio-level aggregation, a USD risk value, or
+a liquidation measure. It does not change balance totals, account values, or
+real leverage. Source fields and exclusions belong in the platform mappings.
+
 ## Manual balances
 
 Manual supplements quantities missing from an identity's platform API; external
