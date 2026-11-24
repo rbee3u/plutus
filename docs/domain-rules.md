@@ -187,8 +187,72 @@ the catalog; multiplier-prefixed contracts such as 1000PEPE remain distinct from
 PEPE.
 
 Account-level exposure is not portfolio-level aggregation, a USD risk value, or
-a liquidation measure. It does not change balance totals, account values, or
-real leverage. Source fields and exclusions belong in the platform mappings.
+a liquidation measure. Portfolio-level exposure is defined separately in
+[portfolio-level risk exposure](#portfolio-level-risk-exposure); the
+account-level measure does not change balance totals, account values, or real
+leverage. Source fields and exclusions belong in the platform mappings.
+
+### Portfolio-level risk exposure
+
+Portfolio exposure is one canonical asset's signed coin quantity summed across
+every selected account in the portfolio boundary, across platforms. Each account
+contributes its balance equity for the asset plus the net base quantity of its
+open linear and inverse contracts in that same account. Linear contracts
+contribute base quantity; inverse contracts contribute quote face divided by
+their positive mark price. Long is positive and short is negative. Cross and
+isolated margin, one-way and hedged sides, and perpetual and delivery contracts
+net.
+
+Every selected account type participates: unified accounts, spot, funding, earn,
+dual investment, classic cross and isolated margin, classic USDⓈ-M and COIN-M
+futures, Kraken separate and unified wallets, and manual. This is intentionally
+broader than the [account-level rule](#account-level-risk-exposure), which
+remains limited to one supported unified account and does not change. Funding,
+earn, and dual investment principal are already represented by their account
+balances; dual positions are descriptive and never add principal again.
+Unsettled dual principal therefore counts in its purchase coin, never in the
+settlement coin. Balance equity is already net of debt, so liability is not
+subtracted again.
+
+Accounts are summed by canonical asset. The same coin on two platforms nets; a
+multiplier-prefixed contract such as 1000PEPE stays distinct from PEPE.
+Positions settled in another coin still contribute their base quantity; their
+coin-settled result belongs to the settlement coin's balance row. A contract
+base with no balance row contributes from zero equity.
+
+An account's contribution to one asset is unknown when any position size, side,
+inverse mark price, or balance quantity is unconvertible. Known accounts still
+sum, the row is partial, and the unknown accounts are named; when no account
+contribution is known the row is unknown and is never shown as zero. A missing
+account report makes the filtered list incomplete and is named at list level
+because it cannot be attributed to one asset. A position whose base asset has no
+catalog mapping is named and makes the list incomplete instead of disappearing.
+Stale accounts contribute their compatible successful report and mark the row
+stale. A known zero is a zero exposure, not an unknown.
+
+An excluded platform asset is omitted from both its balance and contract
+contribution and is counted for disclosure; exclusion does not make the list
+incomplete. Exclusion is recorded on balance valuations, so a contract-only
+position whose base has no balance valuation has no point-level exclusion
+evidence; its contract contribution is included rather than guessed excluded.
+Collected manual balances participate; pending manual edits do not and take
+effect at the next collection. Options are not collected. Binance portfolio
+margin does not fetch them, while OKX, Bybit, and Kraken fail a report that
+contains an option row.
+
+A row's reference price is the price of the known contribution with the largest
+absolute quantity, with account order breaking ties. It is the balance's adopted
+spot price or that contribution's display-only contract mark fallback. Value
+(USD) is the row's net quantity multiplied by that reference price: a known zero
+is zero even without a price, a nonzero quantity without a price is unknown, and
+the value is a display reference, never a valuation or liquidation value. There
+is no cross-coin USD total.
+
+Portfolio exposure is a read over one valuation point's retained reports,
+positions, terms, marks, and prices. It never changes valuation, account values,
+balance totals, capital flows, or the balance table's account-level risk
+exposure. It is not a liquidation, margin, or hedge measure; cross-platform
+netting can offset positions that cannot collateralize one another.
 
 ## Manual balances
 

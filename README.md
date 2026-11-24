@@ -21,12 +21,17 @@ Implemented capabilities:
   read-only connections.
 - Scheduled and on-demand collection, USD valuation, compatible stale history,
   and explicit incomplete totals.
-- Overview ownership tree; balances, futures, earn, and dual investment tables;
-  manual balances for API-uncovered quantities. Overview warns when a supported
-  unified account's real leverage is above 3, on the account and its visible
-  identity and platform rows.
+- Overview ownership tree; balances, exposure, futures, earn, and dual
+  investment tables; manual balances for API-uncovered quantities. Overview
+  warns when a supported unified account's real leverage is above 3, on the
+  account and its visible identity and platform rows.
 - Per-asset risk exposure on supported unified-account balance rows;
   contract-only coins appear as zero-spot rows.
+- Portfolio exposure by canonical asset across every selected account and
+  platform, including funding, earn, dual investment, classic margin and
+  futures, Kraken wallets, and manual; partial, unknown, stale, missing, and
+  excluded coverage is disclosed. Values are reference coin quantities, not a
+  cross-coin USD total or liquidation measure.
 - Optional Telegram high-leverage alerts use the same condition after each
   completed collection cycle.
 - Historical points, calendar comparisons, manual capital flows, asset mapping,
@@ -35,7 +40,9 @@ Implemented capabilities:
   [development dataset](./docs/seeds.md).
 
 Remaining work is exchange-app reconciliation and unexercised structures, modes,
-and products. Synthetic tests and recordings are separate evidence. Coverage:
+and products. Portfolio exposure is covered by unit and temporary-database
+tests; it is not yet reconciled against an exchange app. Synthetic tests and
+recordings are separate evidence. Coverage:
 [Binance](./docs/platform/binance/verification.md),
 [OKX](./docs/platform/okx/verification.md),
 [Bybit](./docs/platform/bybit/verification.md), and

@@ -159,6 +159,7 @@ type ListFilter struct {
 	Platform             string
 	IdentityID           *uuid.UUID
 	Symbol               string
+	Sort                 string
 	Offset               int
 	Limit                int
 }

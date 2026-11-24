@@ -112,6 +112,13 @@ account: balance equity plus the base quantity of open linear and inverse
 contracts, with funding, earn, dual investment, other accounts, and uncollected
 options excluded. _Avoid_: net delta, unhedged value, USD exposure.
 
+**portfolio exposure**: The signed quantity of one canonical asset summed across
+every selected account in a portfolio, across platforms, after netting each
+account's balance equity and open contracts. Funding, earn, dual investment, and
+manual balances are included; excluded assets and pending manual edits are
+omitted. _Avoid_: risk exposure as a synonym for the account-level measure, net
+delta, USD exposure, liquidation measure.
+
 **high-leverage warning**: An Overview warning on a supported unified account
 whose known real leverage is strictly above 3; it repeats on the visible
 identity and platform rows without defining a parent ratio. _Avoid_: risk score,

@@ -966,6 +966,124 @@ paths:
         cycleId fixes collected financial data; omit it to resolve the
         latest point once. Current manual edits are included only when requested and remain current. Filtering
         and pagination never change the portfolio boundary.
+
+  /api/v1/portfolios/{portfolioId}/exposure:
+    get:
+      operationId: listExposure
+      tags:
+        - holdings
+      summary: Portfolio-level signed coin exposure by canonical asset
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: platform
+          in: query
+          schema:
+            type: string
+        - name: identityId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: q
+          in: query
+          description:
+            Case-insensitive literal substring of the canonical asset symbol or
+            a contributing native asset symbol.
+          schema:
+            type: string
+        - name: sort
+          in: query
+          description: >
+            value orders by absolute reference value with unknown values last;
+            symbol orders by canonical asset symbol. Other values are rejected.
+          schema:
+            type: string
+            default: value
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 50
+        - $ref: "#/components/parameters/ReadCycleID"
+      responses:
+        "200":
+          description: Portfolio exposure.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExposureList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        "410":
+          $ref: "#/components/responses/Problem"
+      description:
+        cycleId fixes collected financial data; omit it to resolve the latest
+        point once. Pending manual edits are excluded. Filtering and pagination
+        never change the portfolio boundary.
+  /api/v1/portfolios/{portfolioId}/exposure/{canonicalAssetSymbol}:
+    get:
+      operationId: getExposureDetail
+      tags:
+        - holdings
+      summary: Account contributions behind one canonical asset's portfolio exposure
+      parameters:
+        - $ref: "#/components/parameters/PortfolioID"
+        - name: canonicalAssetSymbol
+          in: path
+          required: true
+          description: Canonical asset symbol; normalized to uppercase.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+        - name: platform
+          in: query
+          schema:
+            type: string
+        - name: identityId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/ReadCycleID"
+      responses:
+        "200":
+          description: Exposure contributions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExposureDetail"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "500":
+          $ref: "#/components/responses/Problem"
+        "410":
+          $ref: "#/components/responses/Problem"
+      description:
+        The contribution list uses the same point and account filters as the
+        list row; unknown contributions remain named and are never zero.
   /api/v1/portfolios/{portfolioId}/positions:
     get:
       operationId: listPositions
@@ -3738,6 +3856,218 @@ components:
           description:
             Portfolio valuation issues, plus applicable holding issues
             for matching rows before pagination.
+
+    ExposureSummary:
+      type: object
+      additionalProperties: false
+      required:
+        [assetCount, longCount, shortCount, flatCount, partialCount, unknownCount, completeness, freshness]
+      properties:
+        assetCount:
+          type: integer
+          minimum: 0
+        longCount:
+          type: integer
+          minimum: 0
+        shortCount:
+          type: integer
+          minimum: 0
+        flatCount:
+          type: integer
+          minimum: 0
+        partialCount:
+          type: integer
+          minimum: 0
+        unknownCount:
+          type: integer
+          minimum: 0
+        completeness:
+          $ref: "#/components/schemas/Completeness"
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+    ExposureCoverage:
+      type: object
+      additionalProperties: false
+      required:
+        [complete, missingAccountIds, missingAccountCount, staleAccountCount, excludedAssetCount, unattributedPositionCount]
+      properties:
+        complete:
+          type: boolean
+        missingAccountIds:
+          type: array
+          items:
+            $ref: "#/components/schemas/UUID"
+        missingAccountCount:
+          type: integer
+          minimum: 0
+        staleAccountCount:
+          type: integer
+          minimum: 0
+        excludedAssetCount:
+          type: integer
+          minimum: 0
+        unattributedPositionCount:
+          type: integer
+          minimum: 0
+    ExposureRow:
+      type: object
+      additionalProperties: false
+      required:
+        [canonicalAssetSymbol, platformSymbols, netQuantity, state, priceUsd, priceSource, priceSourceSymbol, priceSourcePlatform, valueUsd, accountCount, unknownAccountCount, freshness, issues]
+      properties:
+        canonicalAssetSymbol:
+          type: string
+        platformSymbols:
+          type: array
+          items:
+            type: string
+        netQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+          description:
+            Known signed sum across selected accounts; null only when no
+            contribution is known. Partial sums are never presented as complete.
+        state:
+          type: string
+          description: >
+            complete means every contribution is known; partial means the row is
+            a known sum with at least one unknown contribution; unknown means no
+            contribution is known.
+        priceUsd:
+          $ref: "#/components/schemas/NullableDecimal"
+          description:
+            Reference price from the largest absolute known contribution.
+        priceSource:
+          type:
+            - string
+            - "null"
+          description: spot or contract; null when no reference price is known.
+        priceSourceSymbol:
+          type:
+            - string
+            - "null"
+        priceSourcePlatform:
+          type:
+            - string
+            - "null"
+        valueUsd:
+          $ref: "#/components/schemas/NullableDecimal"
+          description:
+            netQuantity times the reference price. A known zero is "0" even
+            without a price; a nonzero quantity without a price is null. This
+            is a display reference, not a valuation or liquidation value.
+        accountCount:
+          type: integer
+          minimum: 0
+        unknownAccountCount:
+          type: integer
+          minimum: 0
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+    ExposureList:
+      type: object
+      additionalProperties: false
+      required: [context, summary, coverage, items, page, issues]
+      properties:
+        context:
+          $ref: "#/components/schemas/ReadContext"
+        summary:
+          $ref: "#/components/schemas/ExposureSummary"
+        coverage:
+          $ref: "#/components/schemas/ExposureCoverage"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExposureRow"
+        page:
+          $ref: "#/components/schemas/OffsetPage"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+    ExposureContribution:
+      type: object
+      additionalProperties: false
+      required:
+        [platform, platformLabel, identityId, identityName, accountId, accountName, accountType, accountStructure, assetSymbol, quantity, state, contractOnly, freshness, reportObservedAt, issues]
+      properties:
+        platform:
+          type: string
+        platformLabel:
+          type: string
+        identityId:
+          $ref: "#/components/schemas/UUID"
+        identityName:
+          type: string
+        accountId:
+          $ref: "#/components/schemas/UUID"
+        accountName:
+          type: string
+        accountType:
+          type: string
+        accountStructure:
+          type: string
+        assetSymbol:
+          type: string
+          description: Native symbol(s) contributing to this canonical asset.
+        quantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        state:
+          type: string
+          description: complete or unknown.
+        contractOnly:
+          type: boolean
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+        reportObservedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
+    ExposureDetail:
+      type: object
+      additionalProperties: false
+      required:
+        [context, canonicalAssetSymbol, platformSymbols, netQuantity, state, accountCount, unknownAccountCount, freshness, coverage, contributions, issues]
+      properties:
+        context:
+          $ref: "#/components/schemas/ReadContext"
+        canonicalAssetSymbol:
+          type: string
+        platformSymbols:
+          type: array
+          items:
+            type: string
+        netQuantity:
+          $ref: "#/components/schemas/NullableDecimal"
+        state:
+          type: string
+          description: complete, partial, or unknown.
+        accountCount:
+          type: integer
+          minimum: 0
+        unknownAccountCount:
+          type: integer
+          minimum: 0
+        freshness:
+          $ref: "#/components/schemas/Freshness"
+        coverage:
+          $ref: "#/components/schemas/ExposureCoverage"
+        contributions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExposureContribution"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/Issue"
     PositionList:
       type: object
       additionalProperties: false

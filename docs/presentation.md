@@ -225,22 +225,26 @@ account reads request the displayed valuation point even after a newer
 collection finishes. Unavailable or expired details offer recovery without
 substituting another point's holdings.
 
-Holdings has independent balances, futures, earn, and dual investment views,
-with balances as default and no options placeholder. Ownership totals belong in
-Overview, while flat views support browsing distinct holding kinds. Each view
-remembers platform, identity, search, and pagination during the application
-session, scoped by user and portfolio. Internal navigation saves outgoing search
-drafts and restores the target view. Explicit URLs, browser history, and reload
-take precedence; reload preserves only the current URL's view state.
+Holdings has independent balances, exposure, futures, earn, and dual investment
+views, with balances as default and no options placeholder. Exposure is the
+portfolio-level view; the balance table keeps its account-level risk exposure.
+Ownership totals belong in Overview, while flat views support browsing distinct
+holding kinds. Each view remembers platform, identity, search, and pagination
+during the application session, scoped by user and portfolio. Internal
+navigation saves outgoing search drafts and restores the target view. Explicit
+URLs, browser history, and reload take precedence; reload preserves only the
+current URL's view state.
 
 ### Filters
 
-Global holdings filters live in their column headers. Labels remain visible with
-their condition; opening one offers a single-choice platform or identity list,
-or a symbol search. Account is descriptive, not filterable, because account
-types differ across platforms and structures. Dual uses Pair for its currency
-search. Headers remain interactive during loading, failure, and empty results,
-with keyboard access and unclipped popovers.
+Balances, futures, earn, and dual investment filters live in their column
+headers; exposure uses the same controls in a toolbar above its table and mobile
+cards. Labels remain visible with their condition; opening one offers a
+single-choice platform or identity list, or a symbol search. Account is
+descriptive, not filterable, because account types differ across platforms and
+structures. Dual uses Pair for its currency search. Headers remain interactive
+during loading, failure, and empty results, with keyboard access and unclipped
+popovers.
 
 Platform and identity candidates are the portfolio's non-archived identities in
 shared order. Platform is the top-level selector; selecting a platform unlocks
@@ -374,6 +378,61 @@ on hover, focus, or click; their Unrealized PnL is the actual coin-settled
 result, with a zero contribution from positions settled in another coin. A
 contract mark price fallback is shown with a dotted disclosure on Price and is
 not used for valuation.
+
+### Portfolio exposure
+
+`Exposure` is the portfolio-level signed coin quantity by canonical asset. It
+sits after `Balances` and before `Futures`. The summary shows the asset count,
+long, short, and flat counts, partial and unknown counts, completeness,
+freshness, and the evaluated point. It never shows a cross-coin USD total: long
+BTC and short ETH are not a hedge, and a single net value would hide that
+distinction. `FILTERED EXPOSURE` replaces the label while any platform,
+identity, or asset filter applies.
+
+Filters stand outside the table so the mobile card view can reuse them:
+`Platform`, `Identity`, and `Asset` search. `Platform` and `Identity` narrow
+account contributions; the asset search narrows rows by canonical or native
+symbol without dropping a matching row's other contributions. Rows are sorted by
+absolute reference value descending, with assets without a value last and
+canonical symbol breaking ties; this release has no sort control.
+
+Columns are `Asset`, `Net exposure`, `Price (USD)`, `Value (USD)`, `Accounts`,
+and `Issues`, preceded by a disclosure control. `Net exposure` is the signed
+quantity, right aligned, with quantity precision and no leading `+`; a known
+zero is `0` and a fully unknown total is `—`. `Asset` carries the state badges:
+`Partial` when known accounts are summed with unknown ones, `Unknown` when no
+contribution is known, `Flat` for a complete zero, and `Stale` when a
+contributing report is carried forward. `Price (USD)` is the reference price; a
+dotted disclosure names the contributing platform, native symbol, and whether it
+is a spot or contract mark price. `Value (USD)` is the net quantity times that
+reference price and keeps its sign without profit colors; a known zero is `$0`
+and an unavailable value is `—`. `Accounts` shows the contributing account count
+with a secondary unknown count or stale hint. `Issues` stays `—` when healthy
+and otherwise discloses stale or unknown-input badges.
+
+A row expands in place to `Contributions`: `Platform`, `Identity`, `Account`,
+`Contribution`, and `State`, followed by a total. Contributions are shown at
+account granularity, including zero-flat accounts and contract-only accounts;
+unknown accounts keep `—` and a disclosure naming the unavailable input. The
+total repeats the row's net quantity. The detail uses the same point and account
+filters as the row.
+
+A coverage notice above the table names missing accounts, stale accounts,
+excluded assets, and unattributed positions. Missing accounts and unattributed
+positions make the list incomplete and mean known totals may omit holdings;
+excluded assets are omitted deliberately and are disclosed without making the
+list incomplete. `How it works` opens a short disclosure of the formula, the
+dual investment and pending manual rules, the cross-platform caveat, and the
+option blind spot. Page Issues names every omission.
+
+At widths up to 900px the table becomes a card list. Each card shows the asset
+and state, net quantity, value, accounts, and reference price; its header is a
+button that expands the same contribution list. Filter controls stack and stay
+outside the cards.
+
+Empty states distinguish no valuation point, an incomplete account set, no
+filter match, and a complete absence of exposure. A partial or unknown row is
+never replaced by a zero or hidden.
 
 ### Futures
 

@@ -7,7 +7,8 @@ status: accepted
 Unified accounts hold spot and contract positions in one place, but the balance
 table only shows per-coin equity. A user cannot see how much of a coin remains
 unhedged after open contracts. Portfolio-level aggregation is a separate product
-step; this decision covers one account.
+decision recorded in [ADR 0018](./0018-portfolio-risk-exposure.md); this
+decision covers one account.
 
 Risk exposure is one asset's signed coin quantity in one supported unified
 account. The spot leg is the balance's net equity: it already includes
@@ -41,8 +42,10 @@ assets are recognized in the catalog; multiplier-prefixed contracts such as
 The alternative of a USD notional exposure would mix risk with valuation and
 lose the coin quantity users reconcile against their balances. Partial sums were
 rejected because one unconvertible position would silently understate the net.
-Portfolio-level netting, option delta, and triangle or multiplier symbol merges
-are out of scope; they require separate product decisions.
+Portfolio-level netting is defined by
+[ADR 0018](./0018-portfolio-risk-exposure.md). Option delta and triangle or
+multiplier symbol merges remain out of scope; they require separate product
+decisions.
 
 [Domain rules](../domain-rules.md#account-level-risk-exposure) own behavior,
 [presentation](../presentation.md#balances) owns display, and the

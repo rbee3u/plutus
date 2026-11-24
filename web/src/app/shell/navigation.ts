@@ -62,6 +62,7 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
     defaultPathSuffix: "/holdings/balances",
     subviews: [
       { label: "Balances", pathSuffix: "/holdings/balances" },
+      { label: "Exposure", pathSuffix: "/holdings/exposure" },
       { label: "Futures", pathSuffix: "/holdings/futures" },
       { label: "Earn", pathSuffix: "/holdings/earn" },
       { label: "Dual investment", pathSuffix: "/holdings/dual-investment" },

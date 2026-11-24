@@ -31,12 +31,15 @@ Optional Telegram risk alerts repeat the same high-leverage condition after each
 completed collection cycle. They are a best-effort convenience, not a monitoring
 service, margin call, or durable notification history.
 
-Holdings has independent balances, futures, earn, and dual investment views,
-with balances as the default. Earn preserves source product granularity and
-qualifies rates, amounts, rewards, and lifecycle stages. Options is not offered.
-Balances show a per-asset risk exposure for supported unified accounts;
-contract-only assets appear as zero-spot rows. Portfolio-level exposure
-aggregation is not offered.
+Holdings has independent balances, exposure, futures, earn, and dual investment
+views, with balances as the default. Earn preserves source product granularity
+and qualifies rates, amounts, rewards, and lifecycle stages. Options is not
+offered. Balances show a per-asset risk exposure for supported unified accounts;
+contract-only assets appear as zero-spot rows. Exposure shows the signed coin
+quantity by canonical asset summed across every selected account and platform,
+with account contributions, partial and unknown rows, and stale or missing
+coverage disclosed. It is a net coin view, not a cross-coin USD total,
+liquidation measure, or margin ratio.
 
 ## History presentation
 
@@ -75,10 +78,10 @@ platform prices. Pending edits are separate from collected values. See
   quantity adjustments create no flow and make crossing comparisons incomplete.
   Value change is an absolute amount, not an investment return.
 - Trading, transfers, trade history, automatic deposit import, percentage
-  returns, attribution, non-USD display, and portfolio-level exposure
-  aggregation are out of scope. Options, unlisted products and structures,
-  shared portfolios, public registration, and manually tracked non-exchange
-  assets are not offered.
+  returns, attribution, non-USD display, and a cross-coin USD exposure total are
+  out of scope. Exposure history is not presented yet. Options, unlisted
+  products and structures, shared portfolios, public registration, and manually
+  tracked non-exchange assets are not offered.
 
 Collection success, stale fallback, unknown value, report scopes, earn/dual
 completeness, exclusions, and history calculations are defined in

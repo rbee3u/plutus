@@ -690,6 +690,108 @@ export type BalanceList = {
     issues: Array<Issue>;
 };
 
+export type ExposureSummary = {
+    assetCount: number;
+    longCount: number;
+    shortCount: number;
+    flatCount: number;
+    partialCount: number;
+    unknownCount: number;
+    completeness: Completeness;
+    freshness: Freshness;
+};
+
+export type ExposureCoverage = {
+    complete: boolean;
+    missingAccountIds: Array<Uuid>;
+    missingAccountCount: number;
+    staleAccountCount: number;
+    excludedAssetCount: number;
+    unattributedPositionCount: number;
+};
+
+export type ExposureRow = {
+    canonicalAssetSymbol: string;
+    platformSymbols: Array<string>;
+    /**
+     * Known signed sum across selected accounts; null only when no contribution is known. Partial sums are never presented as complete.
+     */
+    netQuantity: NullableDecimal;
+    /**
+     * complete means every contribution is known; partial means the row is a known sum with at least one unknown contribution; unknown means no contribution is known.
+     *
+     */
+    state: string;
+    /**
+     * Reference price from the largest absolute known contribution.
+     */
+    priceUsd: NullableDecimal;
+    /**
+     * spot or contract; null when no reference price is known.
+     */
+    priceSource: string | null;
+    priceSourceSymbol: string | null;
+    priceSourcePlatform: string | null;
+    /**
+     * netQuantity times the reference price. A known zero is "0" even without a price; a nonzero quantity without a price is null. This is a display reference, not a valuation or liquidation value.
+     */
+    valueUsd: NullableDecimal;
+    accountCount: number;
+    unknownAccountCount: number;
+    freshness: Freshness;
+    issues: Array<Issue>;
+};
+
+export type ExposureList = {
+    context: ReadContext;
+    summary: ExposureSummary;
+    coverage: ExposureCoverage;
+    items: Array<ExposureRow>;
+    page: OffsetPage;
+    issues: Array<Issue>;
+};
+
+export type ExposureContribution = {
+    platform: string;
+    platformLabel: string;
+    identityId: Uuid;
+    identityName: string;
+    accountId: Uuid;
+    accountName: string;
+    accountType: string;
+    accountStructure: string;
+    /**
+     * Native symbol(s) contributing to this canonical asset.
+     */
+    assetSymbol: string;
+    quantity: NullableDecimal;
+    /**
+     * complete or unknown.
+     */
+    state: string;
+    contractOnly: boolean;
+    freshness: Freshness;
+    reportObservedAt: string | null;
+    issues: Array<Issue>;
+};
+
+export type ExposureDetail = {
+    context: ReadContext;
+    canonicalAssetSymbol: string;
+    platformSymbols: Array<string>;
+    netQuantity: NullableDecimal;
+    /**
+     * complete, partial, or unknown.
+     */
+    state: string;
+    accountCount: number;
+    unknownAccountCount: number;
+    freshness: Freshness;
+    coverage: ExposureCoverage;
+    contributions: Array<ExposureContribution>;
+    issues: Array<Issue>;
+};
+
 export type PositionList = {
     coverage: ReportCoverage;
     context: ReadContext;
@@ -2761,6 +2863,129 @@ export type ListBalancesResponses = {
 };
 
 export type ListBalancesResponse = ListBalancesResponses[keyof ListBalancesResponses];
+
+export type ListExposureData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+    };
+    query?: {
+        platform?: string;
+        identityId?: string;
+        /**
+         * Case-insensitive literal substring of the canonical asset symbol or a contributing native asset symbol.
+         */
+        q?: string;
+        /**
+         * value orders by absolute reference value with unknown values last; symbol orders by canonical asset symbol. Other values are rejected.
+         *
+         */
+        sort?: string;
+        offset?: number;
+        limit?: number;
+        /**
+         * Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+         */
+        cycleId?: Uuid;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/exposure';
+};
+
+export type ListExposureErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    410: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+};
+
+export type ListExposureError = ListExposureErrors[keyof ListExposureErrors];
+
+export type ListExposureResponses = {
+    /**
+     * Portfolio exposure.
+     */
+    200: ExposureList;
+};
+
+export type ListExposureResponse = ListExposureResponses[keyof ListExposureResponses];
+
+export type GetExposureDetailData = {
+    body?: never;
+    path: {
+        portfolioId: Uuid;
+        /**
+         * Canonical asset symbol; normalized to uppercase.
+         */
+        canonicalAssetSymbol: string;
+    };
+    query?: {
+        platform?: string;
+        identityId?: string;
+        /**
+         * Immutable valuation point to read; omitted to resolve the latest point once per request. The current point remains readable after the public history cutoff. Unknown points return 404; expired detail returns 410 without substituting another point.
+         */
+        cycleId?: Uuid;
+    };
+    url: '/api/v1/portfolios/{portfolioId}/exposure/{canonicalAssetSymbol}';
+};
+
+export type GetExposureDetailErrors = {
+    /**
+     * Problem details.
+     */
+    400: Problem;
+    /**
+     * Problem details.
+     */
+    401: Problem;
+    /**
+     * Problem details.
+     */
+    403: Problem;
+    /**
+     * Problem details.
+     */
+    404: Problem;
+    /**
+     * Problem details.
+     */
+    410: Problem;
+    /**
+     * Problem details.
+     */
+    500: Problem;
+};
+
+export type GetExposureDetailError = GetExposureDetailErrors[keyof GetExposureDetailErrors];
+
+export type GetExposureDetailResponses = {
+    /**
+     * Exposure contributions.
+     */
+    200: ExposureDetail;
+};
+
+export type GetExposureDetailResponse = GetExposureDetailResponses[keyof GetExposureDetailResponses];
 
 export type ListPositionsData = {
     body?: never;

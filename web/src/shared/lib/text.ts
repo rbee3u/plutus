@@ -8,6 +8,8 @@ const ISSUE_LABELS: Record<string, string> = {
   stale: "Stale",
   no_price: "Missing price",
   missing: "Missing report",
+  exposure_unknown_position: "Unknown inputs",
+  exposure_unattributed_position: "Unattributed position",
 };
 
 export function issueLabel(code: string): string {

@@ -55,8 +55,10 @@ under `sum`, with 120 USDT and 0.002 BTC principal. Other selected dual wallets
 are empty. Optional measures stay unknown where the simulated platform does not
 supply them.
 
-Expand identities and accounts in Overview, then inspect balances, futures,
-earn, and dual investment. Create a new portfolio to inspect empty state.
+Expand identities and accounts in Overview, then inspect balances, exposure,
+futures, earn, and dual investment. Exposure in `edge-cases` demonstrates
+partial account coverage, stale contributions, an excluded asset, and a value
+without a reference price. Create a new portfolio to inspect empty state.
 
 `leverage-warning` exists only to exercise the Overview high-leverage warning.
 Its Binance portfolio-margin account reports 1,000 USD adjusted equity and one

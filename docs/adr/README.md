@@ -28,6 +28,7 @@ own setup, validation, and deployment procedures.
 | [0015](./0015-prelaunch-schema.md)                 | Prelaunch schema and retained financial provenance      |
 | [0016](./0016-telegram-risk-alerts.md)             | Telegram high-leverage alerts                           |
 | [0017](./0017-account-risk-exposure.md)            | Account-level risk exposure                             |
+| [0018](./0018-portfolio-risk-exposure.md)          | Portfolio risk exposure                                 |
 
 ## Maintenance
 

@@ -24,6 +24,12 @@ const registry = {
   balances: family<
     [platform?: string, identityId?: string, symbol?: string, offset?: number, readId?: string]
   >("balances", true),
+  exposure: family<
+    [platform?: string, identityId?: string, symbol?: string, offset?: number, readId?: string]
+  >("exposure", true),
+  exposureDetail: family<
+    [symbol?: string, platform?: string, identityId?: string, cycleId?: string]
+  >("exposure-detail", true),
   positions: family<
     [platform?: string, identityId?: string, symbol?: string, offset?: number, readId?: string]
   >("positions", true),
