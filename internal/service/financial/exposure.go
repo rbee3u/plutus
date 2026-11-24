@@ -37,7 +37,8 @@ const (
 	ExposureSortSymbol = "symbol"
 )
 
-// ExposureSummary counts the filtered exposure rows before pagination.
+// ExposureSummary counts the filtered exposure rows before pagination and
+// reports their signed USD composition.
 type ExposureSummary struct {
 	AssetCount   int
 	LongCount    int
@@ -45,8 +46,22 @@ type ExposureSummary struct {
 	FlatCount    int
 	PartialCount int
 	UnknownCount int
-	Completeness string
-	Freshness    string
+	// StablecoinValueUSD is the known stablecoin row value sum; nil means no
+	// known stablecoin value exists, so zero is not proven.
+	StablecoinValueUSD *string
+	// NonStablecoinValueUSD is the known non-stablecoin row value sum.
+	NonStablecoinValueUSD *string
+	// TotalValueUSD is the known row value sum. It may stay a known partial sum
+	// while one class is unknown.
+	TotalValueUSD *string
+	// UnpricedAssetCount counts filtered rows without a USD value.
+	UnpricedAssetCount int
+	// UnpricedAssetSymbols names those rows in canonical symbol order.
+	UnpricedAssetSymbols []string
+	// StablecoinSymbols names classified rows present in the filtered scope.
+	StablecoinSymbols []string
+	Completeness      string
+	Freshness         string
 }
 
 // ExposureCoverage qualifies the account set behind the exposure read.
@@ -713,10 +728,30 @@ func summarizeExposure(rows []ExposureRow, coverageComplete bool, unattributed i
 		Completeness: valuation.CompletenessComplete,
 		Freshness:    valuation.FreshnessFresh,
 	}
+	stableSum, nonStableSum := decimal.Zero(), decimal.Zero()
+	stableKnown, nonStableKnown := 0, 0
+	stableRows, nonStableRows := 0, 0
 	for i := range rows {
 		row := &rows[i]
 		if row.Freshness == valuation.FreshnessStale {
 			summary.Freshness = valuation.FreshnessStale
+		}
+		isStable := valuation.Stablecoin(row.CanonicalAssetSymbol)
+		if isStable {
+			summary.StablecoinSymbols = append(summary.StablecoinSymbols, row.CanonicalAssetSymbol)
+			stableRows++
+		} else {
+			nonStableRows++
+		}
+		if row.valueRat == nil {
+			summary.UnpricedAssetCount++
+			summary.UnpricedAssetSymbols = append(summary.UnpricedAssetSymbols, row.CanonicalAssetSymbol)
+		} else if isStable {
+			stableSum = decimal.Add(stableSum, row.valueRat)
+			stableKnown++
+		} else {
+			nonStableSum = decimal.Add(nonStableSum, row.valueRat)
+			nonStableKnown++
 		}
 		switch row.State {
 		case ExposurePartial:
@@ -735,10 +770,29 @@ func summarizeExposure(rows []ExposureRow, coverageComplete bool, unattributed i
 			}
 		}
 	}
-	if !hasPoint || !coverageComplete || unattributed > 0 || summary.PartialCount > 0 || summary.UnknownCount > 0 {
+	slices.Sort(summary.StablecoinSymbols)
+	slices.Sort(summary.UnpricedAssetSymbols)
+	summary.StablecoinValueUSD = exposureClassValue(stableSum, stableKnown, stableRows, coverageComplete)
+	summary.NonStablecoinValueUSD = exposureClassValue(nonStableSum, nonStableKnown, nonStableRows, coverageComplete)
+	summary.TotalValueUSD = exposureClassValue(decimal.Add(stableSum, nonStableSum), stableKnown+nonStableKnown, len(rows), coverageComplete)
+	if !hasPoint || !coverageComplete || unattributed > 0 || summary.PartialCount > 0 || summary.UnknownCount > 0 || summary.UnpricedAssetCount > 0 {
 		summary.Completeness = valuation.CompletenessIncomplete
 	}
 	return summary
+}
+
+// exposureClassValue keeps unknown distinct from zero: known values sum, an
+// empty class is zero only when coverage is complete, and anything else is
+// unknown.
+func exposureClassValue(sum *big.Rat, known, rows int, coverageComplete bool) *string {
+	switch {
+	case known > 0:
+		return decimal.FormatPtr(sum)
+	case rows == 0 && coverageComplete:
+		return decimal.FormatPtr(decimal.Zero())
+	default:
+		return nil
+	}
 }
 
 func (f *exposureFacts) coverageComplete() bool {

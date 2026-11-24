@@ -1,13 +1,37 @@
 import { Dialog } from "@/shared/ui/Dialog";
 import shared from "@/shared/styles/page.module.css";
 
-export function ExposureHowItWorks({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ExposureHowItWorks({
+  open,
+  onClose,
+  stablecoinSymbols,
+}: {
+  open: boolean;
+  onClose: () => void;
+  stablecoinSymbols: string[];
+}) {
+  const classified = stablecoinSymbols.length > 0 ? stablecoinSymbols.join(", ") : "none";
   return (
     <Dialog open={open} title="How portfolio exposure works" onClose={onClose}>
       <p>
         Portfolio exposure is the signed coin quantity left after netting each selected account's
         balance equity against its open linear and inverse contracts, then summing every account and
         platform by canonical asset. Long is positive; short is negative.
+      </p>
+      <p>
+        The three USD amounts are a signed display composition: each row's net quantity times its
+        reference price, grouped into stablecoins, non-stablecoins, and total. Long and short values
+        offset. They are not a valuation, net worth, hedge, or liquidation measure.
+      </p>
+      <p>
+        Stablecoins are USD-pegged canonical assets in the maintained set. This view classifies:{" "}
+        {classified}. USD, USDT, and USDC value at one USD; other stablecoins use their reference
+        price.
+      </p>
+      <p>
+        A row without a USD value is left out of the amounts and named in the summary note. A class
+        with no known value shows —, never $0; a known zero shows $0. Missing accounts and excluded
+        assets are named in the coverage notice.
       </p>
       <p>
         Funding, earn, and dual investment principal are already in balances and are counted once.

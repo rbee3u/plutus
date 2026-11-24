@@ -30,8 +30,9 @@ Implemented capabilities:
 - Portfolio exposure by canonical asset across every selected account and
   platform, including funding, earn, dual investment, classic margin and
   futures, Kraken wallets, and manual; partial, unknown, stale, missing, and
-  excluded coverage is disclosed. Values are reference coin quantities, not a
-  cross-coin USD total or liquidation measure.
+  excluded coverage is disclosed. Values are reference coin quantities, and a
+  signed USD composition reports stablecoin, non-stablecoin, and total exposure
+  value. Neither is a valuation, net-worth total, or liquidation measure.
 - Optional Telegram high-leverage alerts use the same condition after each
   completed collection cycle.
 - Historical points, calendar comparisons, manual capital flows, asset mapping,

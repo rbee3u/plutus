@@ -21,6 +21,12 @@ const list: ExposureList = {
     flatCount: 1,
     partialCount: 1,
     unknownCount: 1,
+    stablecoinValueUsd: "1000",
+    nonStablecoinValueUsd: "32405.2",
+    totalValueUsd: "33405.2",
+    unpricedAssetCount: 1,
+    unpricedAssetSymbols: ["LINK"],
+    stablecoinSymbols: ["USDT"],
     completeness: "incomplete",
     freshness: "stale",
   },
@@ -260,7 +266,19 @@ test("Exposure discloses states, reference values, and account contributions", a
   await page.goto(`/p/${portfolioId}/holdings/exposure`);
 
   await expect(page.getByText("PORTFOLIO EXPOSURE", { exact: true })).toBeVisible();
-  await expect(page.getByText("2 long · 1 short · 1 flat", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("6 assets · 2 long · 1 short · 1 flat", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Stablecoins", { exact: true })).toBeVisible();
+  await expect(page.getByText("Non-stablecoins", { exact: true })).toBeVisible();
+  await expect(page.getByText("Total", { exact: true })).toBeVisible();
+  await expect(page.getByText("$1,000", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("$32,405.2", { exact: true })).toBeVisible();
+  await expect(page.getByText("$33,405.2", { exact: true })).toBeVisible();
+  const valueNote = page.getByRole("button", { name: /USD value details/ });
+  await expect(valueNote).toBeVisible();
+  await expect(valueNote).toContainText("USD value is partial");
+  await expect(valueNote).toContainText("1 asset without a USD value (LINK)");
   await expect(page.getByText("1 partial", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("1 unknown", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Incomplete", { exact: true })).toBeVisible();
@@ -295,6 +313,10 @@ test("Exposure discloses states, reference values, and account contributions", a
     "Portfolio exposure is the signed coin quantity",
   );
   await expect(page.getByRole("dialog")).toContainText("Options are not collected");
+  await expect(page.getByRole("dialog")).toContainText(
+    "The three USD amounts are a signed display composition",
+  );
+  await expect(page.getByRole("dialog")).toContainText("This view classifies: USDT");
   await page.keyboard.press("Escape");
 });
 
@@ -303,6 +325,9 @@ test("Exposure uses cards and keeps contributions on mobile", async ({ page }) =
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/p/${portfolioId}/holdings/exposure`);
   await expect(page.getByRole("table")).toHaveCount(0);
+  await expect(page.getByText("Stablecoins", { exact: true })).toBeVisible();
+  await expect(page.getByText("Non-stablecoins", { exact: true })).toBeVisible();
+  await expect(page.getByText("Total", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Expand BTC contributions" }).click();
   await expect(page.getByText("Contributions", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Binance · main · Spot")).toBeVisible();

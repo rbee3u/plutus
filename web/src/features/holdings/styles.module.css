@@ -437,15 +437,132 @@
   white-space: nowrap;
 }
 
-.exposureSummaryUnit {
-  margin-left: calc(-1 * var(--space-sm));
-  color: var(--muted);
-  font-size: var(--text-sm);
+.exposureSummary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-xl) var(--space-2xl);
+  min-height: 0;
+}
+
+.exposureSummaryMain {
+  display: grid;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+.exposureSummaryHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-lg);
+  min-width: 0;
 }
 
 .exposureSummaryCounts {
   color: var(--muted);
   font-size: var(--text-xs);
+}
+
+.exposureValues {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 220px));
+  gap: 0 var(--space-2xl);
+  align-items: baseline;
+  margin: 0;
+}
+
+.exposureValues > div {
+  display: grid;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.exposureValues dt {
+  color: var(--faint);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: var(--line-height-xs);
+}
+
+.exposureValues dd {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
+  line-height: var(--line-height-md);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.exposureValues dd.exposureValueTotal {
+  font-weight: var(--weight-semibold);
+}
+
+.exposureValueNote {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  line-height: var(--line-height-xs);
+  text-align: start;
+}
+
+.exposureValueNote > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.exposureValueNote svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--warning);
+}
+
+@media (max-width: 1240px) {
+  .exposureSummary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-lg);
+  }
+
+  .exposureSummaryEnd {
+    justify-content: flex-end;
+  }
+
+  .exposureValues {
+    gap: 0 var(--space-xl);
+  }
+}
+
+@media (max-width: 900px) {
+  .exposureValues {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .exposureSummary {
+    gap: var(--space-md);
+  }
+
+  .exposureValues {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-md);
+  }
+
+  .exposureValues > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-lg);
+  }
+
+  .exposureSummaryEnd {
+    justify-content: flex-start;
+  }
 }
 
 .exposureHelpButton {

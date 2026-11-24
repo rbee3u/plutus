@@ -245,8 +245,38 @@ absolute quantity, with account order breaking ties. It is the balance's adopted
 spot price or that contribution's display-only contract mark fallback. Value
 (USD) is the row's net quantity multiplied by that reference price: a known zero
 is zero even without a price, a nonzero quantity without a price is unknown, and
-the value is a display reference, never a valuation or liquidation value. There
-is no cross-coin USD total.
+the value is a display reference, never a valuation or liquidation value.
+
+### Exposure USD composition
+
+The portfolio exposure list also reports a signed USD composition of its
+filtered rows: stablecoin exposure value, non-stablecoin exposure value, and
+their total. Each amount sums the known rows' net quantity times their reference
+price, using the row value defined above. Long is positive and short is
+negative, so the composition is a display reference, never a valuation, net
+worth, hedge, or liquidation measure, and it does not change valuation, account
+values, or totals.
+
+Stablecoins are USD-pegged canonical assets in the maintained set: BUSD, DAI,
+FDUSD, FRAX, GUSD, LUSD, PYUSD, RLUSD, TUSD, U, USD, USD1, USDC, USDD, USDE,
+USDG, USDP, USDS, USDT, and USDTB. Classification is explicit by canonical
+symbol; price proximity never classifies an asset. USD, USDT, and USDC value at
+one USD; the other listed stablecoins use their reference price, so a de-peg is
+visible. Unlisted assets, including EUR-pegged stablecoins, yield wrappers, and
+bridged variants, count as non-stablecoins.
+
+Known row values sum. A row without a USD value is omitted from the amounts and
+counted; the affected class and total are partial and the omitted rows are
+named. A class with rows but no known value is unknown, never zero; a class with
+no rows is zero when coverage is complete and unknown when coverage is
+incomplete. The total is the sum of known values and is partial when any row
+value, missing account report, or unattributed position is unknown. A known zero
+is zero. Filters apply to the composition, and the summary covers every filtered
+row before pagination. Excluded assets are omitted by policy and disclosed
+without making the composition incomplete.
+
+The composition is a display derivation over the same point-scoped read. It adds
+no persisted table or history.
 
 Portfolio exposure is a read over one valuation point's retained reports,
 positions, terms, marks, and prices. It never changes valuation, account values,

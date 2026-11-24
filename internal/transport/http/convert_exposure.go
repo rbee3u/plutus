@@ -23,15 +23,29 @@ func toAPIExposureList(list financial.ExposureList) api.ExposureList {
 }
 
 func toAPIExposureSummary(summary financial.ExposureSummary) api.ExposureSummary {
+	unpriced := summary.UnpricedAssetSymbols
+	if unpriced == nil {
+		unpriced = []string{}
+	}
+	stablecoins := summary.StablecoinSymbols
+	if stablecoins == nil {
+		stablecoins = []string{}
+	}
 	return api.ExposureSummary{
-		AssetCount:   summary.AssetCount,
-		LongCount:    summary.LongCount,
-		ShortCount:   summary.ShortCount,
-		FlatCount:    summary.FlatCount,
-		PartialCount: summary.PartialCount,
-		UnknownCount: summary.UnknownCount,
-		Completeness: api.Completeness(summary.Completeness),
-		Freshness:    api.Freshness(summary.Freshness),
+		AssetCount:            summary.AssetCount,
+		LongCount:             summary.LongCount,
+		ShortCount:            summary.ShortCount,
+		FlatCount:             summary.FlatCount,
+		PartialCount:          summary.PartialCount,
+		UnknownCount:          summary.UnknownCount,
+		StablecoinValueUsd:    summary.StablecoinValueUSD,
+		NonStablecoinValueUsd: summary.NonStablecoinValueUSD,
+		TotalValueUsd:         summary.TotalValueUSD,
+		UnpricedAssetCount:    summary.UnpricedAssetCount,
+		UnpricedAssetSymbols:  unpriced,
+		StablecoinSymbols:     stablecoins,
+		Completeness:          api.Completeness(summary.Completeness),
+		Freshness:             api.Freshness(summary.Freshness),
 	}
 }
 

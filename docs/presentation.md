@@ -382,12 +382,28 @@ not used for valuation.
 ### Portfolio exposure
 
 `Exposure` is the portfolio-level signed coin quantity by canonical asset. It
-sits after `Balances` and before `Futures`. The summary shows the asset count,
-long, short, and flat counts, partial and unknown counts, completeness,
-freshness, and the evaluated point. It never shows a cross-coin USD total: long
-BTC and short ETH are not a hedge, and a single net value would hide that
-distinction. `FILTERED EXPOSURE` replaces the label while any platform,
-identity, or asset filter applies.
+sits after `Balances` and before `Futures`. The summary shows the asset, long,
+short, and flat counts as secondary text, partial and unknown counts, the three
+signed exposure values (`Stablecoins`, `Non-stablecoins`, `Total`),
+completeness, freshness, and the evaluated point. The amounts use each row's
+reference value and are a display composition, not a valuation, net worth,
+hedge, or liquidation measure. `FILTERED EXPOSURE` replaces the label while any
+platform, identity, or asset filter applies.
+
+The three values are 14px tabular amounts under 12px labels, not a headline
+numeral; the counts stay 12px secondary text. Each amount keeps its sign: a
+known zero is `$0`, a known negative is `-$...`, and a class with no known value
+is `—`. No profit or loss color is applied. Below 1240px the evaluated point and
+`How it works` move below the amounts; on narrow screens the amounts stack as
+label/value rows.
+
+When a value is missing, a 12px note under the amounts begins
+`USD value is partial` and names unpriced assets, partial rows, missing
+accounts, or unattributed positions; a dotted disclosure lists every unpriced
+canonical symbol. The `Incomplete` badge remains. The note is absent when the
+amounts are complete. `How it works` names the stablecoins present in the view
+and explains the signed composition, the parity rule, and the unknown/zero
+behavior.
 
 Filters stand outside the table so the mobile card view can reuse them:
 `Platform`, `Identity`, and `Asset` search. `Platform` and `Identity` narrow
@@ -422,13 +438,15 @@ excluded assets, and unattributed positions. Missing accounts and unattributed
 positions make the list incomplete and mean known totals may omit holdings;
 excluded assets are omitted deliberately and are disclosed without making the
 list incomplete. `How it works` opens a short disclosure of the formula, the
-dual investment and pending manual rules, the cross-platform caveat, and the
-option blind spot. Page Issues names every omission.
+signed USD composition and stablecoin classification, the value omission and
+unknown rules, the dual investment and pending manual rules, the cross-platform
+caveat, and the option blind spot. Page Issues names every omission.
 
 At widths up to 900px the table becomes a card list. Each card shows the asset
 and state, net quantity, value, accounts, and reference price; its header is a
 button that expands the same contribution list. Filter controls stack and stay
-outside the cards.
+outside the cards. The summary amounts stack as label/value rows, and the
+evaluated point and `How it works` follow them.
 
 Empty states distinguish no valuation point, an incomplete account set, no
 filter match, and a complete absence of exposure. A partial or unknown row is

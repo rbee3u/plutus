@@ -697,6 +697,33 @@ export type ExposureSummary = {
     flatCount: number;
     partialCount: number;
     unknownCount: number;
+    /**
+     * Signed sum of known stablecoin row values; null when no stablecoin value is known and zero is not proven.
+     */
+    stablecoinValueUsd: NullableDecimal;
+    /**
+     * Signed sum of known non-stablecoin row values; null when no non-stablecoin value is known and zero is not proven.
+     */
+    nonStablecoinValueUsd: NullableDecimal;
+    /**
+     * Signed sum of all known row values. May be a known partial sum while one class is unknown; null when no value is known and zero is not proven.
+     */
+    totalValueUsd: NullableDecimal;
+    /**
+     * Filtered rows without a USD value; these rows are omitted from the value amounts.
+     */
+    unpricedAssetCount: number;
+    /**
+     * Canonical symbols of filtered rows without a USD value, sorted.
+     */
+    unpricedAssetSymbols: Array<string>;
+    /**
+     * Canonical symbols classified as stablecoins in the filtered rows, sorted.
+     */
+    stablecoinSymbols: Array<string>;
+    /**
+     * Incomplete when coverage is incomplete, a row is partial or unknown, a position is unattributed, or a row has no USD value.
+     */
     completeness: Completeness;
     freshness: Freshness;
 };

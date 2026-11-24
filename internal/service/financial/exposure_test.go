@@ -201,14 +201,39 @@ func TestSortExposureRowsKeepsUnknownLast(t *testing.T) {
 }
 
 func TestSummarizeExposureCountsAndCompleteness(t *testing.T) {
-	long := ExposureRow{CanonicalAssetSymbol: "BTC", State: ExposureComplete, NetQuantity: new("1"), Freshness: valuation.FreshnessFresh}
-	short := ExposureRow{CanonicalAssetSymbol: "ETH", State: ExposureComplete, NetQuantity: new("-1"), Freshness: valuation.FreshnessStale}
-	flat := ExposureRow{CanonicalAssetSymbol: "AVAX", State: ExposureComplete, NetQuantity: new("0"), Freshness: valuation.FreshnessFresh}
-	partial := ExposureRow{CanonicalAssetSymbol: "DOGE", State: ExposurePartial, NetQuantity: new("10"), Freshness: valuation.FreshnessFresh}
+	withValue := func(row ExposureRow, value string) ExposureRow {
+		t.Helper()
+		rat, ok := decimal.Parse(value)
+		if !ok {
+			t.Fatalf("parse %q", value)
+		}
+		row.valueRat = rat
+		row.ValueUSD = decimal.FormatPtr(rat)
+		return row
+	}
+	long := withValue(ExposureRow{CanonicalAssetSymbol: "BTC", State: ExposureComplete, NetQuantity: new("1"), Freshness: valuation.FreshnessFresh}, "24000")
+	short := withValue(ExposureRow{CanonicalAssetSymbol: "ETH", State: ExposureComplete, NetQuantity: new("-1"), Freshness: valuation.FreshnessStale}, "-3300")
+	flat := withValue(ExposureRow{CanonicalAssetSymbol: "AVAX", State: ExposureComplete, NetQuantity: new("0"), Freshness: valuation.FreshnessFresh}, "0")
+	partial := withValue(ExposureRow{CanonicalAssetSymbol: "DOGE", State: ExposurePartial, NetQuantity: new("10"), Freshness: valuation.FreshnessFresh}, "1705.2")
 	unknown := ExposureRow{CanonicalAssetSymbol: "LINK", State: ExposureUnknown, Freshness: valuation.FreshnessFresh}
 	summary := summarizeExposure([]ExposureRow{long, short, flat, partial, unknown}, true, 0, true)
 	if summary.AssetCount != 5 || summary.LongCount != 1 || summary.ShortCount != 1 || summary.FlatCount != 1 || summary.PartialCount != 1 || summary.UnknownCount != 1 {
 		t.Fatalf("counts = %+v", summary)
+	}
+	if summary.StablecoinValueUSD == nil || *summary.StablecoinValueUSD != "0" {
+		t.Fatalf("stablecoin value = %+v", summary.StablecoinValueUSD)
+	}
+	if summary.NonStablecoinValueUSD == nil || *summary.NonStablecoinValueUSD != "22405.2" {
+		t.Fatalf("non-stablecoin value = %+v", summary.NonStablecoinValueUSD)
+	}
+	if summary.TotalValueUSD == nil || *summary.TotalValueUSD != "22405.2" {
+		t.Fatalf("total value = %+v", summary.TotalValueUSD)
+	}
+	if summary.UnpricedAssetCount != 1 || len(summary.UnpricedAssetSymbols) != 1 || summary.UnpricedAssetSymbols[0] != "LINK" {
+		t.Fatalf("unpriced = %+v", summary)
+	}
+	if len(summary.StablecoinSymbols) != 0 {
+		t.Fatalf("stablecoin symbols = %+v", summary.StablecoinSymbols)
 	}
 	if summary.Completeness != valuation.CompletenessIncomplete || summary.Freshness != valuation.FreshnessStale {
 		t.Fatalf("state = %+v", summary)
@@ -219,6 +244,109 @@ func TestSummarizeExposureCountsAndCompleteness(t *testing.T) {
 	complete := summarizeExposure([]ExposureRow{long, flat}, true, 0, true)
 	if complete.Completeness != valuation.CompletenessComplete || complete.Freshness != valuation.FreshnessFresh {
 		t.Fatalf("complete state = %+v", complete)
+	}
+	if complete.StablecoinValueUSD == nil || *complete.StablecoinValueUSD != "0" ||
+		complete.NonStablecoinValueUSD == nil || *complete.NonStablecoinValueUSD != "24000" ||
+		complete.TotalValueUSD == nil || *complete.TotalValueUSD != "24000" {
+		t.Fatalf("complete values = %+v", complete)
+	}
+}
+
+func TestSummarizeExposureValuesByStablecoinClass(t *testing.T) {
+	newRow := func(symbol, value, state string) ExposureRow {
+		t.Helper()
+		row := ExposureRow{CanonicalAssetSymbol: symbol, State: state, NetQuantity: new("1"), Freshness: valuation.FreshnessFresh}
+		if value == "" {
+			return row
+		}
+		rat, ok := decimal.Parse(value)
+		if !ok {
+			t.Fatalf("parse %q", value)
+		}
+		row.valueRat = rat
+		row.ValueUSD = decimal.FormatPtr(rat)
+		return row
+	}
+
+	complete := summarizeExposure([]ExposureRow{
+		newRow("USDT", "1000", ExposureComplete),
+		newRow("USD", "-200", ExposureComplete),
+		newRow("BTC", "34000", ExposureComplete),
+		newRow("ETH", "-3300", ExposureComplete),
+		newRow("AVAX", "0", ExposureComplete),
+	}, true, 0, true)
+	if complete.Completeness != valuation.CompletenessComplete {
+		t.Fatalf("complete = %+v", complete)
+	}
+	if complete.StablecoinValueUSD == nil || *complete.StablecoinValueUSD != "800" {
+		t.Fatalf("stablecoin value = %+v", complete.StablecoinValueUSD)
+	}
+	if complete.NonStablecoinValueUSD == nil || *complete.NonStablecoinValueUSD != "30700" {
+		t.Fatalf("non-stablecoin value = %+v", complete.NonStablecoinValueUSD)
+	}
+	if complete.TotalValueUSD == nil || *complete.TotalValueUSD != "31500" {
+		t.Fatalf("total value = %+v", complete.TotalValueUSD)
+	}
+	if complete.UnpricedAssetCount != 0 || len(complete.UnpricedAssetSymbols) != 0 {
+		t.Fatalf("unpriced = %+v", complete)
+	}
+	if len(complete.StablecoinSymbols) != 2 || complete.StablecoinSymbols[0] != "USD" || complete.StablecoinSymbols[1] != "USDT" {
+		t.Fatalf("stablecoin symbols = %+v", complete.StablecoinSymbols)
+	}
+
+	unknownClass := summarizeExposure([]ExposureRow{
+		newRow("USDT", "", ExposureComplete),
+		newRow("USD", "", ExposureComplete),
+		newRow("BTC", "34000", ExposureComplete),
+		newRow("ETH", "-3300", ExposureComplete),
+	}, true, 0, true)
+	if unknownClass.StablecoinValueUSD != nil {
+		t.Fatalf("unknown stablecoin value = %+v", unknownClass.StablecoinValueUSD)
+	}
+	if unknownClass.NonStablecoinValueUSD == nil || *unknownClass.NonStablecoinValueUSD != "30700" {
+		t.Fatalf("non-stablecoin value = %+v", unknownClass.NonStablecoinValueUSD)
+	}
+	if unknownClass.TotalValueUSD == nil || *unknownClass.TotalValueUSD != "30700" {
+		t.Fatalf("known partial total = %+v", unknownClass.TotalValueUSD)
+	}
+	if unknownClass.UnpricedAssetCount != 2 || unknownClass.Completeness != valuation.CompletenessIncomplete {
+		t.Fatalf("unknown class state = %+v", unknownClass)
+	}
+
+	knownZeroWithUnpriced := summarizeExposure([]ExposureRow{
+		newRow("AVAX", "0", ExposureComplete),
+		newRow("USDT", "", ExposureComplete),
+	}, true, 0, true)
+	if knownZeroWithUnpriced.StablecoinValueUSD != nil {
+		t.Fatalf("unpriced stablecoin value = %+v", knownZeroWithUnpriced.StablecoinValueUSD)
+	}
+	if knownZeroWithUnpriced.NonStablecoinValueUSD == nil || *knownZeroWithUnpriced.NonStablecoinValueUSD != "0" {
+		t.Fatalf("known zero = %+v", knownZeroWithUnpriced.NonStablecoinValueUSD)
+	}
+	if knownZeroWithUnpriced.TotalValueUSD == nil || *knownZeroWithUnpriced.TotalValueUSD != "0" {
+		t.Fatalf("known partial total = %+v", knownZeroWithUnpriced.TotalValueUSD)
+	}
+
+	empty := summarizeExposure(nil, true, 0, true)
+	if empty.Completeness != valuation.CompletenessComplete {
+		t.Fatalf("empty completeness = %+v", empty)
+	}
+	for name, value := range map[string]*string{
+		"stablecoin": empty.StablecoinValueUSD,
+		"non-stable": empty.NonStablecoinValueUSD,
+		"total":      empty.TotalValueUSD,
+	} {
+		if value == nil || *value != "0" {
+			t.Fatalf("empty %s value = %+v", name, value)
+		}
+	}
+
+	noCoverage := summarizeExposure(nil, false, 0, true)
+	if noCoverage.StablecoinValueUSD != nil || noCoverage.NonStablecoinValueUSD != nil || noCoverage.TotalValueUSD != nil {
+		t.Fatalf("incomplete empty values = %+v", noCoverage)
+	}
+	if noCoverage.Completeness != valuation.CompletenessIncomplete {
+		t.Fatalf("incomplete empty state = %+v", noCoverage)
 	}
 }
 

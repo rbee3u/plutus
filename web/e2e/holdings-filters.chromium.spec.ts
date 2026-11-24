@@ -633,6 +633,7 @@ test("Pending search stays with its own top-level tab and reset cancels it", asy
   const tabs = page.getByRole("navigation", { name: "Holdings views" });
   await expect(tabs.getByRole("link")).toHaveText([
     "Balances",
+    "Exposure",
     "Futures",
     "Earn",
     "Dual investment",

@@ -119,6 +119,24 @@ func TestExposureDatabaseAggregatesAcrossAccountsAndKeepsDualPrincipal(t *testin
 	if usdt.ValueUSD == nil || *usdt.ValueUSD != "1060" {
 		t.Fatalf("USDT value = %+v", usdt)
 	}
+	if list.Summary.StablecoinValueUSD == nil || *list.Summary.StablecoinValueUSD != "1060" {
+		t.Fatalf("stablecoin value = %+v", list.Summary.StablecoinValueUSD)
+	}
+	if list.Summary.NonStablecoinValueUSD == nil || *list.Summary.NonStablecoinValueUSD != "78000" {
+		t.Fatalf("non-stablecoin value = %+v", list.Summary.NonStablecoinValueUSD)
+	}
+	if list.Summary.TotalValueUSD == nil || *list.Summary.TotalValueUSD != "79060" {
+		t.Fatalf("total value = %+v", list.Summary.TotalValueUSD)
+	}
+	if list.Summary.UnpricedAssetCount != 0 || len(list.Summary.UnpricedAssetSymbols) != 0 {
+		t.Fatalf("unpriced = %+v", list.Summary)
+	}
+	if len(list.Summary.StablecoinSymbols) != 1 || list.Summary.StablecoinSymbols[0] != "USDT" {
+		t.Fatalf("stablecoin symbols = %+v", list.Summary.StablecoinSymbols)
+	}
+	if list.Summary.Completeness != valuation.CompletenessComplete {
+		t.Fatalf("completeness = %+v", list.Summary)
+	}
 	if list.Items[0].CanonicalAssetSymbol != "BTC" {
 		t.Fatalf("default value order = %+v", list.Items)
 	}
@@ -127,9 +145,24 @@ func TestExposureDatabaseAggregatesAcrossAccountsAndKeepsDualPrincipal(t *testin
 	if err != nil || len(filtered.Items) != 1 || filtered.Items[0].CanonicalAssetSymbol != "BTC" || filtered.Summary.AssetCount != 1 {
 		t.Fatalf("symbol filter = %+v %v", filtered, err)
 	}
+	if filtered.Summary.StablecoinValueUSD == nil || *filtered.Summary.StablecoinValueUSD != "0" {
+		t.Fatalf("filtered stablecoin value = %+v", filtered.Summary.StablecoinValueUSD)
+	}
+	if filtered.Summary.NonStablecoinValueUSD == nil || *filtered.Summary.NonStablecoinValueUSD != "78000" {
+		t.Fatalf("filtered non-stablecoin value = %+v", filtered.Summary.NonStablecoinValueUSD)
+	}
+	if filtered.Summary.TotalValueUSD == nil || *filtered.Summary.TotalValueUSD != "78000" {
+		t.Fatalf("filtered total value = %+v", filtered.Summary.TotalValueUSD)
+	}
+	if len(filtered.Summary.StablecoinSymbols) != 0 {
+		t.Fatalf("filtered stablecoin symbols = %+v", filtered.Summary.StablecoinSymbols)
+	}
 	page, err := service.Exposure(ctx, p, &ListFilter{Limit: 1, Offset: 1})
 	if err != nil || len(page.Items) != 1 || page.Total != 2 || page.Offset != 1 || page.Limit != 1 {
 		t.Fatalf("page = %+v %v", page, err)
+	}
+	if page.Summary.TotalValueUSD == nil || *page.Summary.TotalValueUSD != "79060" {
+		t.Fatalf("page summary value = %+v", page.Summary.TotalValueUSD)
 	}
 	symbolOrder, err := service.Exposure(ctx, p, &ListFilter{Sort: ExposureSortSymbol})
 	if err != nil || len(symbolOrder.Items) != 2 || symbolOrder.Items[0].CanonicalAssetSymbol != "BTC" || symbolOrder.Items[1].CanonicalAssetSymbol != "USDT" {

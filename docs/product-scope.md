@@ -38,8 +38,10 @@ offered. Balances show a per-asset risk exposure for supported unified accounts;
 contract-only assets appear as zero-spot rows. Exposure shows the signed coin
 quantity by canonical asset summed across every selected account and platform,
 with account contributions, partial and unknown rows, and stale or missing
-coverage disclosed. It is a net coin view, not a cross-coin USD total,
-liquidation measure, or margin ratio.
+coverage disclosed. It adds a signed USD composition of stablecoin,
+non-stablecoin, and total exposure value; the composition is a display
+reference, not a valuation, net-worth total, liquidation measure, or margin
+ratio.
 
 ## History presentation
 
@@ -78,10 +80,10 @@ platform prices. Pending edits are separate from collected values. See
   quantity adjustments create no flow and make crossing comparisons incomplete.
   Value change is an absolute amount, not an investment return.
 - Trading, transfers, trade history, automatic deposit import, percentage
-  returns, attribution, non-USD display, and a cross-coin USD exposure total are
-  out of scope. Exposure history is not presented yet. Options, unlisted
-  products and structures, shared portfolios, public registration, and manually
-  tracked non-exchange assets are not offered.
+  returns, attribution, non-USD display, and portfolio net-worth or liquidation
+  totals are out of scope. Exposure history is not presented yet. Options,
+  unlisted products and structures, shared portfolios, public registration, and
+  manually tracked non-exchange assets are not offered.
 
 Collection success, stale fallback, unknown value, report scopes, earn/dual
 completeness, exclusions, and history calculations are defined in

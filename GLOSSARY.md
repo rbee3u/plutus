@@ -119,6 +119,16 @@ manual balances are included; excluded assets and pending manual edits are
 omitted. _Avoid_: risk exposure as a synonym for the account-level measure, net
 delta, USD exposure, liquidation measure.
 
+**exposure value**: The signed USD reference value of portfolio exposure rows,
+split into stablecoin and non-stablecoin amounts and their total. It is a
+display composition, not a valuation, net worth, hedge, or liquidation measure.
+_Avoid_: portfolio value, net worth, USD exposure, liquidation value.
+
+**stablecoin**: A canonical asset in the maintained USD-pegged set, counted
+separately in exposure value. Classification is by canonical symbol; USD, USDT,
+and USDC use 1 USD parity, while other stablecoins use their reference price.
+_Avoid_: cash, fiat, USD equivalent.
+
 **high-leverage warning**: An Overview warning on a supported unified account
 whose known real leverage is strictly above 3; it repeats on the visible
 identity and platform rows without defining a parent ratio. _Avoid_: risk score,

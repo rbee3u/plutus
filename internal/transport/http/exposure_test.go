@@ -61,6 +61,57 @@ func TestExposureJSONPreservesUnknownAndPartialValues(t *testing.T) {
 	if !strings.Contains(string(data), `"items":[{`) {
 		t.Fatalf("row missing: %s", data)
 	}
+	for _, field := range []string{
+		`"stablecoinValueUsd":null`,
+		`"nonStablecoinValueUsd":null`,
+		`"totalValueUsd":null`,
+		`"unpricedAssetCount":0`,
+		`"unpricedAssetSymbols":[]`,
+		`"stablecoinSymbols":[]`,
+	} {
+		if !strings.Contains(string(data), field) {
+			t.Fatalf("missing %s in %s", field, data)
+		}
+	}
+}
+
+func TestExposureSummaryJSONPreservesValueComposition(t *testing.T) {
+	list := financial.ExposureList{
+		Context: financial.Context{Timezone: "UTC"},
+		Summary: financial.ExposureSummary{
+			AssetCount:            3,
+			LongCount:             2,
+			ShortCount:            1,
+			StablecoinValueUSD:    new("1000"),
+			NonStablecoinValueUSD: new("-200.5"),
+			TotalValueUSD:         new("799.5"),
+			UnpricedAssetCount:    1,
+			UnpricedAssetSymbols:  []string{"LINK"},
+			StablecoinSymbols:     []string{"USDT"},
+			Completeness:          valuation.CompletenessIncomplete,
+			Freshness:             valuation.FreshnessFresh,
+		},
+		Coverage: financial.ExposureCoverage{Complete: true, MissingAccountIDs: []uuid.UUID{}},
+		Items:    []financial.ExposureRow{},
+		Issues:   []valuation.Issue{},
+	}
+	data, err := json.Marshal(toAPIExposureList(list))
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded := string(data)
+	for _, field := range []string{
+		`"stablecoinValueUsd":"1000"`,
+		`"nonStablecoinValueUsd":"-200.5"`,
+		`"totalValueUsd":"799.5"`,
+		`"unpricedAssetCount":1`,
+		`"unpricedAssetSymbols":["LINK"]`,
+		`"stablecoinSymbols":["USDT"]`,
+	} {
+		if !strings.Contains(encoded, field) {
+			t.Fatalf("missing %s in %s", field, encoded)
+		}
+	}
 }
 
 func TestExposureDetailJSONPreservesContributionNulls(t *testing.T) {

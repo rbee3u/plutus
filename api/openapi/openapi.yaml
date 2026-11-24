@@ -3861,7 +3861,7 @@ components:
       type: object
       additionalProperties: false
       required:
-        [assetCount, longCount, shortCount, flatCount, partialCount, unknownCount, completeness, freshness]
+        [assetCount, longCount, shortCount, flatCount, partialCount, unknownCount, stablecoinValueUsd, nonStablecoinValueUsd, totalValueUsd, unpricedAssetCount, unpricedAssetSymbols, stablecoinSymbols, completeness, freshness]
       properties:
         assetCount:
           type: integer
@@ -3881,7 +3881,40 @@ components:
         unknownCount:
           type: integer
           minimum: 0
+        stablecoinValueUsd:
+          description:
+            Signed sum of known stablecoin row values; null when no stablecoin
+            value is known and zero is not proven.
+          $ref: "#/components/schemas/NullableDecimal"
+        nonStablecoinValueUsd:
+          description:
+            Signed sum of known non-stablecoin row values; null when no
+            non-stablecoin value is known and zero is not proven.
+          $ref: "#/components/schemas/NullableDecimal"
+        totalValueUsd:
+          description:
+            Signed sum of all known row values. May be a known partial sum while
+            one class is unknown; null when no value is known and zero is not
+            proven.
+          $ref: "#/components/schemas/NullableDecimal"
+        unpricedAssetCount:
+          description: Filtered rows without a USD value; these rows are omitted from the value amounts.
+          type: integer
+          minimum: 0
+        unpricedAssetSymbols:
+          description: Canonical symbols of filtered rows without a USD value, sorted.
+          type: array
+          items:
+            type: string
+        stablecoinSymbols:
+          description: Canonical symbols classified as stablecoins in the filtered rows, sorted.
+          type: array
+          items:
+            type: string
         completeness:
+          description:
+            Incomplete when coverage is incomplete, a row is partial or unknown,
+            a position is unattributed, or a row has no USD value.
           $ref: "#/components/schemas/Completeness"
         freshness:
           $ref: "#/components/schemas/Freshness"

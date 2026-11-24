@@ -46,9 +46,13 @@ the price of the known contribution with the largest absolute quantity, with
 account order breaking ties, using that contribution's adopted spot price or
 display-only contract mark. Value (USD) is the net quantity times that price; a
 known zero is zero, a nonzero quantity without a price is unknown, and the value
-is not a valuation or liquidation value. There is no cross-coin USD total: long
-BTC and short ETH are not a hedge, and a single signed total would imply one.
-Rows without a value sort last.
+is not a valuation or liquidation value. The list also reports a signed USD
+composition of stablecoin, non-stablecoin, and total exposure value: the sum of
+each filtered row's reference value, partitioned by an explicit USD-pegged
+stablecoin set. Long and short values offset, so the composition is a display
+reference, not a valuation, net worth, hedge, or liquidation measure. An unknown
+row value makes it partial; a class with no known value stays unknown. Rows
+without a value sort last.
 
 The read is point-scoped and derived from retained reports, positions, terms,
 marks, and prices. It is not persisted, does not change valuation or totals, and
@@ -58,14 +62,17 @@ Options are not collected; Binance portfolio margin may omit them, while OKX,
 Bybit, and Kraken fail reports containing option rows.
 
 Rejected alternatives were summing the account-level column (misses every
-excluded account type and is not a portfolio aggregate), a USD net total
-(confuses risk with valuation and hides offsetting coin positions), per-platform
-rows only (does not answer the portfolio question), expanding the account-level
-column to every account (changes the accepted 0017 measure and its presentation
-contract), persisting a portfolio exposure table (duplicates retained facts and
-freezes a display derivation), and adding history immediately (the point-scoped
-read is the prerequisite).
+excluded account type and is not a portfolio aggregate), a gross absolute USD
+total (double counts hedged positions and breaks row additivity), forcing every
+stablecoin to one USD (hides de-pegs and diverges from the row reference value),
+detecting stablecoins by price proximity (misclassifies de-pegged and non-stable
+assets), treating the composition as a valuation, net-worth, or liquidation
+total, per-platform rows only (does not answer the portfolio question),
+expanding the account-level column to every account (changes the accepted 0017
+measure and its presentation contract), persisting a portfolio exposure table
+(duplicates retained facts and freezes a display derivation), and adding history
+immediately (the point-scoped read is the prerequisite).
 
-[Domain rules](../domain-rules.md#portfolio-level-risk-exposure) own behavior,
+[Domain rules](../domain-rules.md#exposure-usd-composition) own behavior,
 [presentation](../presentation.md#portfolio-exposure) owns display, and the
 [platform mappings](../../README.md#documentation) own source fields.

@@ -134,6 +134,7 @@ export function ExposurePage() {
         <ExposureSummaryBar
           context={data.context}
           summary={data.summary}
+          coverage={data.coverage}
           filtered={filters.hasFilters}
         />
       ) : null}
