@@ -181,6 +181,15 @@ type FlatList[T any] struct {
 	ManualOverlay     *ManualOverlay
 }
 
+// PositionList is one filtered page of positions with its notional split by
+// contract family. Both figures are absolute USD sums over matching rows before
+// pagination; the filtered total's completeness qualifies them.
+type PositionList struct {
+	FlatList[PositionRow]
+	TotalLinearUSD  *string
+	TotalInverseUSD *string
+}
+
 // PointDetail is one point with its account valuations.
 type PointDetail struct {
 	Point    valuation.Point

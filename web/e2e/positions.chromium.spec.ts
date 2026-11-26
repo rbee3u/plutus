@@ -1,6 +1,6 @@
 import { mockApi } from "./support/api";
 import { sessionFixture } from "./support/session";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import type { PositionList, PositionRow } from "../src/api/generated/types.gen";
 
 const portfolioId = "00000000-0000-7000-8000-000000000001";
@@ -124,9 +124,7 @@ const unavailable: PositionRow = {
   portfolioMargin: true,
 };
 
-test("Position details work with hover, keyboard, click, scroll, and narrow tables", async ({
-  page,
-}) => {
+async function mockPositions(page: Page) {
   await mockApi(
     page,
     sessionFixture({
@@ -150,7 +148,9 @@ test("Position details work with hover, keyboard, click, scroll, and narrow tabl
               cycleId: "00000000-0000-7000-8000-000000000006",
             },
             items: [position, delivery, calculated, isolated, unavailable],
-            filteredTotalUsd: "1000",
+            filteredTotalUsd: "2680",
+            filteredLinearNotionalUsd: "2080",
+            filteredInverseNotionalUsd: "600",
             coverage: { complete: true, missingAccountIds: [] },
             filteredTotalCompleteness: "complete",
             filteredTotalFreshness: "fresh",
@@ -162,8 +162,21 @@ test("Position details work with hover, keyboard, click, scroll, and narrow tabl
       return route.fallback();
     },
   );
+}
+
+test("Position details work with hover, keyboard, click, scroll, and narrow tables", async ({
+  page,
+}) => {
+  await mockPositions(page);
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`/p/${portfolioId}/holdings/futures`);
+  await expect(page.getByText("Total notional")).toBeVisible();
+  const breakdown = page.getByLabel("Notional by contract type");
+  await expect(breakdown).toContainText("Linear");
+  await expect(breakdown).toContainText("$2,080");
+  await expect(breakdown).toContainText("Inverse");
+  await expect(breakdown).toContainText("$600");
+  await expect(breakdown).not.toContainText("—");
   const symbol = page.getByRole("button", { name: "Contract details for BTC-USD-SWAP" });
   await expect(page.getByRole("columnheader")).toHaveText([
     /Platform/,
@@ -284,4 +297,16 @@ test("Position details work with hover, keyboard, click, scroll, and narrow tabl
     element.scrollLeft += 120;
   });
   await expect(details).toBeHidden();
+});
+
+test("Filtered futures card names the scope and keeps the split", async ({ page }) => {
+  await mockPositions(page);
+  await page.goto(`/p/${portfolioId}/holdings/futures?symbol=btc`);
+  await expect(page.getByText("Filtered notional")).toBeVisible();
+  await expect(page.getByText("Total notional", { exact: true })).toHaveCount(0);
+  const breakdown = page.getByLabel("Notional by contract type");
+  await expect(breakdown).toContainText("Linear");
+  await expect(breakdown).toContainText("$2,080");
+  await expect(breakdown).toContainText("Inverse");
+  await expect(breakdown).toContainText("$600");
 });

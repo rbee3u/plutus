@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,6 +76,29 @@ func TestPositionNotionalCompletenessAndHistoricalSource(t *testing.T) {
 	if err != nil || full.Total != 2 || full.Completeness != "complete" {
 		t.Fatalf("full %+v %v", full, err)
 	}
+	all, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Limit: 500})
+	if err != nil || len(all.Items) != 2 {
+		t.Fatalf("all positions %+v %v", all, err)
+	}
+	linear, inverse := decimal.Zero(), decimal.Zero()
+	for _, row := range all.Items {
+		if row.NotionalUSD == nil {
+			continue
+		}
+		if strings.HasPrefix(row.Kind, "inverse_") {
+			inverse = decimal.Add(inverse, decimal.ParseOrZero(*row.NotionalUSD))
+		} else {
+			linear = decimal.Add(linear, decimal.ParseOrZero(*row.NotionalUSD))
+		}
+	}
+	if linear.Sign() == 0 || inverse.Sign() == 0 {
+		t.Fatalf("fixture must cover both contract families: %+v", all.Items)
+	}
+	if full.TotalLinearUSD == nil || *full.TotalLinearUSD != decimal.Format(linear) ||
+		full.TotalInverseUSD == nil || *full.TotalInverseUSD != decimal.Format(inverse) ||
+		full.TotalUSD == nil || *full.TotalUSD != decimal.Format(decimal.Add(linear, inverse)) {
+		t.Fatalf("split totals do not match the rows or the filtered total: %+v", full)
+	}
 	filtered, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Symbol: "btcUsd_p", Limit: 1})
 	if err != nil || filtered.Total != 1 || filtered.TotalUSD == nil || *filtered.TotalUSD != *filtered.Items[0].NotionalUSD {
 		t.Fatalf("filtered notional did not follow rows: %+v %v", filtered, err)
@@ -95,6 +119,14 @@ func TestPositionNotionalCompletenessAndHistoricalSource(t *testing.T) {
 	incomplete, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Limit: 1})
 	if err != nil || incomplete.Completeness != "incomplete" || incomplete.TotalUSD == nil || *incomplete.TotalUSD == "0" {
 		t.Fatalf("notional completeness %+v %v", incomplete, err)
+	}
+	// The linear mark is now unknown; its family must stay unknown instead of
+	// borrowing the known inverse face amount.
+	if incomplete.TotalLinearUSD != nil {
+		t.Fatalf("unknown linear notional produced %q", *incomplete.TotalLinearUSD)
+	}
+	if incomplete.TotalInverseUSD == nil || *incomplete.TotalInverseUSD != *incomplete.TotalUSD {
+		t.Fatalf("known inverse notional did not survive: %+v", incomplete)
 	}
 	found := false
 	for _, issue := range incomplete.Issues {
@@ -221,5 +253,54 @@ func TestBinancePMMarginUsesHistoricalFactsAndPreservesStaleTime(t *testing.T) {
 	if err := h.collection.db.QueryRowContext(h.ctx, `SELECT SUM(p.margin IS NOT NULL),SUM(p.margin_setting IS NOT NULL)
         FROM futures_positions p JOIN account_reports r ON r.id=p.report_id WHERE r.portfolio_id=?`, h.portfolioID[:]).Scan(&amountCount, &modeCount); err != nil || amountCount != 0 || modeCount != 0 {
 		t.Fatalf("source facts rewritten by reads: %d %d %v", amountCount, modeCount, err)
+	}
+}
+
+func TestPositionNotionalSplitCoversEveryPlatform(t *testing.T) {
+	h := newHarness(t)
+	for _, fixture := range []struct {
+		name      string
+		platform  adapter.Platform
+		structure adapter.AccountStructure
+		types     []adapter.AccountType
+	}{
+		{"Split Binance", adapter.PlatformBinance, adapter.StructureBinanceClassic, []adapter.AccountType{"um_futures", "cm_futures"}},
+		{"Split OKX", adapter.PlatformOKX, adapter.StructureOKXUnified, []adapter.AccountType{"trading"}},
+	} {
+		item := h.createIdentity(fixture.name, fixture.platform, fixture.structure, fixture.types...)
+		item = h.storeCredentials(item, "notional-split-"+fixture.name)
+		if _, result, err := h.identities.Enable(h.ctx, h.portfolioID, item.ID, item.Version, identity.ActionInput{ActorUserID: h.userID}); err != nil || !result.OK {
+			t.Fatalf("enable %s: %+v %v", fixture.name, result, err)
+		}
+	}
+	h.runCycle()
+	pctx := financial.PortfolioContext{ID: h.portfolioID, Timezone: "UTC"}
+	list, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Limit: 500})
+	if err != nil {
+		t.Fatal(err)
+	}
+	platforms := map[string]bool{}
+	linear, inverse := decimal.Zero(), decimal.Zero()
+	for _, row := range list.Items {
+		platforms[row.Platform] = true
+		if row.NotionalUSD == nil {
+			continue
+		}
+		if strings.HasPrefix(row.Kind, "inverse_") {
+			inverse = decimal.Add(inverse, decimal.ParseOrZero(*row.NotionalUSD))
+		} else {
+			linear = decimal.Add(linear, decimal.ParseOrZero(*row.NotionalUSD))
+		}
+	}
+	if len(platforms) < 2 {
+		t.Fatalf("fixture must cover multiple platforms: %v", platforms)
+	}
+	if linear.Sign() == 0 || inverse.Sign() == 0 {
+		t.Fatalf("fixture must cover both contract families: %+v", list.Items)
+	}
+	if list.TotalLinearUSD == nil || *list.TotalLinearUSD != decimal.Format(linear) ||
+		list.TotalInverseUSD == nil || *list.TotalInverseUSD != decimal.Format(inverse) ||
+		list.TotalUSD == nil || *list.TotalUSD != decimal.Format(decimal.Add(linear, inverse)) {
+		t.Fatalf("split totals do not sum every platform: %+v", list)
 	}
 }

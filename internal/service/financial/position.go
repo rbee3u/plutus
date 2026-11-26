@@ -3,6 +3,7 @@ package financial
 import (
 	"context"
 	"database/sql"
+	"math/big"
 
 	"github.com/rbee3u/plutus/internal/infra/mysql"
 
@@ -125,19 +126,21 @@ func positionRow(account *valuation.AccountValuation, source *sqlcgen.ListPositi
 }
 
 // FlatPositions lists every position in the boundary at the latest point.
-func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *ListFilter) (FlatList[PositionRow], error) {
-	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (FlatList[PositionRow], error) {
+func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *ListFilter) (PositionList, error) {
+	return mysql.WithReadContext(ctx, s.db, func(ctx context.Context) (PositionList, error) {
 		limit, offset, err := normalizePage(f.Limit, f.Offset)
 		if err != nil {
-			return FlatList[PositionRow]{}, err
+			return PositionList{}, err
 		}
 		c, point, accounts, err := s.contextAt(ctx, p, f.CycleID)
 		if err != nil {
-			return FlatList[PositionRow]{}, err
+			return PositionList{}, err
 		}
-		out := FlatList[PositionRow]{Context: c, Items: []PositionRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}
+		out := PositionList{FlatList: FlatList[PositionRow]{Context: c, Items: []PositionRow{}, Offset: offset, Limit: limit, Completeness: valuation.CompletenessIncomplete, Issues: []valuation.Issue{}}}
 		out.Coverage = reportCoverage(accounts, f, "positions", point != nil)
 		total := newHoldingTotal(accounts, f, "positions", point != nil)
+		linear := newNotionalTotal()
+		inverse := newNotionalTotal()
 		out.setTotal(total)
 		if point == nil {
 			out.Issues = append(out.Issues, valuation.Issue{Code: "no_point", Detail: "No collection cycle has produced a valuation point yet."})
@@ -156,14 +159,14 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 		byAccount := indexAccounts(accounts)
 		rows, err := mysql.Queries(ctx, s.db).ListPositionsByCycle(ctx, sqlcgen.ListPositionsByCycleParams{PortfolioID: p.ID[:], CycleID: point.CycleID[:]})
 		if err != nil {
-			return FlatList[PositionRow]{}, err
+			return PositionList{}, err
 		}
 		all := make([]PositionRow, 0, len(rows))
 		for i := range rows {
 			r := &rows[i]
 			accountID, err := uuid.FromBytes(r.AccountID)
 			if err != nil {
-				return FlatList[PositionRow]{}, err
+				return PositionList{}, err
 			}
 			account, ok := byAccount[accountID]
 			if !ok || !matchesAccount(f, account) || !matchesSymbol(f.Symbol, r.FuturesSymbol) {
@@ -191,7 +194,7 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 				Margin:                r.Margin,
 			})
 			if err != nil {
-				return FlatList[PositionRow]{}, err
+				return PositionList{}, err
 			}
 			completePositionFacts(&row, account, positionMetadata{sql.NullString{String: r.PositionMode, Valid: true}, r.MarginSetting, r.MarginAssetSymbol, r.MarginBasis})
 			out.Issues = append(out.Issues, positionDataIssues(row.Issues)...)
@@ -205,11 +208,20 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 				}
 			}
 			if row.NotionalUSD != nil {
-				total.add(decimal.ParseOrZero(*row.NotionalUSD))
+				notional := decimal.ParseOrZero(*row.NotionalUSD)
+				total.add(notional)
+				if inverseKind(row.Kind) {
+					inverse.add(notional)
+				} else {
+					linear.add(notional)
+				}
 			}
 			all = append(all, row)
 		}
 		out.setTotal(total)
+		complete := out.TotalCompleteness == valuation.CompletenessComplete
+		out.TotalLinearUSD = linear.format(complete)
+		out.TotalInverseUSD = inverse.format(complete)
 		sortPositions(all, accountRanks(accounts))
 		out.paginate(all)
 		for i := range out.Items {
@@ -222,4 +234,31 @@ func (s *Service) FlatPositions(ctx context.Context, p PortfolioContext, f *List
 // inverseKind identifies contracts whose size is a quote face amount.
 func inverseKind(kind string) bool {
 	return kind == adapter.KindInversePerpetual || kind == adapter.KindInverseDelivery
+}
+
+// notionalTotal accumulates one contract family's absolute USD notional. The
+// filtered total's completeness decides whether an empty accumulator is a
+// confirmed zero or an unknown value.
+type notionalTotal struct {
+	value *big.Rat
+	known bool
+}
+
+func newNotionalTotal() *notionalTotal {
+	return &notionalTotal{value: decimal.Zero()}
+}
+
+func (t *notionalTotal) add(value *big.Rat) {
+	if value == nil {
+		return
+	}
+	t.value = decimal.Add(t.value, value)
+	t.known = true
+}
+
+func (t *notionalTotal) format(complete bool) *string {
+	if !t.known && !complete {
+		return nil
+	}
+	return decimal.FormatPtr(t.value)
 }

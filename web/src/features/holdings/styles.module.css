@@ -14,11 +14,60 @@
   box-shadow: var(--shadow-sm);
 }
 
+.holdingsSummaryMain {
+  display: grid;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+/* The futures card grows a second tier, so its meta aligns with the headline. */
+.holdingsSummaryBar[data-breakdown="true"] {
+  align-items: flex-start;
+}
+
 .holdingsSummaryAmount {
   display: flex;
   align-items: baseline;
   gap: var(--space-md);
   flex-wrap: wrap;
+}
+
+.notionalBreakdown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-xs) var(--space-2xl);
+  margin: 0;
+  min-width: 0;
+}
+
+.notionalBreakdown > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.notionalBreakdown dt {
+  color: var(--faint);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: var(--line-height-md);
+}
+
+.notionalBreakdown dd {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-height-md);
+  white-space: nowrap;
+}
+
+.notionalUnknown {
+  color: var(--muted);
 }
 
 .holdingsSummaryLabel {

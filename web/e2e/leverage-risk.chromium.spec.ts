@@ -302,6 +302,8 @@ async function fixture(page: Page, options: FixtureOptions = {}) {
             items: allPositions,
             page: { kind: "offset", offset: 0, limit: 500, total: allPositions.length },
             filteredTotalUsd: "1374",
+            filteredLinearNotionalUsd: "1374",
+            filteredInverseNotionalUsd: "0",
             filteredTotalCompleteness: "complete",
             filteredTotalFreshness: "fresh",
             filteredTotalIssues: [],

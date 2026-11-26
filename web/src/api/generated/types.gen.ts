@@ -844,6 +844,14 @@ export type PositionList = {
      * Missing reports, unknown values, and stale reports qualifying this filtered total.
      */
     filteredTotalIssues: Array<Issue>;
+    /**
+     * Known absolute USD notional of matching linear contracts before pagination. Uses the recorded mark price, includes perpetual and delivery contracts, and sums both sides without netting. Null when no value is known and the filtered total is incomplete; a confirmed zero is 0.
+     */
+    filteredLinearNotionalUsd: NullableDecimal;
+    /**
+     * Known absolute USD notional of matching inverse contracts before pagination. Uses the quote face amount, includes perpetual and delivery contracts, and sums both sides without netting. Null when no value is known and the filtered total is incomplete; a confirmed zero is 0.
+     */
+    filteredInverseNotionalUsd: NullableDecimal;
 };
 
 export type DualPositionList = {

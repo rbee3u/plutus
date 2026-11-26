@@ -93,15 +93,17 @@ func (a *API) ListPositions(ctx context.Context, request api.ListPositionsReques
 		return nil, err
 	}
 	return api.ListPositions200JSONResponse{
-		Context:                   toAPIContext(&list.Context),
-		Coverage:                  toAPIReportCoverage(list.Coverage),
-		Items:                     toAPIPositionRows(list.Items),
-		Page:                      toOffsetPage(list.Offset, list.Limit, list.Total),
-		FilteredTotalUsd:          list.TotalUSD,
-		FilteredTotalCompleteness: api.Completeness(list.TotalCompleteness),
-		FilteredTotalFreshness:    api.Freshness(list.TotalFreshness),
-		FilteredTotalIssues:       toAPIIssues(list.TotalIssues),
-		Issues:                    toAPIIssues(list.Issues),
+		Context:                    toAPIContext(&list.Context),
+		Coverage:                   toAPIReportCoverage(list.Coverage),
+		Items:                      toAPIPositionRows(list.Items),
+		Page:                       toOffsetPage(list.Offset, list.Limit, list.Total),
+		FilteredTotalUsd:           list.TotalUSD,
+		FilteredLinearNotionalUsd:  list.TotalLinearUSD,
+		FilteredInverseNotionalUsd: list.TotalInverseUSD,
+		FilteredTotalCompleteness:  api.Completeness(list.TotalCompleteness),
+		FilteredTotalFreshness:     api.Freshness(list.TotalFreshness),
+		FilteredTotalIssues:        toAPIIssues(list.TotalIssues),
+		Issues:                     toAPIIssues(list.Issues),
 	}, nil
 }
 

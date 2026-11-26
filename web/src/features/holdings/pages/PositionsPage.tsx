@@ -12,7 +12,7 @@ import {
   HoldingsNoPoint,
 } from "../components/HoldingsFilterControls";
 import { holdingsAccountColumns, HoldingsFilterHeader } from "../components/HoldingsFilterHeader";
-import { holdingsIssues, HoldingsSummary } from "../components/HoldingsSummary";
+import { holdingsIssues, HoldingsSummary, NotionalBreakdown } from "../components/HoldingsSummary";
 import { POSITION_COLUMNS, positionRow } from "../components/PositionsTable";
 import { useHoldingsFilters } from "../hooks/useHoldingsFilters";
 import { holdingsListRequest } from "../lib/listRequest";
@@ -22,6 +22,7 @@ export function PositionsPage() {
   const { portfolioId = "" } = useParams();
   const filters = useHoldingsFilters(portfolioId);
   const { platform, identityId, symbol } = filters.values;
+  const filtered = Boolean(platform || identityId || symbol);
   const offset = filters.offset;
   const query = usePortfolioQuery<PositionList>({
     key: (userId, portfolioId) =>
@@ -45,7 +46,17 @@ export function PositionsPage() {
         fallback="Positions could not be loaded."
       />
       {data?.context.cycleId ? (
-        <HoldingsSummary context={data.context} label="Total notional" total={data} />
+        <HoldingsSummary
+          context={data.context}
+          label={filtered ? "Filtered notional" : "Total notional"}
+          total={data}
+          detail={
+            <NotionalBreakdown
+              linearUsd={data.filteredLinearNotionalUsd}
+              inverseUsd={data.filteredInverseNotionalUsd}
+            />
+          }
+        />
       ) : null}
       <DataTable
         caption="Positions at the latest valuation point"

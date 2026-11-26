@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +33,30 @@ func TestHoldingsSubstringFiltersBeforePagination(t *testing.T) {
 	if err != nil || full.Total != 2 {
 		t.Fatalf("positions: %+v %v", full, err)
 	}
+	linear, inverse := decimal.Zero(), decimal.Zero()
+	for _, row := range full.Items {
+		if row.NotionalUSD == nil {
+			continue
+		}
+		if strings.HasPrefix(row.Kind, "inverse_") {
+			inverse = decimal.Add(inverse, decimal.ParseOrZero(*row.NotionalUSD))
+		} else {
+			linear = decimal.Add(linear, decimal.ParseOrZero(*row.NotionalUSD))
+		}
+	}
+	if linear.Sign() == 0 || inverse.Sign() == 0 {
+		t.Fatalf("fixture must cover both contract families: %+v", full.Items)
+	}
+	if full.TotalLinearUSD == nil || *full.TotalLinearUSD != decimal.Format(linear) ||
+		full.TotalInverseUSD == nil || *full.TotalInverseUSD != decimal.Format(inverse) ||
+		full.TotalUSD == nil || *full.TotalUSD != decimal.Format(decimal.Add(linear, inverse)) {
+		t.Fatalf("split totals: %+v", full)
+	}
+	inverseOnly, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Symbol: "BTCUSD_PERP", Limit: 50})
+	if err != nil || inverseOnly.Total != 1 || inverseOnly.TotalLinearUSD == nil || *inverseOnly.TotalLinearUSD != "0" ||
+		inverseOnly.TotalInverseUSD == nil || inverseOnly.TotalUSD == nil || *inverseOnly.TotalInverseUSD != *inverseOnly.TotalUSD {
+		t.Fatalf("inverse-only split: %+v %v", inverseOnly, err)
+	}
 	page, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Symbol: "uSd", Offset: 1, Limit: 1})
 	if err != nil || page.Total != 2 || len(page.Items) != 1 || page.Items[0].FuturesSymbol != "BTCUSD_PERP" || *page.TotalUSD != *full.TotalUSD {
 		t.Fatalf("substring pagination or total: %+v %v", page, err)
@@ -39,6 +64,9 @@ func TestHoldingsSubstringFiltersBeforePagination(t *testing.T) {
 	missing, err := h.financial.FlatPositions(h.ctx, pctx, &financial.ListFilter{Symbol: "no-match"})
 	if err != nil || missing.Total != 0 || *missing.TotalUSD != "0" || missing.Completeness != full.Completeness {
 		t.Fatalf("empty filter total: %+v %v", missing, err)
+	}
+	if missing.TotalLinearUSD == nil || *missing.TotalLinearUSD != "0" || missing.TotalInverseUSD == nil || *missing.TotalInverseUSD != "0" {
+		t.Fatalf("confirmed empty split: %+v", missing)
 	}
 	balances, err := h.financial.FlatBalances(h.ctx, pctx, &financial.ListFilter{Symbol: "sDt", Limit: 500})
 	if err != nil || balances.Total == 0 {

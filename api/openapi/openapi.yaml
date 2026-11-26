@@ -4114,6 +4114,8 @@ components:
         - filteredTotalCompleteness
         - filteredTotalFreshness
         - filteredTotalIssues
+        - filteredLinearNotionalUsd
+        - filteredInverseNotionalUsd
       properties:
         coverage:
           $ref: "#/components/schemas/ReportCoverage"
@@ -4146,6 +4148,12 @@ components:
           items:
             $ref: "#/components/schemas/Issue"
           description: Missing reports, unknown values, and stale reports qualifying this filtered total.
+        filteredLinearNotionalUsd:
+          $ref: "#/components/schemas/NullableDecimal"
+          description: Known absolute USD notional of matching linear contracts before pagination. Uses the recorded mark price, includes perpetual and delivery contracts, and sums both sides without netting. Null when no value is known and the filtered total is incomplete; a confirmed zero is 0.
+        filteredInverseNotionalUsd:
+          $ref: "#/components/schemas/NullableDecimal"
+          description: Known absolute USD notional of matching inverse contracts before pagination. Uses the quote face amount, includes perpetual and delivery contracts, and sums both sides without netting. Null when no value is known and the filtered total is incomplete; a confirmed zero is 0.
     DualPositionList:
       type: object
       additionalProperties: false

@@ -273,8 +273,12 @@ sum every matching row before pagination. Earn symbol matches retain all assets
 of the matching product; dual pair matches value the invested principal asset.
 Summary labels are `Total balance`, `Total notional`, `Total holdings`, and
 `Total principal` for Balances, Futures, Earn, and Dual investment respectively.
-All show USD amounts, independent completeness and freshness badges, and the
-collected point's evaluation time. Row counts belong in the table footer.
+Futures also splits its total into `Linear` and `Inverse` absolute USD notionals
+under the headline value. The split uses the same filtered scope, and the label
+becomes `Filtered notional` when an applied platform, identity, or symbol filter
+narrows the rows. All show USD amounts, independent completeness and freshness
+badges, and the collected point's evaluation time. Row counts belong in the
+table footer.
 
 Balance totals sum collected balance values; pending manual additions have no
 valuation and do not enter those totals. This is not Overview's account-equity
@@ -489,6 +493,16 @@ notional. Failures without rows remain in page-level Issues. Known notionals are
 summed after filtering and before pagination; missing required notionals or
 missing position-capable accounts make that total incomplete. Balance valuation
 omissions alone do not make known contract notional incomplete.
+
+The headline's `Linear` and `Inverse` figures split that total by contract
+family. Linear contracts use the recorded mark price; inverse contracts use
+their quote face amount, which needs no mark. Both figures are absolute sums
+over the same rows, include perpetual and delivery contracts, and never net long
+against short. Each family sums its known amounts independently: an unknown
+linear notional leaves the linear figure as its known remainder while the shared
+total stays incomplete. A family with no known value in an incomplete scope
+displays `—`; a confirmed empty family displays `$0`. The split is a notional
+reference, not a net position, valuation, or leverage measure.
 
 ### Earn and dual investment
 
